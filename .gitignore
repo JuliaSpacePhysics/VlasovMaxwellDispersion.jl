@@ -1,0 +1,9 @@
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
+*.rej
+.DS_Store
+Manifest.toml
+benchmark/*.json
+docs/build/
+external/
