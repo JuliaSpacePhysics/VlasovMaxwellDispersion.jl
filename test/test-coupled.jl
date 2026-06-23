@@ -33,6 +33,29 @@ end
     end
 end
 
+# Relativistic (γ,p∥) coupled path: an isotropic Maxwell–Jüttner f₀ fed through
+# the general CoupledVDF must reproduce the closed Maxwell–Jüttner (Swanson)
+# tensor — itself ALPS-validated. ω<Ω keeps the Swanson time-integral stable.
+@testitem "Relativistic CoupledVDF reproduces Maxwell–Jüttner" begin
+    Ω, μ = 1.0, 40.0
+    γ(u, w) = sqrt(1 + u^2 + w^2)
+    f0(u, w) = exp(-μ * γ(u, w))
+    dpar(u, w) = -μ * f0(u, w) * u / γ(u, w)
+    dperp(u, w) = -μ * f0(u, w) * w / γ(u, w)
+    L = sqrt((1 + 25 / μ)^2 - 1)
+    rel = Species(Ω, 1.0, CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar, dperp);
+        regime=Relativistic())
+    ref = Species(Ω, 1.0, MaxwellJuttner(mu=μ))
+
+    kz, kp, ω = 0.4, 0.7, 0.3 - 0.005im
+    k = Wavenumber(kp, kz)
+    χ = contribution(rel, ω, k)
+    χref = contribution(ref, ω, k)
+    @test maximum(abs.(χ .- χref)) / maximum(abs.(χref)) < 1e-5
+
+    ω = 0.3 + 0.05im     # Im ω>0 for evaluator A
+    @test maximum(abs.(contribution(rel, ω, k; closure=Newberger()) .- contribution(ref, ω, k))) / maximum(abs.(contribution(ref, ω, k))) < 1e-7
+end
 
 # Regression: the relativistic harmonic path must carry the non-resonant e∥e∥
 # Bernstein term 𝒳_B (derivation §5). In the weakly-relativistic limit (narrow f₀,

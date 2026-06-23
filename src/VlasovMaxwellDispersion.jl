@@ -27,11 +27,11 @@ include("susceptibility.jl")
 include("solve.jl")
 include("track.jl")
 
-export Regime, NonRelativistic, Relativistic, Continuation, Separability
+export Regime, NonRelativistic, Relativistic, Continuation
 export Wavenumber, para, perp, Species, Plasma
 export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, CoupledVDF
-export plasma_dispersion_function, Z, Gamma_n, hilbert
-export IntegralClosure, HarmonicSum, Newberger, besselj_complex
+export plasma_dispersion_function, Z, hilbert
+export IntegralClosure, HarmonicSum, Newberger
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual
 export LocalDispersionProblem, GlobalDispersionProblem, BranchProblem
 export DispersionAlgorithm, Muller, Secant, GRPF, ArcLength, DispersionSolution

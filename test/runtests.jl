@@ -4,7 +4,7 @@ using TestItemRunner
 @run_package_tests verbose=true
 # @run_package_tests verbose=true filter=ti -> !(:slow in ti.tags)
 
-@testset "cold dispersion vs Stix" begin
+@testitem "cold dispersion vs Stix" begin
     include("test-cold-stix.jl")
 end
 @testitem "SciML interop via residual seam" begin

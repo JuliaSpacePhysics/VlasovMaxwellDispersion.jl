@@ -49,9 +49,6 @@ function SeparableVDF(
     return SeparableVDF(fp, dfp, fq, dfq, plo, phi, qhi)
 end
 
-Separability(::SeparableVDF) = Separable()
-
-
 # --- Arbitrary separable analytic f, full magnetized EM (oblique k⊥≠0) --------
 # Same harmonic algebra as the bi-Maxwellian, but moments are computed generically:
 # parallel z*F/z*T via the analytic `hilbert`, perp Bessel moments by quadrature.
