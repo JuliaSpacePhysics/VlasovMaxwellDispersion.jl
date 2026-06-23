@@ -31,7 +31,6 @@ let
     end
 end
 
-# Relativistic CoupledVDF: evaluator A in (p∥,p⊥) space vs evaluator B in (γ,p∥).
 let regime=Relativistic()
     μ = 40.0
     γ(u, w) = sqrt(1 + u^2 + w^2)
@@ -42,9 +41,16 @@ let regime=Relativistic()
     kw = (parlower=(-L), parupper=L, perpupper=L, dpar=dpar, dperp=dperp)
     s = Species(1.0, 1.0, CoupledVDF(f0; kw...); regime)
     k = Wavenumber(0.7, 0.4)
-    g = SUITE["coupled_rel"] = BenchmarkGroup()
-    g["B_truncated"] = @benchmarkable contribution($s, 0.3 + 0.05im, $k)
-    g["A_newberger"] = @benchmarkable contribution($s, 0.3 + 0.05im, $k; closure=Newberger())
+    ω = 0.3 + 0.05im
+    g = SUITE["Relativistic"] = BenchmarkGroup()
+    g["coupled/A_newberger"] = @benchmarkable contribution($s, $ω, $k; closure=Newberger())
+    g["coupled/B_truncated"] = @benchmarkable contribution($s, $ω, $k)
+
+    ppar = collect(range(-L, L, length=81))
+    pperp = collect(range(0.0, L, length=61))
+    F = [f0(u, w) for u in ppar, w in pperp]
+    s = Species(1.0, 1.0, GridVDF(ppar, pperp, F; tol=1e-4); regime)
+    g["gridvdf"] = @benchmarkable contribution($s, $ω, $k)
 end
 
 let

@@ -140,6 +140,22 @@ $$
 
 Note: For *real* $(p_\|,p_\perp)$, $𝓣_n$ is the Hermitian
 outer product $\mathbf{v}_n\mathbf{v}_n^\dagger$ of $\mathbf{v}_n=(p_\perp R_n,-i p_\perp J_n',p_\|J_n)$.
+\end{array}\right).
+$$
+
+Using the ring kernel $R_n \equiv (n/z)J_n=\tfrac12(J_{n-1}+J_{n+1})$, $𝓣_n \equiv p_\perp^2 T_n$ reads
+
+$$
+𝓣_n=
+\begin{pmatrix}
+p_\perp^2 R_n^2 & i\,p_\perp^2 R_n J_n' & p_\parallel p_\perp R_n J_n\\[2pt]
+-i\,p_\perp^2 R_n J_n' & p_\perp^2 J_n'^2 & -i\,p_\parallel p_\perp J_nJ_n'\\[2pt]
+p_\parallel p_\perp R_n J_n & i\,p_\parallel p_\perp J_nJ_n' & p_\parallel^2 J_n^2
+\end{pmatrix}.
+$$
+
+Note: For *real* $(p_\|,p_\perp)$, $𝓣_n$ is the Hermitian
+outer product $\mathbf{v}_n\mathbf{v}_n^\dagger$ of $\mathbf{v}_n=(p_\perp R_n,-i p_\perp J_n',p_\|J_n)$.
 
 The susceptibility splits
 into harmonic contributions plus one non-resonant term:
@@ -216,14 +232,14 @@ I = I(p_\perp)=\sum_n I_n(p_\perp)+\mathbf e_\parallel\mathbf e_\parallel\,I_B(p
 $$
 $$
 I_n(p_\perp)=2\pi\!\int dp_\parallel\;
-\frac{p_\perp\mathcal U\;\boldsymbol{\mathcal T}_n}{\omega-k_\parallel p_\parallel-n\Omega},
+\frac{p_\perp\mathcal U\; 𝓣_n}{\omega-k_\parallel p_\parallel-n\Omega},
 \qquad
 I_B(p_\perp)=2\pi\!\int dp_\parallel\;\Bigl(p_\perp p_\parallel\,\partial_\parallel f_0-p_\parallel^2\,\partial_\perp f_0\Bigr).
 $$
 
 
 With $\gamma=1$, three things happen: the pole $\zeta_n=(\omega-n\Omega)/k_\parallel$ loses its $\gamma$-dependence,
-the Bessel argument $z=k_\perp p_\perp/\Omega$ depends on $p_\perp$ alone, and $\boldsymbol{\mathcal T}_n$
+the Bessel argument $z=k_\perp p_\perp/\Omega$ depends on $p_\perp$ alone, and $𝓣_n$
 is polynomial in $p_\parallel$. Now $p_\perp$ and $p_\parallel$ decouple, so
 
 Unlike $I(\gamma)$, $I(p_\perp)$ **does** factor into parallel moments and perp Bessel weights.
@@ -265,6 +281,7 @@ $$
 
 The Bessel factors leave the $p_\parallel$ integral untouched; each power of $p_\parallel$ raises the
 moment index ($p_\parallel^0\!\to\!D_0$, $p_\parallel^1\!\to\!D_1$, $p_\parallel^2\!\to\!D_2$).
+**Bessel weights.** The Bessel factors leave the $p_\parallel$ integral untouched; each power of $p_\parallel$ raises the moment index ($p_\parallel^0\!\to\!D_0$, $p_\parallel^1\!\to\!D_1$, $p_\parallel^2\!\to\!D_2$).
 
 Assembled, the resonant harmonic block reads
 
