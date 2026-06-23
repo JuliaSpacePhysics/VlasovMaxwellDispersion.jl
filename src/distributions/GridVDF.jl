@@ -90,8 +90,9 @@ end
 # (p⊥>perphi) and the extrapolates to garbage. Fix: integrate only up to
 # the largest γ whose whole half-circle fits inside the grid — radius R=min(p∥
 # half-width, perphi) ⇒ γmax=√(1+R²). f₀ decays, so the clipped corner is
-# negligible. Otherwise this reuses the validated `_coupled_harmonic_rel` (fixed
-# GL in (γ,p∥), inner single-pole Plemelj) with the analytic ∇f₀.
+# negligible. The harmonic is the shared edge-mapped `_coupled_harmonic_rel`
+# (§5.2.2 disk→box maps, inner single-pole Plemelj) with the bicubic ∇f₀; the maps
+# keep every node on the disk (real p⊥), so the bicubic is never probed off-grid.
 function _grid_contribution_rel(d::GridVDF, s::Species, ω, k)
     cpl = d.coupled
     Ω, kz, kperp = s.Omega, para(k), perp(k)
@@ -99,44 +100,10 @@ function _grid_contribution_rel(d::GridVDF, s::Species, ω, k)
     R = min(min(cpl.parhi, -cpl.parlo), cpl.perphi)   # half-circle radius that fits the grid
     γmax = sqrt(1 + R^2)
     nmax = nmax_bessel(a^2 * R^2 / 2)
-    f = n -> _grid_harmonic_rel(n, cpl, ω, Ω, kz, a, γmax)
+    f = n -> _coupled_harmonic_rel(n, cpl, ω, Ω, kz, a, γmax)
     χ = converge(f, 1, 1.0e-6; nmax)
-    χ = χ .+ _ee33(_bernstein_rel(cpl, ω, γmax))   # non-resonant Bernstein (drops from the n-sum)
+    χ = χ .+ _ee33(_bernstein_rel(cpl, γmax))   # non-resonant term
     return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
-end
-
-# Relativistic harmonic. Like `_coupled_harmonic_rel` but the
-# Plemelj pole subtraction — which evaluates ∇f₀ at p∥=ζ, hence p⊥=√(γ²−1−ζ²) —
-# is done ONLY when the resonance is in range (|Re ζ|<umax ⇒ p⊥ real,). 
-# When ζ is off the real momentum range the integrand g/(p∥−ζ) is already
-# smooth, so we integrate it directly and never probe the spine off-grid (where
-# p⊥ is imaginary and the local polynomial has no analytic continuation).
-function _grid_harmonic_rel(n, d, ω, Ω, kz, a, γmax)
-    gn, gw = _GLγ
-    pn, pw = _GLp
-    acc = zero(SMatrix{3,3,ComplexF64})
-    for ig in eachindex(gn)
-        γ, wγ = _rescale(gn[ig], gw[ig], one(real(ω)), γmax)
-        umax = sqrt(γ^2 - 1)
-        ζ = (γ * ω - n * Ω) / kz
-        if -umax < real(ζ) < umax
-            nζ = _rel_integrand(ζ, γ, n, a, ω, kz, d)   # p⊥(ζ) real ⇒ bicubic valid
-            reg = zero(nζ)
-            for ip in eachindex(pn)
-                u, wu = _rescale(pn[ip], pw[ip], -umax, umax)
-                reg = reg .+ wu .* ((_rel_integrand(u, γ, n, a, ω, kz, d) .- nζ) ./ (u - ζ))
-            end
-            inner = reg .+ nζ .* _landau_logfac(ζ, -umax, umax)
-        else
-            inner = zero(SMatrix{3,3,ComplexF64})       # smooth: integrate directly
-            for ip in eachindex(pn)
-                u, wu = _rescale(pn[ip], pw[ip], -umax, umax)
-                inner = inner .+ wu .* (_rel_integrand(u, γ, n, a, ω, kz, d) ./ (u - ζ))
-            end
-        end
-        acc = acc .+ wγ .* ((-1 / kz) .* inner)
-    end
-    return acc
 end
 
 function _grid_contribution(d::GridVDF, s::Species, ω, k)

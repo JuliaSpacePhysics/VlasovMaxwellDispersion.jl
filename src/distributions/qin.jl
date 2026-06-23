@@ -77,7 +77,7 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s::Sp
     end
     val = first(QuadGK.quadgk(inner, one(real(ω)), γmax; rtol=1.0e-6, norm=nrm))
     # `fI` carries only the resonant 𝒰·𝓣ₙ; add the same pole-free nonresonant 𝒳_B
-    bern = _ee33((s.Pi2 / ω^2) * _bernstein_rel(d, ω, γmax))
+    bern = _ee33((s.Pi2 / ω^2) * _bernstein_rel(d, γmax))
     return SMatrix{3,3,ComplexF64}((s.Pi2 / (ω^2 * Ω)) .* val) .+ bern
 end
 
