@@ -14,16 +14,9 @@ struct Analytic <: Continuation end       # closed-form Z-function path
 struct PiecewisePoly <: Continuation end  # STUB: grid/function VDF
 struct Rational <: Continuation end       # STUB: rational-fit continuation
 
-abstract type Separability end
-struct Separable <: Separability end      # f0 = f_par(v_par) * f_perp(v_perp)
-struct Coupled <: Separability end
-
 # Trait accessors dispatch on type; default to the core validated combination.
 Regime(::Any) = NonRelativistic()
 Continuation(::Any) = Analytic()
-Separability(::Any) = Separable()
-
-# Ordering convention: PERPENDICULAR FIRST, PARALLEL LAST — `(k⊥, k∥)`, `(p⊥, p∥)`, `(γ, p∥)`
 
 """
     Wavenumber(kperp, kz)
@@ -60,7 +53,6 @@ Species(Omega, Pi2, vdf; regime=Regime(vdf)) = Species(; Omega, Pi2, vdf, regime
 
 Regime(s::Species) = s.regime
 Continuation(s::Species) = Continuation(s.vdf)
-Separability(s::Species) = Separability(s.vdf)
 
 """
     Plasma(species...)

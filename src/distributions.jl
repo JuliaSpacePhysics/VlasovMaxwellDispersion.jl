@@ -9,9 +9,7 @@ include("distributions/CoupledVDF.jl")
 
 # Trait wiring
 Regime(::AbstractVDF) = NonRelativistic()
-Separability(::AbstractVDF) = Coupled()
 Continuation(::GridVDF) = PiecewisePoly()
 Continuation(::SeparableVDF) = Analytic()
 Continuation(::CoupledVDF) = Analytic()
 
-Separability(::CoupledVDF) = Coupled()

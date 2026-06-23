@@ -237,16 +237,16 @@ M^m_T(p_\perp)\equiv\int\!\frac{p_\parallel^{\,m}\,\partial_\parallel f_0}{\omeg
 $$
 
 $$
-M^m_F=-\tfrac1{k_\|}\mathcal C[p_\|^m\,\partial_\perp f_0](\zeta_n),\qquad
-M^m_T=-\tfrac1{k_\|}\mathcal C[p_\|^m\,\partial_\| f_0](\zeta_n).
+M^m_F=-\frac1{k_\|}\mathcal C[p_\|^m\,\partial_\perp f_0](\zeta_n),\qquad
+M^m_T=-\frac1{k_\|}\mathcal C[p_\|^m\,\partial_\| f_0](\zeta_n).
 $$
 
 Note without separability, the moments are recomputed at every $p_\perp$, otherwise it would pull $f_\perp(p_\perp)$ out of $M^m$ and kill the outer integral.
 
-**Bessel weights.** With $n_k\equiv n\Omega/k_\perp$, the resummed tensor $\boldsymbol{\mathcal T}_n=p_\perp^2 T_n$ reads
+**Bessel weights.** With $n_k\equiv n\Omega/k_\perp$, the resummed tensor $\mathcal{T}_n=p_\perp^2 T_n$ reads
 
 $$
-\boldsymbol{\mathcal T}_n=
+{\mathcal T}_n=
 \begin{pmatrix}
 n_k^2 J_n^2 & i\,n_k p_\perp J_nJ_n' & n_k p_\parallel J_n^2\\[2pt]
 -i\,n_k p_\perp J_nJ_n' & p_\perp^2 J_n'^2 & -i\,p_\parallel p_\perp J_nJ_n'\\[2pt]

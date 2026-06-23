@@ -10,12 +10,8 @@ const Z = plasma_dispersion_function
 # Derivative `Z'(z) = -2(1 + z Z(z))`.
 @inline Zprime(z) = -2 * (1 + z * plasma_dispersion_function(z))
 
-"""
-    Gamma_n(n, lambda) -> Real
-
-Scaled Bessel moment `Γ_n(λ) = I_n(λ) e^{-λ}` from perp gyro-averaging.
-`λ = (k⊥ v_th⊥ / Ω_s)^2 / 2`. Uses scaled modified Bessel `besselix`.
-"""
+# Scaled Bessel moment `Γ_n(λ) = I_n(λ) e^{-λ}` from perp gyro-averaging.
+# `λ = (k⊥ v_th⊥ / Ω_s)^2 / 2`. Uses scaled modified Bessel `besselix`.
 @inline Gamma_n(n, lambda) = besselix(n, lambda)
 
 # Derivative Γ_n'(λ) via the recurrence I_n' = (I_{n-1}+I_{n+1})/2; the e^{-λ}

@@ -40,7 +40,6 @@ rejected.
 |---|---|---|
 | `Regime` | `NonRelativistic` / `Relativistic` | active coordinates, `γ`, pole map |
 | `Continuation` | `Analytic` / `PiecewisePoly` / `Rational` | how `H∥`/`P⊥` evaluate |
-| `Separability` | `Separable` / `Coupled` | factor perp×parallel, or 2-D coupling |
 | `IntegralClosure` | `HarmonicSum` / `Newberger` |
 
 Specializations are trait combinations: 

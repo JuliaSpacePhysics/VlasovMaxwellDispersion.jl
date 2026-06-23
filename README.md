@@ -38,12 +38,11 @@ pl = Plasma(Species(-1.0, 1.0, SeparableVDF(f; lower=-12.0, upper=14.0)))
 
 | VDF / mode | path |
 |---|---| 
-| Arbitrary Analytic `f₀(v∥,v⊥)` |
-| Arbitrary separable `f∥·f⊥` | `hilbert` + Bessel-quadrature moments |
-| Cold fluid | Stix S,D,P closed form |
+| Arbitrary Analytic `f₀(p∥,[⊥)` |
+| Grid / numerical VDF | NNLS B-spline → piecewise-poly `H∥`,`P⊥` |
 | Maxwell–Jüttner (relativistic) | Trubnikov/Swanson integral |
 | (bi-)Maxwellian, drifting | `Z`-function harmonic sum |
-| Grid / numerical VDF | NNLS B-spline → piecewise-poly `H∥`,`P⊥` |
+| Cold fluid | Stix S,D,P closed form |
 
 Solvers follow the `CommonSolve.solve(problem, algorithm)` interface: a
 `Local`/`Global`/`BranchProblem` (seed / search box / k-sequence) solved by
