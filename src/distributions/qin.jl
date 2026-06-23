@@ -55,7 +55,7 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s::Sp
             ζ = (ω * γ - n * Ω) / kz
             -umax < real(ζ) < umax || continue
             w = sqrt(complex(γ^2 - 1 - ζ^2))
-            ρ = ((2π * _U_cov(d, ζ, w, γ, ω, kz)) * (-Ω / kz)) .* _T_n_bare(n, β * w, β, ζ, w)
+            ρ = ((2π * _U_cov(d, ζ, w, γ, ω, kz)) * (-Ω / kz)) .* _T_n_bare(n, β * w, ζ, w)
             push!(ζρ, (; ζ, ρ))
         end
         function fI(u)
@@ -121,7 +121,7 @@ end
     return map(ns, ζs) do n, ζ
         dfpa, dfpe = d.dpar(ζ, w), d.dperp(ζ, w)
         U = dfpe + (kz / ω) * (w * dfpa - ζ * dfpe)
-        ((2π * U) * (-Ω / kz)) .* _T_n_bare(n, z, β, ζ, w)
+        ((2π * U) * (-Ω / kz)) .* _T_n_bare(n, z, ζ, w)
     end
 end
 
@@ -136,14 +136,16 @@ end
     ]
 end
 
-# Bare harmonic tensor 𝓣_n = residue of 𝓣 at a=n (integer Bessel; nk=nΩ₀/k⊥=n/β).
-@inline function _T_n_bare(n, z, β, u, w)
-    Jn, Jp = besselj(n, z), _besselj_prime(n, z)
-    nk = n / β
+# harmonic tensor 𝓣_n = p⊥²·T_n.(R≡p⊥·Rₙ and Jw≡p⊥·Jₙ′ with Rₙ≡(n/z)Jₙ=½(J_{n−1}+J_{n+1})
+@inline function _T_n_bare(n, z, u, w)
+    Jm, Jp1 = besselj(n - 1, z), besselj(n + 1, z)
+    Jn = besselj(n, z)
+    R = w * (Jm + Jp1) / 2          # p⊥·Rₙ = nk·Jₙ, regular
+    Jw = w * (Jm - Jp1) / 2         # p⊥·Jₙ′
     return @SMatrix ComplexF64[
-        nk^2*Jn^2 im*nk*Jn*Jp*w nk*Jn^2*u
-        -im*nk*Jn*Jp*w Jp^2*w^2 -im*Jn*Jp*u*w
-        nk*Jn^2*u im*Jn*Jp*u*w Jn^2*u^2
+        R*R         im*R*Jw       u*R*Jn
+        -im*R*Jw    Jw*Jw        -im*u*Jw*Jn
+        u*R*Jn      im*u*Jw*Jn    u*u*Jn^2
     ]
 end
 

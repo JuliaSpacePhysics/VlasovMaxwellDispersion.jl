@@ -54,24 +54,13 @@ end
 # parallel z*F/z*T via the analytic `hilbert`, perp Bessel moments by quadrature.
 function contribution(d::SeparableVDF, s::Species, ω, k::Wavenumber; kwargs...)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
-    if iszero(kperp)
-        reduced(d) && return _reduced_electrostatic_contribution(d, s, ω, k)
-        throw(
-            ArgumentError(
-                "SeparableVDF: kperp=0 full EM tensor is not implemented; use reduced SeparableVDF(f; lower, upper) with electrostatic_det"
-            )
-        )
-    end
-    reduced(d) && throw(
-        ArgumentError(
-            "SeparableVDF: reduced one-argument form only supports field-aligned electrostatic kperp=0"
-        )
-    )
+    reduced(d) && (iszero(kperp) ? (return _reduced_electrostatic_contribution(d, s, ω, k)) :
+        throw(ArgumentError("SeparableVDF: reduced one-argument form only supports field-aligned electrostatic kperp=0")))
     ω = complex(float(ω))
     a = kperp / Ω                                   # k⊥/Ω, uniform Bessel arg coeff
     v⊥²_mean = 2π * QuadGK.quadgk(v -> d.fperp(v) * v^3, zero(d.perphi), d.perphi; rtol=1.0e-8)[1]
     nmax = nmax_bessel(a^2 * v⊥²_mean / 2)          # harmonic cap from the perp scale
-    f = n -> _separable_harmonic(n, d, ω, Ω, kz, kperp, a)
+    f = n -> _separable_harmonic(n, d, ω, Ω, kz, a)
     χ = converge(f, 1, 1.0e-7; nmax)
     return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
 end
@@ -88,25 +77,30 @@ end
 
 @inline _besselj_prime(m, x) = (besselj(m - 1, x) - besselj(m + 1, x)) / 2
 
-function _separable_harmonic(n, d::SeparableVDF, ω, Ω, kz, kperp, a)
+function _separable_harmonic(n, d::SeparableVDF, ω, Ω, kz, a)
     ζ = (ω - n * Ω) / kz
     L, U = d.parlo, d.parhi
     # Parallel: Landau–Hilbert for [f∥, u·f∥, u²·f∥, f∥′, u·f∥′]; the −1/kz folds the resonance kz.
     gpar(u) = (fp=d.fpar(u); dp=d.dfpar(u); SVector(fp, u * fp, u^2 * fp, dp, u * dp))
     z = (-1 / kz) .* hilbert(gpar, ζ; lower=L, upper=U)
     z0F, z1F, z2F, z0T, z1T = z[1], z[2], z[3], z[4], z[5]
-    # Perp: Bessel-moment quadrature over [0, perphi] (∂Jn ≡ Jn′ wrt argument)
+    # Perp moments by quadrature over [0, perphi]: the 6 distinct entries of the
+    # symmetric kernel bvec⊗bvec, bvec=(v⊥Rn, v⊥Jn′, Jn) with the ring kernel
+    # Rn=(n/z)Jn=½(J_{n−1}+J_{n+1}) (regular at k⊥=0), in each of the f⊥′ (∂F) and
+    # f⊥ (F) slices. F carries one extra v⊥.
     Q = d.perphi
-    function perp6(v)
-        Jn = besselj(n, a * v);
-        Jn′ = _besselj_prime(n, a * v)
-        fq = d.fperp(v);
-        dfq = d.dfperp(v)
-        SVector(Jn^2 * fq * v, Jn^2 * dfq, Jn * Jn′ * dfq * v,
-            Jn * Jn′ * fq * v^2, Jn′^2 * dfq * v^2, Jn′^2 * fq * v^3)
+    function perptri(v)
+        z = a * v
+        Jm, Jp1 = besselj(n - 1, z), besselj(n + 1, z)
+        bvec = SVector(v * (Jm + Jp1) / 2, v * (Jm - Jp1) / 2, besselj(n, z))
+        k11, k12, k13, k22, k23, k33 =
+            bvec[1]^2, bvec[1] * bvec[2], bvec[1] * bvec[3], bvec[2]^2, bvec[2] * bvec[3], bvec[3]^2
+        dfq, vfq = d.dfperp(v), v * d.fperp(v)
+        SVector(dfq * k11, dfq * k12, dfq * k13, dfq * k22, dfq * k23, dfq * k33,
+            vfq * k11, vfq * k12, vfq * k13, vfq * k22, vfq * k23, vfq * k33)
     end
-    P = 2π .* QuadGK.quadgk(perp6, zero(Q), Q; rtol=1.0e-8)[1]
-    JF, J∂F, JdJ∂F, JdJF, ∂J²∂F, ∂J²F = P[1], P[2], P[3], P[4], P[5], P[6]
-    p = (; JF, J∂F, JdJF, JdJ∂F, ∂J²F, ∂J²∂F)
-    return _chi_mblock((z0F, z1F, z2F, z0T, z1T), p, ω, kz, kperp, n / a)
+    P = 2π .* QuadGK.quadgk(perptri, zero(Q), Q; rtol=1.0e-8)[1]
+    P∂ = _symmat(P[1], P[2], P[3], P[4], P[5], P[6])
+    PF = _symmat(P[7], P[8], P[9], P[10], P[11], P[12])
+    return _chi_mblock((z0F, z1F, z2F, z0T, z1T), P∂, PF, ω, kz, n * Ω)
 end

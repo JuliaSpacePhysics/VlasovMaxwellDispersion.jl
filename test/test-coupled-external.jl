@@ -38,7 +38,7 @@ end
         L = 12vth
         Species(Ω, Pi2, CoupledVDF(f; parlower=(-L), parupper=L, perpupper=L, dpar=du, dperp=dv))
     end
-    plasma = Plasma(bikappa_species(1.0, 1 / vA^2, vA),
+    plasma = (bikappa_species(1.0, 1 / vA^2, vA),
         bikappa_species(-1 / me, 1 / (me * vA^2), vA / sqrt(me)))
     # ALPS bi-kappa (κ=6) root_1, first scan point
     k = Wavenumber(1e-3 / vA, 0.03 / vA)         # k̃ = k_ALPS/vA = (300, 10)

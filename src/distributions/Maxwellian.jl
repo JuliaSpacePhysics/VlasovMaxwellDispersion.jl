@@ -21,13 +21,11 @@ Continuation(::Maxwellian) = Analytic()
 @inline thermal_perp(d::Maxwellian) = d.vth_perp
 @inline drift(d::Maxwellian) = d.vd
 
-function contribution(d::Maxwellian, s::Species, ω, k; kwargs...)
+function contribution(d::Maxwellian, s::Species, ω, k; rtol=1.0e-8, kwargs...)
     Ω = s.Omega
     kz = para(k)
     kperp = perp(k)
-    vthpar = thermal_par(d)
     vthperp = thermal_perp(d)
-    vd = drift(d)
     ω = complex(float(ω))
 
     k⊥_Ω = kperp / Ω
@@ -35,10 +33,9 @@ function contribution(d::Maxwellian, s::Species, ω, k; kwargs...)
 
     prefac = s.Pi2 / ω^2
     minharm = 1
-    rtol = 1.0e-8
     nmax = nmax_bessel(λ)
 
-    f = n -> _maxwellian_harmonic(n, ω, Ω, kz, kperp, k⊥_Ω, vthpar, vthperp, vd)
+    f = n -> _maxwellian_harmonic(n, ω, Ω, kz, k⊥_Ω, d.vth_par, vthperp, d.vd)
     χ = converge(f, minharm, rtol; nmax)
     return SMatrix{3,3,ComplexF64}(prefac * χ)
 end
@@ -46,7 +43,7 @@ end
 
 # One cyclotron harmonic of the bi-Maxwellian χ. Parallel moments z*F/z*T from Z(ζ); perp moments ⊥* from
 # Γ_n=Iₙe^{-λ} and its neighbours via the besselix recurrence.
-@inline function _maxwellian_harmonic(n, ω, Ω, kz, kperp, k⊥_Ω, vthpar, vthperp, vd)
+@inline function _maxwellian_harmonic(n, ω, Ω, kz, k⊥_Ω, vthpar, vthperp, vd)
     nΩ = n * Ω
 
     # --- parallel integral moments (kz ≠ 0 validated path) ---
@@ -67,37 +64,27 @@ end
     z0T = (z0F * vd - z1F) * invth2
     z1T = (z1F * vd - z2F) * invth2
 
-    # --- perpendicular integral moments ---
+    # --- perpendicular integral moments (Gaussian closed forms) ---
+    # Γ_n ring sums; ring kernel moments (RR/RJ/RnJ, derivation §5.1) use the
+    # division-free recurrences (n/λ)Γ_n=(Γ_{n−1}−Γ_{n+1})/2 and Γ_n′=(Γ_{n−1}+Γ_{n+1})/2−Γ_n
     vth²₂ = vthperp^2 / 2
     λ = vth²₂ * k⊥_Ω^2
-    ∫n₋ = Gamma_n(n - 1, λ)
-    ∫n₊ = n == 0 ? ∫n₋ : Gamma_n(n + 1, λ)
-    ∫n₀ = n == 0 ? Gamma_n(n, λ) : λ / (2n) * (∫n₋ - ∫n₊)
+    Γm = Gamma_n(n - 1, λ)
+    Γp = n == 0 ? Γm : Gamma_n(n + 1, λ)
+    Γ0 = n == 0 ? Gamma_n(n, λ) : λ / (2n) * (Γm - Γp)
+    Γ′ = (Γm + Γp) / 2 - Γ0
 
-    JF = ∫n₀                                     # ∫Jn² F⊥ 2π v⊥
-    J∂F = -∫n₀ / vth²₂                            # ∫Jn² ∂F⊥ 2π
-    JdJ∂F = -k⊥_Ω * ((∫n₋ + ∫n₊) / 2 - ∫n₀)       # ∫Jn ∂Jn ∂F⊥ 2π v⊥
-    JdJF = -JdJ∂F * vth²₂                         # ∫Jn ∂Jn F⊥ 2π v⊥²
-    ∂J²∂F = λ * (∫n₊ - 2∫n₀ + ∫n₋) + n * (∫n₊ - ∫n₋) / 2  # ∫∂Jn² ∂F⊥ 2π v⊥²
-    ∂J²F = -vth²₂ * ∂J²∂F                         # ∫∂Jn² F⊥ 2π v⊥³
+    # ∂F slice, indexed as the symmetric outer product of (Rn, Jn′, Jn):
+    #   [Rn²  RnJn′  RnJn; ·  Jn′²  Jn′Jn; ·  ·  Jn²]
+    J∂F = -Γ0 / vth²₂                  # Jn² · ∂F⊥
+    JdJ∂F = -k⊥_Ω * Γ′                 # Jn Jn′ · ∂F⊥ v⊥
+    ∂J²∂F = λ * (Γp - 2Γ0 + Γm) + n * (Γp - Γm) / 2  # Jn′² · ∂F⊥ v⊥²
+    RR∂F = n * (Γp - Γm) / 2           # Rn² · ∂F⊥ v⊥²   (= −n²Γ_n/λ)
+    RJ∂F = -n * Γ′                     # Rn Jn′ · ∂F⊥ v⊥²
+    RnJ∂F = k⊥_Ω * (Γp - Γm) / 2       # Rn Jn · ∂F⊥ v⊥
+    P∂ = _symmat(RR∂F, RJ∂F, RnJ∂F, ∂J²∂F, JdJ∂F, J∂F)
+    PF = (-vth²₂) * P∂                 # f⊥′=−v⊥f⊥/vth²₂ ⇒ F slice = −vth²₂·∂F
 
     z = (z0F, z1F, z2F, z0T, z1T)
-    iszero(kperp) &&
-        return _chi_mblock_kperp0(z, n, vth²₂, JF, JdJF, JdJ∂F, ∂J²F, ∂J²∂F, ω, kz)
-    p = (; JF, J∂F, JdJF, JdJ∂F, ∂J²F, ∂J²∂F)
-    return _chi_mblock(z, p, ω, kz, kperp, n / k⊥_Ω)
-end
-
-
-# Parallel propagation k⊥=0 limit of `_chi_mblock` (Maxwellian-only).
-@inline function _chi_mblock_kperp0(z, n, vth²₂, JF, JdJF, JdJ∂F, ∂J²F, ∂J²∂F, ω, kz)
-    z0F, z1F, z2F, z0T, z1T = z
-    D(X, Y, a, b, c) = kz * (-X * a + Y * b) + ω * X * c
-    o = abs(n) == 1
-    m11 = (o / 2) * (kz * (z1F + vth²₂ * z0T) - ω * z0F)
-    m21 = -im * n * m11
-    m22 = D(∂J²∂F, ∂J²F, z1F, z0T, z0F)
-    m32 = im * D(JdJ∂F, JdJF, z2F, z1T, z1F)
-    m33 = ω * JF * z1T
-    return @SMatrix ComplexF64[m11 -m21 0; m21 m22 -m32; 0 m32 m33]
+    return _chi_mblock(z, P∂, PF, ω, kz, nΩ)
 end

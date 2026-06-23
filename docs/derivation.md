@@ -129,8 +129,17 @@ $$
 \frac{n J_n^2 p_{\|}}{z p_{\perp}} & \frac{i J_n J_n^{\prime} p_{\|}}{p_{\perp}} & \frac{J_n^2 p_{\|}^2}{p_{\perp}^2}
 \end{array}\right),
 \qquad
-\boldsymbol{𝓣}_n \equiv p_⊥^2 \mathbf{T}_n .
+𝓣_n \equiv p_⊥^2 \mathbf{T}_n .
 $$
+
+Rewrite $nJ_n/z$ via the Bessel recurrence to remove division error at $z=0$:
+
+$$
+R_n \equiv \frac{n}{z}J_n(z) = \tfrac12 \left(J_{n-1}(z)+J_{n+1}(z)\right)
+$$
+
+Note: For *real* $(p_\|,p_\perp)$, $𝓣_n$ is the Hermitian
+outer product $\mathbf{v}_n\mathbf{v}_n^\dagger$ of $\mathbf{v}_n=(p_\perp R_n,-i p_\perp J_n',p_\|J_n)$.
 
 The susceptibility splits
 into harmonic contributions plus one non-resonant term:
@@ -243,14 +252,14 @@ $$
 
 Note without separability, the moments are recomputed at every $p_\perp$, otherwise it would pull $f_\perp(p_\perp)$ out of $M^m$ and kill the outer integral.
 
-**Bessel weights.** With $n_k\equiv n\Omega/k_\perp$, the resummed tensor $\mathcal{T}_n=p_\perp^2 T_n$ reads
+**Bessel weights.** Using the ring kernel $R_n=(n/z)J_n=\tfrac12(J_{n-1}+J_{n+1})$, the resummed tensor $\mathcal{T}_n=p_\perp^2 T_n$ reads
 
 $$
 {\mathcal T}_n=
 \begin{pmatrix}
-n_k^2 J_n^2 & i\,n_k p_\perp J_nJ_n' & n_k p_\parallel J_n^2\\[2pt]
--i\,n_k p_\perp J_nJ_n' & p_\perp^2 J_n'^2 & -i\,p_\parallel p_\perp J_nJ_n'\\[2pt]
-n_k p_\parallel J_n^2 & i\,p_\parallel p_\perp J_nJ_n' & p_\parallel^2 J_n^2
+p_\perp^2 R_n^2 & i\,p_\perp^2 R_n J_n' & p_\parallel p_\perp R_n J_n\\[2pt]
+-i\,p_\perp^2 R_n J_n' & p_\perp^2 J_n'^2 & -i\,p_\parallel p_\perp J_nJ_n'\\[2pt]
+p_\parallel p_\perp R_n J_n & i\,p_\parallel p_\perp J_nJ_n' & p_\parallel^2 J_n^2
 \end{pmatrix}.
 $$
 
@@ -262,9 +271,9 @@ Assembled, the resonant harmonic block reads
 $$
 I_n(p_\perp)=2\pi
 \begin{pmatrix}
-n_k^2 J_n^2\,D_0 & i\,n_k p_\perp J_nJ_n'\,D_0 & n_k J_n^2\,D_1\\[2pt]
--i\,n_k p_\perp J_nJ_n'\,D_0 & p_\perp^2 J_n'^2\,D_0 & -i\,p_\perp J_nJ_n'\,D_1\\[2pt]
-n_k J_n^2\,D_1 & i\,p_\perp J_nJ_n'\,D_1 & J_n^2\,D_2
+p_\perp^2 R_n^2\,D_0 & i\,p_\perp^2 R_n J_n'\,D_0 & p_\perp R_n J_n\,D_1\\[2pt]
+-i\,p_\perp^2 R_n J_n'\,D_0 & p_\perp^2 J_n'^2\,D_0 & -i\,p_\perp J_nJ_n'\,D_1\\[2pt]
+p_\perp R_n J_n\,D_1 & i\,p_\perp J_nJ_n'\,D_1 & J_n^2\,D_2
 \end{pmatrix},
 $$
 
@@ -278,8 +287,8 @@ $$
 $$
 
 All six distinct entries draw on the five parallel moments
-$\{M^0_F,M^1_F,M^2_F,M^0_T,M^1_T\}$ at the slice $p_\perp$ and the three Bessel bilinears
-$\{J_n^2,J_nJ_n',J_n'^2\}$ at $z=k_\perp p_\perp/\Omega$ .
+$\{M^0_F,M^1_F,M^2_F,M^0_T,M^1_T\}$ at the slice $p_\perp$ and the six symmetric
+Bessel bilinears of the regular triple $\{R_n,J_n',J_n\}$ at $z=k_\perp p_\perp/\Omega$.
 
 #### Separable `f₀=f∥·f⊥`
 
@@ -336,25 +345,21 @@ $$
 
 With the single-pole Cauchy transform at $\zeta_n(\gamma)$,
 $\mathcal C[g]\equiv\int_{|p_\parallel|<\sqrt{\gamma^2-1}}\!g/(p_\parallel-\zeta_n(\gamma))\,dp_\parallel$,
-the inner integral is exactly the relativistic mirror of the non-relativistic two-slice problem:
+the inner integral is:
 
 $$
 I_n(\gamma)=-\frac{2\pi}{k_\parallel}\Bigl[\,
 \omega\,\mathcal C[\partial_\gamma f_0\,\boldsymbol{\mathcal T}_n]
-+k_\parallel\,\mathcal C[\partial_{p_\parallel}f_0\,\boldsymbol{\mathcal T}_n]\,\Bigr],
++k_\parallel\,\mathcal C[\partial_{p_\parallel}f_0\,\boldsymbol{\mathcal T}_n]\,\Bigr].
 $$
 
-with $\partial_\gamma f_0,\partial_{p_\parallel}f_0$ playing the roles of the slices
-$\partial_\perp f_0,\partial_\parallel f_0$ that fed $M^m_F,M^m_T$ in §5.
-
-**Where it halts.** Non-relativistically the transcendental part of $\boldsymbol{\mathcal T}_n$ (Bessel in
+**Where it halts.** Non-relativistically the transcendental part of ${\mathcal T}_n$ (Bessel in
 $z$) sat in the **outer** coordinate $p_\perp$, leaving the inner integrand polynomial in $p_\parallel$;
 $\mathcal C$ then collapsed to the finite moment set $\{M^m_F,M^m_T\}$ with the Bessel weights pulled out
 front. Relativistically $z=(k_\perp/\Omega_0)\sqrt{\gamma^2-1-p_\parallel^2}$ and $p_\perp$ depend on the
 **inner** $p_\parallel$, so $\boldsymbol{\mathcal T}_n$ stays transcendental in $p_\parallel$. Then
-$\mathcal C$ is a general-analytic Cauchy transform, the Bessel weights
-cannot leave the integral, and no closed $\{M^m,P_j\}$ pair survives. The covariant $\mathcal U$ buys the
-clean single pole and the right derivative pair — but **not** the factorization.
+The Bessel weights cannot leave the integral, and no closed $\{M^m,P_j\}$ pair survives.
+The covariant $\mathcal U$ buys the clean single pole and the right derivative pair — but **not** the factorization.
 
 Switching to $(p_\parallel,p_\perp)$ moves $z=k_\perp p_\perp/\Omega_0$ to the outer coordinate (the perp side would factor)
 but then the resonance $\omega\gamma-k_\parallel p_\parallel=n\Omega_0$ becomes

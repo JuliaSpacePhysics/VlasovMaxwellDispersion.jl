@@ -37,8 +37,8 @@ end
 #   NonRelativistic — (p∥,p⊥), pole ζ=(ω−nΩ)/k∥ fixed; outer ∫dp⊥.
 #   Relativistic    — (γ,p∥),  pole p∥=(γω−nΩ)/k∥;     outer ∫dγ.
 function contribution(d::CoupledVDF, s::Species, ω, k::Wavenumber; closure::IntegralClosure=HarmonicSum())
-    iszero(perp(k)) &&
-        throw(ArgumentError("CoupledVDF: magnetized EM tensor needs kperp≠0 (oblique)"))
+    closure isa Newberger && iszero(perp(k)) &&
+        throw(ArgumentError("CoupledVDF: Newberger closure needs kperp≠0; use HarmonicSum at k⊥=0"))
     return _coupled_contribution(closure, Regime(s), d, s, complex(float(ω)), k)
 end
 
@@ -53,7 +53,7 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
     χ = first(QuadGK.quadgk(zero(d.perphi), d.perphi; rtol=1.0e-6, norm) do v
-        _coupled_perp(v, ns, d, ω, Ω, kz, kperp, a, L, U)
+        _coupled_perp(v, ns, d, ω, Ω, kz, a, L, U)
     end)
     return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
 end
@@ -103,7 +103,7 @@ const _GLp = QuadGK.gauss(64)
 
 # 3×3 relativistic harmonic integrand 2π·𝒰·𝓣_n at (γ,p∥); bare momenta make 𝓣_n
 # regular at w=0. Caller passes w=√(γ²−1−u²) (complex off the real p∥ range).
-@inline _rel_integrand(u, w, γ, n, a, ω, kz, d) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _T_n_bare(n, a * w, a, u, w)
+@inline _rel_integrand(u, w, γ, n, a, ω, kz, d) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _T_n_bare(n, a * w, u, w)
 @inline _rel_integrand(u, γ, n, a, ω, kz, d) = _rel_integrand(u, sqrt(complex(γ^2 - 1 - u^2)), γ, n, a, ω, kz, d)
 
 
@@ -142,21 +142,20 @@ function _coupled_harmonic_rel(n, d::CoupledVDF, ω, Ω, kz, a, γmax)
     return acc
 end
 
-# χ(p⊥) for the WHOLE harmonic sum at one perp node
-function _coupled_perp(v, ns, d::CoupledVDF, ω, Ω, kz, kperp, a, L, U)
+# I(p⊥) for the WHOLE harmonic sum at one perp node
+function _coupled_perp(v, ns, d::CoupledVDF, ω, Ω, kz, a, L, U)
     # Landau–Hilbert for 5 parallel moments: [∂⊥, u·∂⊥, u²·∂⊥, ∂∥, u·∂∥]
     g5(u) = (q=d.dperp(u, v); p=d.dpar(u, v); SVector(q, u * q, u^2 * q, p, u * p))
     ζs = [(ω - n * Ω) / kz for n in ns]
-    gζs = [g5(ζ) for ζ in ζs]
-    # per-harmonic perp Bessel moments at this p⊥
-    ps = map(n -> _perp_bessel_moments(n, a, v), ns)
+    gζs = g5.(ζs)
+    bs = _perp_Bessel_triplet.(ns, a, v)
     # regularized integral part: Σ_n χ_n with the Plemelj removable singularity
     reg = first(QuadGK.quadgk(L, U; rtol=1.0e-7, norm=x -> maximum(abs, x)) do u
         g = g5(u)
         acc = zero(SMatrix{3,3,ComplexF64})
         @inbounds for i in eachindex(ns)
             m = (-1 / kz) .* ((g - gζs[i]) / (u - ζs[i]))
-            acc += _chi_mblock((m[1], m[2], m[3], m[4], m[5]), ps[i], ω, kz, kperp, ns[i] / a)
+            acc += _In_block((m[1], m[2], m[3], m[4], m[5]), bs[i], v, ω, kz, ns[i] * Ω)
         end
         acc
     end)
@@ -164,7 +163,7 @@ function _coupled_perp(v, ns, d::CoupledVDF, ω, Ω, kz, kperp, a, L, U)
     logacc = zero(SMatrix{3,3,ComplexF64})
     @inbounds for i in eachindex(ns)
         m = (-1 / kz) .* (gζs[i] .* _landau_logfac(ζs[i], L, U))
-        logacc += _chi_mblock((m[1], m[2], m[3], m[4], m[5]), ps[i], ω, kz, kperp, ns[i] / a)
+        logacc += _In_block((m[1], m[2], m[3], m[4], m[5]), bs[i], v, ω, kz, ns[i] * Ω)
     end
     return reg + logacc
 end

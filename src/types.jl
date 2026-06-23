@@ -12,11 +12,6 @@ struct Relativistic <: Regime end
 abstract type Continuation end
 struct Analytic <: Continuation end       # closed-form Z-function path
 struct PiecewisePoly <: Continuation end  # STUB: grid/function VDF
-struct Rational <: Continuation end       # STUB: rational-fit continuation
-
-# Trait accessors dispatch on type; default to the core validated combination.
-Regime(::Any) = NonRelativistic()
-Continuation(::Any) = Analytic()
 
 """
     Wavenumber(kperp, kz)
@@ -29,7 +24,7 @@ struct Wavenumber{T}
     kz::T
 end
 Wavenumber(kperp, kz) = Wavenumber(promote(kperp, kz)...)
-Wavenumber(; kz, kperp=zero(kz)) = Wavenumber(kperp, kz)
+Wavenumber(; kz, kperp = zero(kz)) = Wavenumber(kperp, kz)
 
 @inline para(k::Wavenumber) = k.kz
 @inline perp(k::Wavenumber) = k.kperp
@@ -43,16 +38,15 @@ Wavenumber(; kz, kperp=zero(kz)) = Wavenumber(kperp, kz)
 Dimensionless species. `Omega` = signed gyrofrequency ratio
 `(Z_s/Z_ref)(m_ref/m_s)`; `Pi2` = `(omega_ps/Omega_ref)^2`.
 """
-Base.@kwdef struct Species{T,V,R<:Regime}
+Base.@kwdef struct Species{T, V, R <: Regime}
     Omega::T          # signed Omega_s_tilde
     Pi2::T            # Pi_s_tilde^2
     vdf::V
     regime::R = Regime(vdf)
 end
-Species(Omega, Pi2, vdf; regime=Regime(vdf)) = Species(; Omega, Pi2, vdf, regime)
+Species(Omega, Pi2, vdf; regime = Regime(vdf)) = Species(; Omega, Pi2, vdf, regime)
 
 Regime(s::Species) = s.regime
-Continuation(s::Species) = Continuation(s.vdf)
 
 """
     Plasma(species...)
@@ -66,6 +60,4 @@ end
 Plasma(species...) = Plasma(Tuple(species))
 Plasma(s::Species) = Plasma((s,))
 
-Base.iterate(p::Plasma, state=1) = iterate(p.species, state)
-
-@inline species(p::Plasma) = p.species
+Base.iterate(p::Plasma, state = 1) = iterate(p.species, state)
