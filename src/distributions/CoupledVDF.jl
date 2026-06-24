@@ -36,9 +36,7 @@ end
 # Regime trait picks the coordinate:
 #   NonRelativistic — (p∥,p⊥), pole ζ=(ω−nΩ)/k∥ fixed; outer ∫dp⊥.
 #   Relativistic    — (γ,p∥),  pole p∥=(γω−nΩ)/k∥;     outer ∫dγ.
-function contribution(d::CoupledVDF, s::Species, ω, k::Wavenumber; closure::IntegralClosure=HarmonicSum())
-    closure isa Newberger && iszero(perp(k)) &&
-        throw(ArgumentError("CoupledVDF: Newberger closure needs kperp≠0; use HarmonicSum at k⊥=0"))
+function contribution(d::CoupledVDF, s, ω, k; closure=HarmonicSum())
     return _coupled_contribution(closure, Regime(s), d, s, complex(float(ω)), k)
 end
 
@@ -104,7 +102,6 @@ const _GLp = QuadGK.gauss(32)
 # Covariant momentum numerator 𝒰 = ω∂_γf+k∥∂_uf at (γ,p∥) with w=p⊥, rewritten via
 # ∂_γ|_u=(γ/w)∂_⊥, ∂_u|_γ=∂_∥−(u/w)∂_⊥ ⇒ 𝒰 = k∥∂_∥f + (ωγ−k∥u)/w · ∂_⊥f.
 @inline _U_cov(d, u, w, γ, ω, kz) = kz * d.dpar(u, w) + d.dperp(u, w) * (ω * γ - kz * u) / w
-@inline _rescale(x, w, lo, hi) = ((lo + hi) / 2 + (hi - lo) / 2 * x, (hi - lo) / 2 * w)
 
 # 3×3 relativistic harmonic integrand 2π·𝒰·𝓣_n at (γ,p∥); bare momenta make 𝓣_n
 # regular at w=0. Caller passes w=√(γ²−1−u²) (complex off the real p∥ range).

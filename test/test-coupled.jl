@@ -25,7 +25,7 @@ end
     cpl = CoupledVDF(g0; parlower=-8.0, parupper=8.0, perpupper=6.0)
     s = Species(-1.0, 1.0, cpl)
     ω = 1.2 + 0.05im
-    for kperp in (0.3, 0.6)
+    for kperp in (0.0, 0.3, 0.6)
         k = Wavenumber(kperp, 0.4)
         χB = contribution(s, ω, k)
         χA = contribution(s, ω, k; closure=Newberger())
@@ -47,14 +47,14 @@ end
         regime=Relativistic())
     ref = Species(Ω, 1.0, MaxwellJuttner(mu=μ))
 
-    kz, kp, ω = 0.4, 0.7, 0.3 - 0.005im
-    k = Wavenumber(kp, kz)
-    χ = contribution(rel, ω, k)
-    χref = contribution(ref, ω, k)
-    @test maximum(abs.(χ .- χref)) / maximum(abs.(χref)) < 1e-5
-
-    ω = 0.3 + 0.05im     # Im ω>0 for evaluator A
-    @test maximum(abs.(contribution(rel, ω, k; closure=Newberger()) .- contribution(ref, ω, k))) / maximum(abs.(contribution(ref, ω, k))) < 1e-7
+    for ω in (0.3 - 0.005im, 0.3 + 0.05im), kperp in (0.0, 0.3, 0.6)
+        k = Wavenumber(kperp, 0.4)
+        χA = contribution(rel, ω, k; closure=Newberger())
+        χB = contribution(rel, ω, k)
+        χref = contribution(ref, ω, k)
+        @test χA ≈ χref rtol = 1e-5
+        @test χB ≈ χref rtol = 1e-5
+    end
 end
 
 # Regression: the relativistic harmonic path must carry the non-resonant e∥e∥
@@ -87,7 +87,7 @@ end
     for ω in (1.2 - 0.05im, 1.2 - 0.2im)             # damped: Im ω<0
         χB = contribution(s, ω, k)
         χA = contribution(s, ω, k; closure=Newberger())
-        @test maximum(abs.(χA .- χB)) / maximum(abs.(χB)) < 1e-6
+        @test χA ≈ χB rtol = 1e-6
     end
 end
 
