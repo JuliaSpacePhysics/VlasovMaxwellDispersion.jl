@@ -1,16 +1,13 @@
-
 # --- Evaluator A: Qin closed-orbit  (complex-order Bessel) -----------
 # `derivation.md` §3A:. χ is then a single 2-D
-# momentum cubature of `2π U 𝓣 + 2πp⊥ Bernstein`, with velocity-form `U` and
-# resonances carried by `1/sin(πa)`, `a=(ωγ−k∥p∥)/Ω₀`. For
-# `Im ω>0` the integer-`a` poles sit off the real plane ⇒ plain nested QuadGK.
+# momentum cubature of `2π U 𝓣 + 2πp⊥ Bernstein`, with `U` and
+# resonances carried by `1/sin(πa)`, `a=(ωγ−k∥p∥)/Ω₀`.
+# For `Im ω>0`, the integer-`a` poles sit off the real plane ⇒ plain nested QuadGK.
 
-# Empirically A is a CROSS-VALIDATION backend, not a speedup: complex-order Bessel
-# B keeps nested QuadGK because its inner integral has a contour pole that the analytic `hilbert` must resolve in 1-D.
-
+# Empirically A is a CROSS-VALIDATION backend, not a speedup.
 # Using residue extraction so the first integrand is smooth in 2-D (near-resonance peaks removed) and
 # the second is a 1-D p⊥ integral carrying the analytic pole + Landau residue
-function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s::Species, ω, k; rtol=1.0e-7, norm=x -> maximum(abs, x))
+function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s::Species, ω, k; rtol = 1.0e-7, norm = x -> maximum(abs, x))
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     lo, hi = d.parlo, d.parhi
     ns = _resonance_harmonics(ω, Ω, kz, lo, hi)
@@ -28,14 +25,14 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s:
     bulk = first(hcubature(smooth2d, SVector(lo, ε), SVector(hi, d.perphi); rtol, norm))
     # 1-D p⊥ integral of the analytic pole terms (+ Landau for damped modes).
     function poles1d(w)
-        acc = zero(SMatrix{3,3,ComplexF64})
+        acc = zero(SMatrix{3, 3, ComplexF64})
         for (ζ, ρ) in zip(ζs, _qin_residues(d, ns, ζs, w, ω, Ω, kz, kperp))
             acc = acc .+ ρ .* _landau_logfac(ζ, lo, hi)
         end
         return acc
     end
     poles = isempty(ns) ? zero(bulk) : first(QuadGK.quadgk(poles1d, ε, d.perphi; rtol, norm))
-    return SMatrix{3,3,ComplexF64}((s.Pi2 / (ω * Ω)) .* (bulk .+ poles))
+    return SMatrix{3, 3, ComplexF64}((s.Pi2 / (ω * Ω)) .* (bulk .+ poles))
 end
 
 function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s::Species, ω, k; norm = x -> maximum(abs, x))
@@ -57,42 +54,35 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s::Sp
             ρ = ((2π * _U_cov(d, ζ, w, γ, ω, kz)) * (-Ω / kz)) .* _T_n_bare(n, β * w, ζ, w)
             push!(ζρ, (; ζ, ρ))
         end
-        fI(u, w) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _qin_T_bare((ω * γ - kz * u) / Ω, β * w, β, u, w)
+        fI(u, w) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _qin_T_bare((ω * γ - kz * u) / Ω, β * w, u, w)
         # Inner edge map (derivation §5.2.2)
-        acc = first(QuadGK.quadgk(-π / 2, π / 2; rtol=1.0e-7, norm) do θ
-            u, w = umax .* sincos(θ)
-            val = fI(u, w)
-            for p in ζρ
-                val = val .- p.ρ ./ (u - p.ζ)
+        acc = first(
+            QuadGK.quadgk(-π / 2, π / 2; rtol = 1.0e-7, norm) do θ
+                u, w = umax .* sincos(θ)
+                val = fI(u, w)
+                for p in ζρ
+                    val = val .- p.ρ ./ (u - p.ζ)
+                end
+                w .* val
             end
-            w .* val
-        end)
+        )
         for p in ζρ
             acc = acc .+ p.ρ .* _landau_logfac(p.ζ, -umax, umax)
         end
         return acc
     end
-    val = first(QuadGK.quadgk(zero(real(ω)), one(real(ω)); rtol=1.0e-6, norm) do q
-        γ = 1 + (γmax - 1) * q^2
-        (2 * (γmax - 1) * q) .* inner(γ)
-    end)
+    val = first(
+        QuadGK.quadgk(zero(real(ω)), one(real(ω)); rtol = 1.0e-6, norm) do q
+            γ = 1 + (γmax - 1) * q^2
+            (2 * (γmax - 1) * q) .* inner(γ)
+        end
+    )
     # `fI` carries only the resonant 𝒰·𝓣ₙ; add the same pole-free nonresonant 𝒳_B
     bern = _ee33((s.Pi2 / ω^2) * _bernstein_rel(d, γmax))
-    return SMatrix{3,3,ComplexF64}((s.Pi2 / (ω^2 * Ω)) .* val) .+ bern
+    return SMatrix{3, 3, ComplexF64}((s.Pi2 / (ω^2 * Ω)) .* val) .+ bern
 end
 
-
-@inline function qin_sums(a, z)
-    Ja, J_a = besselj_complex(a, z), besselj_complex(-a, z)
-    Jad, J_ad = besselj_prime(a, z), besselj_prime(-a, z)
-    s = sinpi(a)
-    S0 = π * J_a * Ja / s
-    S1 = a * S0 - one(S0)
-    S2 = a * S1
-    SD = (z / 2) * π * (J_ad * Ja + J_a * Jad) / s
-    SJp = π * J_ad * Jad / s
-    return S0, S1, S2, SD, SJp
-end
+include("qin_sigmas.jl")
 
 @inline function _qin_integrand(u, w, γ, d, ω, Ω0, kz, kperp)
     a = (ω * γ - kz * u) / Ω0
@@ -104,7 +94,7 @@ end
     U = dfpe + (kz / (ω * γ)) * cross               # velocity-form numerator (§2)
     ee = (Ω0 / (γ * ω)) * r * cross                  # e∥e∥ Bernstein term (§3)
     bern = @SMatrix ComplexF64[0 0 0; 0 0 0; 0 0 ee]
-    return (2π * U) .* _qin_T_bare(a, z, β, u, w) .+ (2π * w) .* bern
+    return (2π * U) .* _qin_T_bare(a, z, u, w) .+ (2π * w) .* bern
 end
 
 # Integer harmonics n whose resonance Re ζ_n=(Re ω−nΩ)/k∥ lies in [lo,hi]. Count is set by k∥·width/Ω — INDEPENDENT of k⊥.
@@ -125,27 +115,27 @@ end
     end
 end
 
-# Bare resummed tensor 𝓣(a,z)=p⊥²·T(a,z,r): β=k⊥/Ω₀, z=βw, w=p⊥, u=p∥. Regular at w→0.
-@inline function _qin_T_bare(a, z, β, u, w)
-    S0, S1, S2, SD, SJp = qin_sums(a, z)
-    β2 = β^2
+# 𝓣(a,z)=p⊥²·T(a,z): z=k⊥p⊥/Ω₀, w=p⊥, u=p∥. Assembled from the regularized (σ0,σ1,σD,σJ)
+@inline function _qin_T_bare(a, z, u, w)
+    σ0, σ1, σD, σJ = qin_sigmas(a, z)
+    w2 = w^2
+    zw = z * w
     return @SMatrix ComplexF64[
-        S2/β2 im*a*SD/β2 u*S1/β
-        -im*a*SD/β2 w^2*SJp+a/β2 -im*u*SD/β
-        u*S1/β im*u*SD/β u^2*S0
+        a * σ1 * w2 im * a * σD * w2 u * σ1 * zw
+        -im * a * σD * w2 σJ * w2 -im * u * σD * zw
+        u * σ1 * zw im * u * σD * zw u^2 * σ0
     ]
 end
 
-# harmonic tensor 𝓣_n = p⊥²·T_n.(R≡p⊥·Rₙ and Jw≡p⊥·Jₙ′ with Rₙ≡(n/z)Jₙ=½(J_{n−1}+J_{n+1})
+# harmonic tensor 𝓣_n = p⊥²·T_n (R≡p⊥·Rₙ, Jw≡p⊥·Jₙ′, Rₙ≡(n/z)Jₙ=½(J_{n−1}+J_{n+1})
 @inline function _T_n_bare(n, z, u, w)
     Jm, Jp1 = besselj(n - 1, z), besselj(n + 1, z)
     Jn = besselj(n, z)
-    R = w * (Jm + Jp1) / 2          # p⊥·Rₙ = nk·Jₙ, regular
+    R = w * (Jm + Jp1) / 2          # p⊥·Rₙ, regular
     Jw = w * (Jm - Jp1) / 2         # p⊥·Jₙ′
     return @SMatrix ComplexF64[
-        R*R im*R*Jw u*R*Jn
-        -im*R*Jw Jw*Jw -im*u*Jw*Jn
-        u*R*Jn im*u*Jw*Jn u*u*Jn^2
+        R * R im * R * Jw u * R * Jn
+        -im * R * Jw Jw * Jw -im * u * Jw * Jn
+        u * R * Jn im * u * Jw * Jn u * u * Jn^2
     ]
 end
-
