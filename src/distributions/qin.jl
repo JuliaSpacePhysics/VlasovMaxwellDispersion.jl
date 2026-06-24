@@ -38,13 +38,12 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s:
     return SMatrix{3,3,ComplexF64}((s.Pi2 / (ω * Ω)) .* (bulk .+ poles))
 end
 
-function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s::Species, ω, k)
+function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s::Species, ω, k; norm = x -> maximum(abs, x))
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     β = kperp / Ω
     pmax = max(abs(d.parlo), abs(d.parhi))
     γmax = sqrt(1 + pmax^2 + d.perphi^2)
     umaxmax = sqrt(γmax^2 - 1)
-    nrm = x -> maximum(abs, x)
     # Generous harmonic window; the per-γ in-range filter discards non-crossing n.
     nlo = floor(Int, (real(ω) - kz * umaxmax) / Ω) - 1
     nhi = ceil(Int, (real(ω) * γmax + kz * umaxmax) / Ω) + 1
@@ -58,24 +57,25 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s::Sp
             ρ = ((2π * _U_cov(d, ζ, w, γ, ω, kz)) * (-Ω / kz)) .* _T_n_bare(n, β * w, ζ, w)
             push!(ζρ, (; ζ, ρ))
         end
-        function fI(u)
-            w = sqrt(complex(γ^2 - 1 - u^2))
-            (2π * _U_cov(d, u, w, γ, ω, kz)) .* _qin_T_bare((ω * γ - kz * u) / Ω, β * w, β, u, w)
-        end
-        function smooth(u)
-            val = fI(u)
+        fI(u, w) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _qin_T_bare((ω * γ - kz * u) / Ω, β * w, β, u, w)
+        # Inner edge map (derivation §5.2.2)
+        acc = first(QuadGK.quadgk(-π / 2, π / 2; rtol=1.0e-7, norm) do θ
+            u, w = umax .* sincos(θ)
+            val = fI(u, w)
             for p in ζρ
                 val = val .- p.ρ ./ (u - p.ζ)
             end
-            return val
-        end
-        acc = first(QuadGK.quadgk(smooth, -umax, umax; rtol=1.0e-7, norm=nrm))
+            w .* val
+        end)
         for p in ζρ
             acc = acc .+ p.ρ .* _landau_logfac(p.ζ, -umax, umax)
         end
         return acc
     end
-    val = first(QuadGK.quadgk(inner, one(real(ω)), γmax; rtol=1.0e-6, norm=nrm))
+    val = first(QuadGK.quadgk(zero(real(ω)), one(real(ω)); rtol=1.0e-6, norm) do q
+        γ = 1 + (γmax - 1) * q^2
+        (2 * (γmax - 1) * q) .* inner(γ)
+    end)
     # `fI` carries only the resonant 𝒰·𝓣ₙ; add the same pole-free nonresonant 𝒳_B
     bern = _ee33((s.Pi2 / ω^2) * _bernstein_rel(d, γmax))
     return SMatrix{3,3,ComplexF64}((s.Pi2 / (ω^2 * Ω)) .* val) .+ bern
@@ -143,9 +143,9 @@ end
     R = w * (Jm + Jp1) / 2          # p⊥·Rₙ = nk·Jₙ, regular
     Jw = w * (Jm - Jp1) / 2         # p⊥·Jₙ′
     return @SMatrix ComplexF64[
-        R*R         im*R*Jw       u*R*Jn
-        -im*R*Jw    Jw*Jw        -im*u*Jw*Jn
-        u*R*Jn      im*u*Jw*Jn    u*u*Jn^2
+        R*R im*R*Jw u*R*Jn
+        -im*R*Jw Jw*Jw -im*u*Jw*Jn
+        u*R*Jn im*u*Jw*Jn u*u*Jn^2
     ]
 end
 
