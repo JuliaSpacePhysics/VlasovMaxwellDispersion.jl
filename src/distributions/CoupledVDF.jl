@@ -68,33 +68,38 @@ function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, 
     nmax = nmax_bessel(a^2 * d.perphi^2 / 2)
     f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax)
     χ = converge(f, 1, 1.0e-6; nmax)
-    χ = χ .+ _ee33(_bernstein_rel(d, ω, γmax))
+    χ = χ .+ _ee33(_bernstein_rel(d, γmax))
     return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
 end
 
-# Relativistic non-resonant e∥e∥ Bernstein addend 𝒳_B (derivation §5).
-# ≡0 for isotropic f₀ (p∥⁻¹∂∥f₀=p⊥⁻¹∂⊥f₀), but O(1) for anisotropic f₀.
-# `atol` is load-bearing: for isotropic f₀ the integrand vanishes, so an rtol-only adaptive rule chases relative accuracy on roundoff (~1e-16) and never halts.
-function _bernstein_rel(d::CoupledVDF, ω, γmax; rtol=1.0e-7, atol=1.0e-10)
-    first(QuadGK.quadgk(one(real(ω)), γmax; rtol, atol) do γ
+# Relativistic non-resonant e∥e∥ Bernstein term 𝒳_B (derivation §5)
+function _bernstein_rel(d, γmax; GLγ=_GLγ, GLp=_GLp)
+    gn, gw = GLγ
+    pn, pw = GLp
+    acc = zero(ComplexF64)
+    for ig in eachindex(gn)
+        q = (gn[ig] + 1) / 2
+        γ = 1 + (γmax - 1) * q^2
+        wγ = gw[ig] * (γmax - 1) * q
         umax = sqrt(γ^2 - 1)
-        umax > 0 || return zero(ComplexF64)
-        2π * first(QuadGK.quadgk(-umax, umax; rtol, atol) do u
-            w = sqrt(γ^2 - 1 - u^2)
-            ComplexF64(u * d.dpar(u, w) - (u^2 / w) * d.dperp(u, w))
-        end)
-    end)
+        inner = zero(ComplexF64)
+        for ip in eachindex(pn)
+            θ = pn[ip] * (π / 2)
+            u, w = umax .* sincos(θ)
+            inner += pw[ip] * (π / 2) * ComplexF64(w * u * d.dpar(u, w) - u^2 * d.dperp(u, w))
+        end
+        acc += wγ * inner
+    end
+    return 2π * acc
 end
 
 @inline _ee33(x) = @SMatrix ComplexF64[0 0 0; 0 0 0; 0 0 x]
 
 
-# Fixed Gauss–Legendre orders for the relativistic path (outer γ, inner p∥). The
-# integrand is smooth (single removable pole subtracted), so GL converges fast:
-# (48,64) matches Maxwell–Jüttner to ~1e-6 in ~50ms. Very
-# sharp/multi-scale f₀ may need higher orders — bump these.
-const _GLγ = QuadGK.gauss(48)
-const _GLp = QuadGK.gauss(64)
+# Fixed Gauss–Legendre orders for the edge-mapped relativistic path (outer γ→q, inner p∥→θ).
+# Very sharp/multi-scale f₀ may need higher orders — bump these.
+const _GLγ = QuadGK.gauss(24)
+const _GLp = QuadGK.gauss(32)
 
 # Covariant momentum numerator 𝒰 = ω∂_γf+k∥∂_uf at (γ,p∥) with w=p⊥, rewritten via
 # ∂_γ|_u=(γ/w)∂_⊥, ∂_u|_γ=∂_∥−(u/w)∂_⊥ ⇒ 𝒰 = k∥∂_∥f + (ωγ−k∥u)/w · ∂_⊥f.
@@ -107,36 +112,32 @@ const _GLp = QuadGK.gauss(64)
 @inline _rel_integrand(u, γ, n, a, ω, kz, d) = _rel_integrand(u, sqrt(complex(γ^2 - 1 - u^2)), γ, n, a, ω, kz, d)
 
 
-# One relativistic harmonic: outer GL over γ∈[1,γmax]; at each γ a single-pole
-# parallel Cauchy (Plemelj split + Landau, same invariant as scalar `hilbert`)
-# closed by inner GL on the regularized integrand at pole p∥=(γω−nΩ)/k∥.
-function _coupled_harmonic_rel(n, d::CoupledVDF, ω, Ω, kz, a, γmax)
-    gn, gw = _GLγ
-    pn, pw = _GLp
+# One relativistic harmonic, edge-mapped (derivation §5.2.2). 
+# Map the disk (γ,p∥) → fixed box (q,θ)∈[0,1]×[−π/2,π/2]:
+#   p∥=umax·sinθ, p⊥=umax·cosθ  — inner Jacobian p⊥ cancels the rim 1/p⊥ exactly;
+#   γ=1+(γmax−1)q²              — outer Jacobian ∝q flattens the √(γ−1) floor.
+# Bessel stays on the fast real path. 
+# Off-disk poles (this n doesn't resonate at this γ) aren't peeled — nζ=0 there, so the subtraction reduces to direct integration
+function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ=_GLγ, GLp=_GLp)
+    gn, gw = GLγ
+    pn, pw = GLp
     acc = zero(SMatrix{3,3,ComplexF64})
     for ig in eachindex(gn)
-        γ, wγ = _rescale(gn[ig], gw[ig], one(real(ω)), γmax)
+        q = (gn[ig] + 1) / 2
+        γ = 1 + (γmax - 1) * q^2
+        wγ = gw[ig] * (γmax - 1) * q             # gw·½·2(γmax−1)q
         umax = sqrt(γ^2 - 1)
         ζ = (γ * ω - n * Ω) / kz                 # single Landau pole in p∥
-        # Peel the pole only when it lands on the real p∥ disk. Off-disk (this n
-        # doesn't resonate at this γ) the Plemelj value _rel_integrand(ζ) probes
-        # p⊥=√(γ²−1−ζ²) imaginary ⇒ Bessel→Iₙ overflows at large n,k⊥; the
-        # integrand is pole-free there, so integrate it directly.
-        if -umax < real(ζ) < umax
-            nζ = _rel_integrand(ζ, γ, n, a, ω, kz, d)
-            reg = zero(nζ)
-            for ip in eachindex(pn)
-                u, wu = _rescale(pn[ip], pw[ip], -umax, umax)
-                reg = reg .+ wu .* ((_rel_integrand(u, γ, n, a, ω, kz, d) .- nζ) ./ (u - ζ))
-            end
-            inner = reg .+ nζ .* _landau_logfac(ζ, -umax, umax)
-        else
-            inner = zero(SMatrix{3,3,ComplexF64})
-            for ip in eachindex(pn)
-                u, wu = _rescale(pn[ip], pw[ip], -umax, umax)
-                inner = inner .+ wu .* (_rel_integrand(u, γ, n, a, ω, kz, d) ./ (u - ζ))
-            end
+        inrange = -umax < real(ζ) < umax
+        nζ = inrange ? _rel_integrand(ζ, γ, n, a, ω, kz, d) : zero(SMatrix{3,3,ComplexF64})
+        inner = zero(SMatrix{3,3,ComplexF64})
+        for ip in eachindex(pn)
+            θ = pn[ip] * (π / 2)
+            u, w = umax * sin(θ), umax * cos(θ)  # p⊥=w real on the disk
+            wu = pw[ip] * (π / 2) * w             # Jacobian p⊥·dθ cancels rim 1/p⊥
+            inner = inner .+ wu .* ((_rel_integrand(u, w, γ, n, a, ω, kz, d) .- nζ) ./ (u - ζ))
         end
+        inrange && (inner = inner .+ nζ .* _landau_logfac(ζ, -umax, umax))
         acc = acc .+ wγ .* ((-1 / kz) .* inner)
     end
     return acc
