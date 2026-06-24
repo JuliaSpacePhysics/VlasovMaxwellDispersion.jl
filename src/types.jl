@@ -33,31 +33,24 @@ Wavenumber(; kz, kperp = zero(kz)) = Wavenumber(kperp, kz)
 @inline vec3(k::Wavenumber) = SVector(k.kperp, zero(k.kperp), k.kz)
 
 """
-    Species(; Omega, Pi2, vdf, regime=NonRelativistic())
+    NormalizedSpecies(Omega, Pi2, vdf)
 
-Dimensionless species. `Omega` = signed gyrofrequency ratio
-`(Z_s/Z_ref)(m_ref/m_s)`; `Pi2` = `(omega_ps/Omega_ref)^2`.
+Solver's dimensionless per-species representation. `Omega = Ω_s/Ω_ref`; `Pi2 = (ω_ps/Ω_ref)^2`.
 """
-Base.@kwdef struct Species{T, V, R <: Regime}
-    Omega::T          # signed Omega_s_tilde
-    Pi2::T            # Pi_s_tilde^2
+Base.@kwdef struct NormalizedSpecies{T, V}
+    Omega::T
+    Pi2::T
     vdf::V
-    regime::R = Regime(vdf)
 end
-Species(Omega, Pi2, vdf; regime = Regime(vdf)) = Species(; Omega, Pi2, vdf, regime)
 
-Regime(s::Species) = s.regime
+regime(d::NormalizedSpecies) = regime(d.vdf)
 
 """
-    Plasma(species...)
+    NormalizedPlasma(species...)
 
-Container summed over species. Dimensionless throughout; species already hold
-`Omega`/`Pi2`, so this is a thin wrapper plus convenience builders.
+Solver's dimensionless container: a bag of [`NormalizedSpecies`](@ref) at one fixed `Ω_ref`.
 """
-struct Plasma{S}
+struct NormalizedPlasma{S} <: AbstractPlasma
     species::S
 end
-Plasma(species...) = Plasma(Tuple(species))
-Plasma(s::Species) = Plasma((s,))
-
-Base.iterate(p::Plasma, state = 1) = iterate(p.species, state)
+NormalizedPlasma(species::NormalizedSpecies...) = NormalizedPlasma(Tuple(species))

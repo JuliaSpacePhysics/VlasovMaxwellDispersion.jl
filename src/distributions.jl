@@ -1,5 +1,3 @@
-abstract type AbstractVDF end
-
 include("distributions/ColdVDF.jl")
 include("distributions/Maxwellian.jl")
 include("distributions/MaxwellJuttner.jl")

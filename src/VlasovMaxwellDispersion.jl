@@ -1,16 +1,21 @@
 module VlasovMaxwellDispersion
 
+include("../lib/PlasmaBase/src/PlasmaBase.jl")
+using .PlasmaBase
+using .PlasmaBase: AbstractVDF, AbstractPlasma, Particle, Species, Plasma,
+    charge, mass, particle, number_density, distribution, species, magnetic_field, frequency,
+    gyrofrequency_ratio, plasma_gyro_ratio
 using LinearAlgebra
 using StaticArrays
 using Roots
 using RootsAndPoles
 using SpecialFunctions
 using SpecialFunctions: erfcx, gamma
-using QuadGK, HCubature
-using NonNegLeastSquares
+using QuadGK
+using HCubature: hcubature
+using NonNegLeastSquares: nonneg_lsq
 using CommonSolve
 import CommonSolve: solve
-using ForwardDiff
 
 function contribution end
 
@@ -23,12 +28,16 @@ include("hilbert_pwpoly.jl")   # parallel H∥ piecewise-poly primitive
 include("perp_analytic.jl")    # perpendicular P⊥ Bessel-moment primitive
 include("projection.jl")
 include("distributions.jl")
+include("builders.jl")         # particle-identity + physical-unit Species adapters
 include("susceptibility.jl")
 include("solve.jl")
 include("track.jl")
 
-export Regime, NonRelativistic, Relativistic, Continuation
-export Wavenumber, para, perp, Species, Plasma
+export Regime, NonRelativistic, Relativistic
+export Wavenumber, para, perp
+# re-exported physical vocabulary from PlasmaBase
+export AbstractVDF, Particle, Electron, Proton, Ion, Species, Plasma
+export NormalizedSpecies
 export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, CoupledVDF
 export plasma_dispersion_function, Z, hilbert
 export IntegralClosure, HarmonicSum, Newberger

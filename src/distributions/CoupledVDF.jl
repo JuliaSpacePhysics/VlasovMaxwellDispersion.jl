@@ -1,24 +1,31 @@
 """
-    CoupledVDF(f0; parlower, parupper, perpupper, dpar=nothing, dperp=nothing)
+    CoupledVDF(f0; parlower, parupper, perpupper, dpar=nothing, dperp=nothing, regime=NonRelativistic())
 
 **Most general** gyrotropic VDF: an arbitrary analytic `f0(p∥,p⊥)`.
 
 `f0` must be evaluable at complex argument (continued onto the Landau contour).
 
-Relativistic species (`regime=Relativistic()`) integrate in `(γ,p∥)`.
+`regime` type picks the coordinate system:
+- `NonRelativistic` (default) → (p∥,p⊥)
+- `Relativistic` → (γ,p∥)
 
 Prefer [`SeparableVDF`] when `f0(p∥,p⊥)=f∥(p∥)f⊥(p⊥)`.
 """
-struct CoupledVDF{F,Dp,Dq,T} <: AbstractVDF
+struct CoupledVDF{F,Dp,Dq,T,R<:Regime} <: AbstractVDF
     f0::F
     dpar::Dp        # ∂f₀/∂p∥
     dperp::Dq       # ∂f₀/∂p⊥
     parlo::T
     parhi::T
     perphi::T
+    regime::R
 end
+
+regime(d::CoupledVDF) = d.regime
+
 function CoupledVDF(
-    f0; parlower, parupper, perpupper, dpar=nothing, dperp=nothing, normalize=true
+    f0; parlower, parupper, perpupper, dpar=nothing, dperp=nothing, normalize=true,
+    regime=NonRelativistic()
 )
     plo, phi = promote(float(parlower), float(parupper))
     qhi = oftype(phi, perpupper)
@@ -30,14 +37,11 @@ function CoupledVDF(
     fn = (u, v) -> f0(u, v) / n
     dp = isnothing(dpar) ? ((u, v) -> _dwrt1(fn, u, v)) : ((u, v) -> dpar(u, v) / n)
     dq = isnothing(dperp) ? ((u, v) -> _dwrt2(fn, u, v)) : ((u, v) -> dperp(u, v) / n)
-    return CoupledVDF(fn, dp, dq, plo, phi, qhi)
+    return CoupledVDF(fn, dp, dq, plo, phi, qhi, regime)
 end
 
-# Regime trait picks the coordinate:
-#   NonRelativistic — (p∥,p⊥), pole ζ=(ω−nΩ)/k∥ fixed; outer ∫dp⊥.
-#   Relativistic    — (γ,p∥),  pole p∥=(γω−nΩ)/k∥;     outer ∫dγ.
 function contribution(d::CoupledVDF, s, ω, k; closure=HarmonicSum())
-    return _coupled_contribution(closure, Regime(s), d, s, complex(float(ω)), k)
+    return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k)
 end
 
 function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm=x -> maximum(abs, x))

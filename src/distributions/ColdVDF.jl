@@ -5,8 +5,6 @@
 """
 struct ColdVDF <: AbstractVDF end
 
-Continuation(::ColdVDF) = Analytic()
-
 @inline thermal_par(::ColdVDF) = false   # exact zero, type-stable additive identity
 @inline thermal_perp(::ColdVDF) = false
 @inline drift(::ColdVDF) = false

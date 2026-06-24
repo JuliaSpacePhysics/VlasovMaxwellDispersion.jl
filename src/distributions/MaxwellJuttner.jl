@@ -8,13 +8,11 @@ Base.@kwdef struct MaxwellJuttner{T} <: AbstractVDF
     mu::T
 end
 
-Continuation(::MaxwellJuttner) = Analytic()
-Regime(::MaxwellJuttner) = Relativistic()
-
+regime(::MaxwellJuttner) = Relativistic()
 
 # Swanson time-integral form avoids harmonic sums and relativistic resonance
 # bookkeeping for isotropic Maxwell-Juttner; ported from LMV.
-function contribution(d::MaxwellJuttner, s::Species, ω, k::Wavenumber; kwargs...)
+function contribution(d::MaxwellJuttner, s, ω, k; kwargs...)
     μ = d.mu
     Ω = s.Omega
     kz = para(k)

@@ -7,18 +7,18 @@
     g = GridVDF(vpar, vperp, F; tol=1e-4)
     k = Wavenumber(0.1, 0.4)
     ω = 1.3 - 0.05im
-    χg = contribution(Species(-1.0, 0.5, g), ω, k)
-    χm = contribution(Species(-1.0, 0.5, Maxwellian(vth_par=vthp, vth_perp=vthq)), ω, k)
+    χg = contribution(NormalizedSpecies(-1.0, 0.5, g), ω, k)
+    χm = contribution(NormalizedSpecies(-1.0, 0.5, Maxwellian(vth_par=vthp, vth_perp=vthq)), ω, k)
     acc3 = maximum(abs.(χg .- χm)) / maximum(abs, χm)
     @test acc3 < 5e-3
 
     g = GridVDF(vpar, vperp, F; method=BicubicHermite(), tol=1e-4)
-    χg = contribution(Species(-1.0, 0.5, g), ω, k)
+    χg = contribution(NormalizedSpecies(-1.0, 0.5, g), ω, k)
     @test maximum(abs.(χg .- χm)) / maximum(abs, χm) < 6e-2
 
     # Non-cubic NonnegBSpline with order=4 ≥ cubic accuracy.
     g4 = GridVDF(vpar, vperp, F; method=NonnegBSpline{4}(tol=1e-4))
-    χg = contribution(Species(-1.0, 0.5, g4), ω, k)
+    χg = contribution(NormalizedSpecies(-1.0, 0.5, g4), ω, k)
     acc4 = maximum(abs.(χg .- χm)) / maximum(abs, χm)
     @test acc4 < 5e-3
     @test acc3 > acc4
@@ -33,8 +33,8 @@ end
     ppar = collect(range(-L, L, length=81))
     pperp = collect(range(0.0, L, length=61))
     F = [f0(u, w) for u in ppar, w in pperp]
-    grel = Species(1.0, 1.0, GridVDF(ppar, pperp, F; tol=1e-4); regime=Relativistic())
-    ref = Species(1.0, 1.0, MaxwellJuttner(mu=μ))
+    grel = GridVDF(ppar, pperp, F; tol=1e-4, regime=Relativistic())
+    ref = MaxwellJuttner(mu=μ)
     k = Wavenumber(0.7, 0.4)
     for ω in (0.3 - 0.005im, 0.3 + 0.05im)
         χg = contribution(grel, ω, k)
@@ -54,8 +54,8 @@ end
     cpl = CoupledVDF(g0; parlower=(-L), parupper=L, perpupper=L)
     k = Wavenumber(0.3, 0.4)
     ω = 1.2 - 0.05im
-    χg = contribution(Species(-1.0, 1.0, g), ω, k)
-    χc = contribution(Species(-1.0, 1.0, cpl), ω, k)
+    χg = contribution(NormalizedSpecies(-1.0, 1.0, g), ω, k)
+    χc = contribution(NormalizedSpecies(-1.0, 1.0, cpl), ω, k)
     @test χg ≈ χc rtol = 5e-3
 end
 
@@ -71,8 +71,8 @@ end
     vpar = collect(range(-L, L, length=81))
     vperp = collect(range(0.0, L, length=61))
     F = [f(u, v) for u in vpar, v in vperp]
-    grid = Species(1.0, 1 / vA^2, GridVDF(vpar, vperp, F; tol=1e-4))
-    exact = Species(1.0, 1 / vA^2, CoupledVDF(f; parlower=(-L), parupper=L, perpupper=L, dpar=du, dperp=dv))
+    grid = NormalizedSpecies(1.0, 1 / vA^2, GridVDF(vpar, vperp, F; tol=1e-4))
+    exact = NormalizedSpecies(1.0, 1 / vA^2, CoupledVDF(f; parlower=(-L), parupper=L, perpupper=L, dpar=du, dperp=dv))
     k = Wavenumber(1e-3 / vA, 0.03 / vA)         # k̃ = k_ALPS/vA = (300, 10)
     ω = 0.029311 - 9.9693e-6im                   # ALPS bi-kappa (κ=6) root_1
     χg = contribution(grid, ω, k)

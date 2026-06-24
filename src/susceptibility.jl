@@ -1,9 +1,13 @@
 """
-    contribution(species, ω, k::Wavenumber; closure=HarmonicSum())
+    contribution(species/vdf, ω, k)
 
-Dimensionless susceptibility χ_s(ω,k) of one species. Dispatches on the VDF.
+Dimensionless susceptibility χ_s(ω,k) of one normalized species or vdf.
 """
-@inline contribution(s::Species, ω, k::Wavenumber; kwargs...) = contribution(s.vdf, s, ω, k; kwargs...)
+@inline contribution(s, ω, k; kwargs...) = contribution(s.vdf, s, ω, k; kwargs...)
+
+function contribution(vdf::AbstractVDF, ω, k; kw...)
+    return contribution(NormalizedSpecies(1.0, 1.0, vdf), ω, k; kw...)
+end
 
 
 """
@@ -12,7 +16,7 @@ Dimensionless susceptibility χ_s(ω,k) of one species. Dispatches on the VDF.
 Dielectric tensor `ε = I + Σ_s χ_s(ω,k)`.
 """
 function dielectric(plasma, ω, k; kwargs...)
-    χ = mapreduce(s -> contribution(s, ω, k; kwargs...), +, Plasma(plasma))
+    χ = mapreduce(s -> contribution(s, ω, k; kwargs...), +, NormalizedPlasma(plasma))
     return χ + I
 end
 

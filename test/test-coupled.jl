@@ -8,22 +8,22 @@
     cpl = CoupledVDF(f0; parlower=-10vthp, parupper=10vthp, perpupper=10vthq)
     mx = Maxwellian(vth_par=vthp, vth_perp=vthq)
     k = Wavenumber(0.1, 0.4)                     # small k⊥ ⇒ few harmonics ⇒ fast
-    χc = contribution(Species(-1.0, 0.5, cpl), 1.3 - 0.05im, k)
-    χm = contribution(Species(-1.0, 0.5, mx), 1.3 - 0.05im, k)
+    χc = contribution(NormalizedSpecies(-1.0, 0.5, cpl), 1.3 - 0.05im, k)
+    χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
     @test χc ≈ χm rtol = 1e-7
 end
 
 @testitem "CoupledVDF inseparable f₀" begin
     g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))      # v∥–v⊥ coupling ⇒ not separable
     cpl = CoupledVDF(g0; parlower=-8.0, parupper=8.0, perpupper=6.0)
-    χ = contribution(Species(-1.0, 1.0, cpl), 1.2 - 0.05im, Wavenumber(0.1, 0.4))
+    χ = contribution(NormalizedSpecies(-1.0, 1.0, cpl), 1.2 - 0.05im, Wavenumber(0.1, 0.4))
     @test all(isfinite, χ)
 end
 
 @testitem "CoupledVDF Newberger (A) ≡ HarmonicSum (B)" begin
     g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))
     cpl = CoupledVDF(g0; parlower=-8.0, parupper=8.0, perpupper=6.0)
-    s = Species(-1.0, 1.0, cpl)
+    s = NormalizedSpecies(-1.0, 1.0, cpl)
     ω = 1.2 + 0.05im
     for kperp in (0.0, 0.3, 0.6)
         k = Wavenumber(kperp, 0.4)
@@ -37,15 +37,15 @@ end
 # the general CoupledVDF must reproduce the closed Maxwell–Jüttner (Swanson)
 # tensor — itself ALPS-validated. ω<Ω keeps the Swanson time-integral stable.
 @testitem "Relativistic CoupledVDF reproduces Maxwell–Jüttner" begin
-    Ω, μ = 1.0, 40.0
+    μ = 40.0
     γ(u, w) = sqrt(1 + u^2 + w^2)
     f0(u, w) = exp(-μ * γ(u, w))
     dpar(u, w) = -μ * f0(u, w) * u / γ(u, w)
     dperp(u, w) = -μ * f0(u, w) * w / γ(u, w)
     L = sqrt((1 + 25 / μ)^2 - 1)
-    rel = Species(Ω, 1.0, CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar, dperp);
+    rel = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar, dperp,
         regime=Relativistic())
-    ref = Species(Ω, 1.0, MaxwellJuttner(mu=μ))
+    ref = MaxwellJuttner(mu=μ)
 
     for ω in (0.3 - 0.005im, 0.3 + 0.05im), kperp in (0.0, 0.3, 0.6)
         k = Wavenumber(kperp, 0.4)
@@ -68,11 +68,11 @@ end
     dperp(u, w) = -2aq * w * f0(u, w)
     L = 0.6
     cpl = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar, dperp)
+    cpl_rel = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar, dperp, regime=Relativistic())
     ω, k = 0.3 + 0.02im, Wavenumber(0.7, 0.4)
-    oracle = contribution(Species(1.0, 1.0, cpl), ω, k)[3, 3]                          # nonrel (m33 fold)
-    s = Species(1.0, 1.0, cpl; regime=Relativistic())
-    relB = contribution(s, ω, k)[3, 3]
-    relA = contribution(s, ω, k; closure=Newberger())[3, 3]
+    oracle = contribution(cpl, ω, k)[3, 3]                          # nonrel (m33 fold)
+    relB = contribution(cpl_rel, ω, k)[3, 3]
+    relA = contribution(cpl_rel, ω, k; closure=Newberger())[3, 3]
     # Without 𝒳_B the relativistic χ_zz is off by ~3×; the residual here is the
     # genuine relativistic correction (γ−1≈5e-3), so a 2% tolerance is decisive.
     @test abs(relB - oracle) / abs(oracle) < 0.02
@@ -82,7 +82,7 @@ end
 @testitem "CoupledVDF Newberger (A) handles damped modes (residue extraction)" tags=[:slow] begin
     g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))
     kw = (parlower=-8.0, parupper=8.0, perpupper=6.0)
-    s = Species(-1.0, 1.0, CoupledVDF(g0; kw...))
+    s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))
     k = Wavenumber(0.3, 0.4)
     for ω in (1.2 - 0.05im, 1.2 - 0.2im)             # damped: Im ω<0
         χB = contribution(s, ω, k)
@@ -102,11 +102,11 @@ end
     dperp(u, w) = -μ * f0(u, w) * w / γ(u, w)
     L = sqrt((1 + 25 / μ)^2 - 1)
     kw = (parlower=(-L), parupper=L, perpupper=L, dpar=dpar, dperp=dperp)
-    s = Species(1.0, 1.0, CoupledVDF(f0; kw...); regime=Relativistic())
+    vdf = CoupledVDF(f0; kw..., regime=Relativistic())
     k = Wavenumber(0.7, 0.4)
     for ω in (0.3 - 0.05im, 0.3 - 0.005im)              # damped relativistic
-        χB = contribution(s, ω, k)
-        χA = contribution(s, ω, k; closure=Newberger())
+        χB = contribution(vdf, ω, k)
+        χA = contribution(vdf, ω, k; closure=Newberger())
         @test maximum(abs.(χA .- χB)) / maximum(abs.(χB)) < 1e-5
     end
 end
@@ -119,7 +119,7 @@ end
     dperp(u, w) = -μ * f0(u, w) * w / γ(u, w)
     L = sqrt((1 + 25 / μ)^2 - 1)
     kw = (parlower=(-L), parupper=L, perpupper=L, dpar=dpar, dperp=dperp)
-    s = Species(1.0, 1.0, CoupledVDF(f0; kw...); regime=Relativistic())
+    s = CoupledVDF(f0; kw..., regime=Relativistic())
     ω = 0.3 - 0.05im
     for kperp in (1.2, 2.0, 3.5)                        # k⊥ρ≳1.5: off-disk poles appear
         k = Wavenumber(kperp, 0.4)

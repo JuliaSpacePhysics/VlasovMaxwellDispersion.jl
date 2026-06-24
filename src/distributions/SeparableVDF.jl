@@ -52,7 +52,7 @@ end
 # --- Arbitrary separable analytic f, full magnetized EM (oblique k⊥≠0) --------
 # Same harmonic algebra as the bi-Maxwellian, but moments are computed generically:
 # parallel z*F/z*T via the analytic `hilbert`, perp Bessel moments by quadrature.
-function contribution(d::SeparableVDF, s::Species, ω, k::Wavenumber; kwargs...)
+function contribution(d::SeparableVDF, s, ω, k; kwargs...)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     reduced(d) && (iszero(kperp) ? (return _reduced_electrostatic_contribution(d, s, ω, k)) :
         throw(ArgumentError("SeparableVDF: reduced one-argument form only supports field-aligned electrostatic kperp=0")))
@@ -67,7 +67,7 @@ end
 
 # χ_zz = -(Π²/k∥²) ∫ f∥′(u)/(u − ω/k∥) du
 # Returns diag(0,0,χ_zz)
-function _reduced_electrostatic_contribution(d::SeparableVDF, s::Species, ω, k::Wavenumber)
+function _reduced_electrostatic_contribution(d::SeparableVDF, s, ω, k)
     kz = para(k)
     ω = complex(float(ω))
     χzz = -(s.Pi2 / kz^2) * hilbert(d.dfpar, ω / kz; lower=d.parlo, upper=d.parhi)
