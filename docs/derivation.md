@@ -132,17 +132,6 @@ $$
 𝓣_n \equiv p_⊥^2 \mathbf{T}_n .
 $$
 
-Rewrite $nJ_n/z$ via the Bessel recurrence to remove division error at $z=0$:
-
-$$
-R_n \equiv \frac{n}{z}J_n(z) = \tfrac12 \left(J_{n-1}(z)+J_{n+1}(z)\right)
-$$
-
-Note: For *real* $(p_\|,p_\perp)$, $𝓣_n$ is the Hermitian
-outer product $\mathbf{v}_n\mathbf{v}_n^\dagger$ of $\mathbf{v}_n=(p_\perp R_n,-i p_\perp J_n',p_\|J_n)$.
-\end{array}\right).
-$$
-
 Using the ring kernel $R_n \equiv (n/z)J_n=\tfrac12(J_{n-1}+J_{n+1})$, $𝓣_n \equiv p_\perp^2 T_n$ reads
 
 $$
@@ -157,8 +146,7 @@ $$
 Note: For *real* $(p_\|,p_\perp)$, $𝓣_n$ is the Hermitian
 outer product $\mathbf{v}_n\mathbf{v}_n^\dagger$ of $\mathbf{v}_n=(p_\perp R_n,-i p_\perp J_n',p_\|J_n)$.
 
-The susceptibility splits
-into harmonic contributions plus one non-resonant term:
+The susceptibility splits into harmonic contributions plus one non-resonant term:
 
 $$
 \chi = \sum_n \chi_n + \mathbf{e}_\| \mathbf{e}_\|\, \chi_B,\qquad
@@ -171,9 +159,7 @@ Keep `|n| ≤ nmax ≈ k⊥ρ`; the sum converges slowly for large `z`. The payo
 `X_n` **factorizes when `f₀` is separable** (§4), which is exactly what produces the two
 1-D primitives. 
 
-
 (`S0 = Σ_n Jₙ(z)²/(a−n)` is the Lerche–Newberger Bessel identity linking A and B.)
-
 
 ## 4. The momentum integral: where the primitives appear
 
@@ -244,8 +230,7 @@ is polynomial in $p_\parallel$. Now $p_\perp$ and $p_\parallel$ decouple, so
 
 Unlike $I(\gamma)$, $I(p_\perp)$ **does** factor into parallel moments and perp Bessel weights.
 
-**Parallel Landau moments.** Since 
-
+**Parallel Landau moments.** 
 With the recurring Landau combination ($p_\perp\mathcal U=(\omega-k_\parallel p_\parallel)\,\partial_\perp f_0 +k_\parallel p_\perp\,\partial_\parallel f_0$), the moment of the full numerator $p_\perp\mathcal U$ reduces to a linear combination of the two slices:
 
 $$
@@ -268,20 +253,8 @@ $$
 
 Note without separability, the moments are recomputed at every $p_\perp$, otherwise it would pull $f_\perp(p_\perp)$ out of $M^m$ and kill the outer integral.
 
-**Bessel weights.** Using the ring kernel $R_n=(n/z)J_n=\tfrac12(J_{n-1}+J_{n+1})$, the resummed tensor $\mathcal{T}_n=p_\perp^2 T_n$ reads
-
-$$
-{\mathcal T}_n=
-\begin{pmatrix}
-p_\perp^2 R_n^2 & i\,p_\perp^2 R_n J_n' & p_\parallel p_\perp R_n J_n\\[2pt]
--i\,p_\perp^2 R_n J_n' & p_\perp^2 J_n'^2 & -i\,p_\parallel p_\perp J_nJ_n'\\[2pt]
-p_\parallel p_\perp R_n J_n & i\,p_\parallel p_\perp J_nJ_n' & p_\parallel^2 J_n^2
-\end{pmatrix}.
-$$
-
-The Bessel factors leave the $p_\parallel$ integral untouched; each power of $p_\parallel$ raises the
+**Bessel weights.** The Bessel factors leave the $p_\parallel$ integral untouched; each power of $p_\parallel$ raises the
 moment index ($p_\parallel^0\!\to\!D_0$, $p_\parallel^1\!\to\!D_1$, $p_\parallel^2\!\to\!D_2$).
-**Bessel weights.** The Bessel factors leave the $p_\parallel$ integral untouched; each power of $p_\parallel$ raises the moment index ($p_\parallel^0\!\to\!D_0$, $p_\parallel^1\!\to\!D_1$, $p_\parallel^2\!\to\!D_2$).
 
 Assembled, the resonant harmonic block reads
 

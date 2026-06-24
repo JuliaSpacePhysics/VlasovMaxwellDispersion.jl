@@ -40,11 +40,15 @@ let regime=Relativistic()
     L = sqrt((1 + 25 / μ)^2 - 1)
     kw = (parlower=(-L), parupper=L, perpupper=L, dpar=dpar, dperp=dperp)
     s = Species(1.0, 1.0, CoupledVDF(f0; kw...); regime)
-    k = Wavenumber(0.7, 0.4)
     ω = 0.3 + 0.05im
     g = SUITE["Relativistic"] = BenchmarkGroup()
-    g["coupled/A_newberger"] = @benchmarkable contribution($s, $ω, $k; closure=Newberger())
-    g["coupled/B_truncated"] = @benchmarkable contribution($s, $ω, $k)
+    # Sweep k⊥: edge-mapped (γ,p∥) cost grows with nmax∝k⊥ρ
+    for kp in (0.7, 3.5)
+        k = Wavenumber(kp, 0.4)
+        g["coupled/A_newberger_kperp=$kp"] = @benchmarkable contribution($s, $ω, $k; closure=Newberger())
+        g["coupled/B_truncated_kperp=$kp"] = @benchmarkable contribution($s, $ω, $k)
+    end
+    k = Wavenumber(0.7, 0.4)
 
     ppar = collect(range(-L, L, length=81))
     pperp = collect(range(0.0, L, length=61))
