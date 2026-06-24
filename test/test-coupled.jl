@@ -79,11 +79,6 @@ end
     @test abs(relA - oracle) / abs(oracle) < 0.02
 end
 
-@testitem "CoupledVDF requires oblique (kperp≠0)" begin
-    cpl = CoupledVDF((u, v) -> exp(-(u^2 + v^2)); parlower=-8.0, parupper=8.0, perpupper=6.0)
-    @test_throws ArgumentError contribution(Species(-1.0, 1.0, cpl), 1.0 + 0im, Wavenumber(0.0, 0.5))
-end
-
 @testitem "CoupledVDF Newberger (A) handles damped modes (residue extraction)" tags=[:slow] begin
     g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))
     kw = (parlower=-8.0, parupper=8.0, perpupper=6.0)

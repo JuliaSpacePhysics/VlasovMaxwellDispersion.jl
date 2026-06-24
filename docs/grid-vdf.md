@@ -28,7 +28,7 @@ With the prefactor `χ = (Π²/ω²) Σ_n χ_n` and (non-rel) the resonance line
     ω − k∥v∥ − nΩ = −k∥(v∥ − ζ_n),    ζ_n = (ω − nΩ)/k∥   (v⊥-independent).
 
 Each cyclotron tensor `χ_n` is a **bilinear form** in five parallel moments and six
-Bessel-weighted perpendicular moments (the shared `_chi_mblock` / `_perp_combos_oblique` assembler, identical for every separable/coupled/grid VDF):
+Bessel-weighted perpendicular moments:
 
 **Parallel moments** (the only place the Landau pole lives) — Hilbert transforms of the `v⊥`-slice of `∇f₀`:
 

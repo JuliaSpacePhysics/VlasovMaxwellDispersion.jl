@@ -1,7 +1,6 @@
 # VlasovMaxwellDispersion.jl
 
-Linear hot-magnetized Vlasov–Maxwell dispersion solver. Dimensionless core,
-one Cauchy/Hilbert primitive shared across velocity distributions (VDFs). 
+Linear hot-magnetized Vlasov–Maxwell dispersion solver. 
 
 Full derivation: [`derivation.md`](docs/derivation.md).
 Method and internals: [`architecture.md`](docs/architecture.md).

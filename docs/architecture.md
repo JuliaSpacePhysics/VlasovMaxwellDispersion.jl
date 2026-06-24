@@ -1,8 +1,6 @@
 # VlasovMaxwellDispersion.jl — Architecture
 
-One general, performant solver for the relativistic linear hot-magnetized Vlasov–Maxwell
-dispersion relation. Arbitrary gyrotropic VDFs (analytic function forms or numerical
-grids). Dimensionless internally.
+Arbitrary gyrotropic VDFs (analytic function forms or numerical grids). Dimensionless internally.
 
 ## 1. The reduction (the spine)
 
@@ -20,9 +18,7 @@ core; the only variation is how their integrand is represented:
 | arbitrary analytic | Plemelj split | direct quadrature |
 
 So "arbitrary VDF" and "exact analytic continuation" are the *same* mechanism;
-Maxwellian/Kappa are fast overloads. The **branch-cut invariant** (one complex `log` of the *ratio* — the one place a sign error flips
-growth↔damping) and the moment algebra are derived in `derivation.md` §3–5.
-Optional **AAA-rational** backend for smooth analytic input (`BaryRational.jl`) with Landau-causal pole filtering.
+Maxwellian/Kappa are fast overloads. The branch-cut invariant (one complex `log` of the *ratio*).
 
 ### 1a. Grid → basis projection (the other hard half)
 
@@ -39,7 +35,7 @@ rejected.
 | trait | values | drives |
 |---|---|---|
 | `Regime` | `NonRelativistic` / `Relativistic` | active coordinates, `γ`, pole map |
-| `Continuation` | `Analytic` / `PiecewisePoly` / `Rational` | how `H∥`/`P⊥` evaluate |
+| `Continuation` | `Analytic` / `PiecewisePoly` | how `H∥`/`P⊥` evaluate |
 | `IntegralClosure` | `HarmonicSum` / `Newberger` |
 
 Specializations are trait combinations: 
@@ -61,7 +57,7 @@ Plus analytic anchors with no external dep: Stix cold R/L/O/X, Maxwellian→cold
 
 accelerations, both learned from the references:
 
-1. *Velocity integral* — replace nested adaptive QuadGK with **precompute-once**:
+1. *Velocity integral* — replace nested adaptive QuadGK with precompute-once:
    either MPDES-style **project `f₀`→2-D piecewise-poly then closed-form per cell**
    (`projection.jl`+`hilbert_pwpoly.jl` all exist; analytic in ω,
    AD-clean) or ALPS-style **fixed-grid Simpson + precomputed Bessel weights**.
@@ -85,11 +81,4 @@ accelerations, both learned from the references:
 
 All four kinetic paths specialize one nested 2-D integral (`derivation.md`):
 `CoupledVDF` (general) ⊃ `SeparableVDF` (factors) ⊃ Maxwellian/MJ (`Z`/`Γ_n`
-closed form). The per-harmonic 3×3 algebra is one shared assembler (`_chi_mblock`
-+ `_perp_combos_*`).
-
-
-Principle — reuse the ecosystem
-- Vendored `external/` solvers are ground-truth only.
-- projection: `BSplineKit.jl`/`Dierckx.jl`
-- `BaryRational.jl` (AAA). 
+closed form).

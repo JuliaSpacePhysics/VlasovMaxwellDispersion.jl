@@ -1,3 +1,12 @@
+# Development notes
+
+[![Coverage](https://codecov.io/gh/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaSpacePhysics/VlasovMaxwellDispersion.jl)
+
+## Roadmap
+
+- Optional **AAA-rational** backend for smooth analytic input (`BaryRational.jl`) with Landau-causal pole filtering.
+- Check and potentially reuse `BSplineKit.jl`/`Dierckx.jl`
+
  1. Expose Tuned GRPF Params
   Current wrapper hardcodes tess_sizehint=5000, multithreading=false, and uses same tol for initial mesh spacing and final tolerance.
 

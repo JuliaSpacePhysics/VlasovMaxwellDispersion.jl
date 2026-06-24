@@ -76,8 +76,6 @@ end
 # coupled path: f₀ IS piecewise-polynomial, so the inner Landau H∥ closes per cell
 # (`cell_hilbert_landau`) instead of adaptive QuadGK.
 function contribution(d::GridVDF, s::Species, ω, k; closure::IntegralClosure=HarmonicSum())
-    iszero(perp(k)) &&
-        throw(ArgumentError("GridVDF: magnetized EM tensor needs kperp≠0 (oblique)"))
     if closure isa HarmonicSum
         Regime(s) isa NonRelativistic && return _grid_contribution(d, s, complex(float(ω)), k)
         Regime(s) isa Relativistic && return _grid_contribution_rel(d, s, complex(float(ω)), k)
@@ -150,7 +148,7 @@ function _grid_contribution(d::GridVDF, s::Species, ω, k)
         v -> v^3 * _fit_par_integral(fit, v), zero(fit.knots_perp[end]), fit.knots_perp[end]; rtol=1.0e-7
     )[1]
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
-    f = n -> _grid_harmonic(n, fit, ω, Ω, kz, kperp, a)
+    f = n -> _grid_harmonic(n, fit, ω, Ω, kz, a)
     χ = converge(f, 1, 1.0e-6; nmax)
     return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
 end
@@ -250,7 +248,7 @@ end
 # One cyclotron harmonic: loop perp cells, precompute the parallel-moment
 # t-polynomials once per cell, then a smooth p⊥ QuadGK whose integrand only
 # evaluates those + Bessel weights.
-function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, kperp, a)
+function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, a)
     ζ = (ω - n * Ω) / kz
     kq = fit.knots_perp
     acc = zero(SMatrix{3,3,ComplexF64})
@@ -261,7 +259,7 @@ function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, kperp, a)
             t = v - wl
             z = (evalpoly(t, z0Fc.data), evalpoly(t, z1Fc.data), evalpoly(t, z2Fc.data),
                 evalpoly(t, z0Tc.data), evalpoly(t, z1Tc.data))
-            return _chi_mblock(z, _perp_bessel_moments(n, a, v), ω, kz, kperp, n / a)
+            return _In_block(z, _perp_Bessel_triplet(n, a, v), v, ω, kz, n * Ω)
         end)
         acc = acc .+ seg
     end

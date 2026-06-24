@@ -12,7 +12,7 @@ Dimensionless susceptibility χ_s(ω,k) of one species. Dispatches on the VDF.
 Dielectric tensor `ε = I + Σ_s χ_s(ω,k)`.
 """
 function dielectric(plasma, ω, k; kwargs...)
-    χ = mapreduce(s -> contribution(s, ω, k; kwargs...), +, plasma)
+    χ = mapreduce(s -> contribution(s, ω, k; kwargs...), +, Plasma(plasma))
     return χ + I
 end
 
@@ -48,40 +48,49 @@ function electrostatic_det(plasma, ω, k::Wavenumber; kwargs...)
 end
 
 
-# --- Shared per-harmonic 3×3 assembler (every VDF) -----------------
-# Contracts the cyclotron-harmonic tensor 𝓣_n (derivation §3B) with the parallel
-# Landau moments to build χ_n's 3×3 block. The algebra is identical for every
-# VDF; only how the moments are obtained differs (Z/Γ_n closed forms for
-# Maxwellian vs `hilbert`+Bessel quadrature for arbitrary f). Inputs (§5–6):
-#   z = (z0F,z1F,z2F, z0T,z1T)  parallel H∥ moments; F from f∥, T from f∥′
-#   p = (JF,J∂F, JdJF,JdJ∂F, ∂J²F,∂J²∂F)  perp Bessel moments (§6 Pⱼ, Pⱼ^∂)
-#   nk = nΩ/k⊥  (so nk·k⊥ = nΩ, and z=k⊥p⊥/Ω makes nk a harmonic index over z)
-# Every entry is the same Landau combination `D` of one (∂F,F) perp pair with a
-# parallel-moment triple; the power of nk indexes the n/z structure of 𝓣_n.
-# m33 is the exception: it folds in the non-resonant Bernstein term (§3.2), so it
-# uses nΩ and the lower moments M²_F,M¹_T rather than a plain D — see derivation.
-@inline function _chi_mblock(z, p, ω, kz, kperp, nk)
+# Builds one cyclotron-harmonic block χ_n by contracting the perp Bessel tensor
+# with the parallel Landau moments (derivation §5.1). Same algebra for every VDF;
+# only how the moments are obtained differs (Z/Γ_n closed forms for Maxwellian vs
+# `hilbert`+Bessel quadrature for arbitrary f).
+#
+# The numerator p⊥U splits into a ∂f/∂p⊥ and a ∂f/∂p∥ gradient slice, giving two
+# perp Bessel-bilinear matrices and two parallel-moment families:
+#   P∂  ← ∫(Bessel)f⊥′    pairs with the f∥ moments z*F   (the M_F / ∂⊥ slice)
+#   PF  ← ∫(Bessel)f⊥·p⊥  pairs with the f∥′ moments z*T   (the M_T / ∂∥ slice)
+@inline function _chi_mblock(z, P∂, PF, ω, kz, nΩ)
     z0F, z1F, z2F, z0T, z1T = z
-    D(X, Y, a, b, c) = kz * (-X * a + Y * b) + ω * X * c
-    m11 = nk^2 * D(p.J∂F, p.JF, z1F, z0T, z0F)
-    m21 = -im * nk * D(p.JdJ∂F, p.JdJF, z1F, z0T, z0F)
-    m31 = nk * D(p.J∂F, p.JF, z2F, z1T, z1F)
-    m22 = D(p.∂J²∂F, p.∂J²F, z1F, z0T, z0F)
-    m32 = im * D(p.JdJ∂F, p.JdJF, z2F, z1T, z1F)
-    m33 = kperp * nk * p.J∂F * z2F + (ω - kperp * nk) * p.JF * z1T
-    return @SMatrix ComplexF64[m11 -m21 m31; m21 m22 -m32; m31 m32 m33]
+    # Parallel Landau weights D_m = ω M_F^m − k∥ M_F^{m+1} (∂⊥ slice) and k∥ M_T^m (∂∥ slice).
+    # Each tensor entry = (∂⊥ perp bilinear)·wF + (∂∥ perp bilinear)·wT, at order m =
+    wF0, wT0 = ω * z0F - kz * z1F, kz * z0T
+    wF1, wT1 = ω * z1F - kz * z2F, kz * z1T
+    xx = P∂[1, 1] * wF0 + PF[1, 1] * wT0
+    xy = im * (P∂[1, 2] * wF0 + PF[1, 2] * wT0)
+    yy = P∂[2, 2] * wF0 + PF[2, 2] * wT0
+    xz = P∂[1, 3] * wF1 + PF[1, 3] * wT1
+    yz = im * (P∂[2, 3] * wF1 + PF[2, 3] * wT1)
+    zz = nΩ * P∂[3, 3] * z2F + (ω - nΩ) * PF[3, 3] * z1T   # + non-resonant term
+    return @SMatrix ComplexF64[xx xy xz; -xy yy -yz; xz yz zz]
 end
 
+# Pointwise (Coupled/Grid): the perp tensor at node v⊥ before parallel integration
+@inline function _In_block(z, bvec, px, ω, kz, nΩ)
+    b1, b2, b3 = bvec
+    z0F, z1F, z2F, z0T, z1T = z
+    D0 = 2π * (ω * z0F - kz * z1F + kz * px * z0T)
+    D1 = 2π * (ω * z1F - kz * z2F + kz * px * z1T)
+    xx, xy, yy = b1 * b1 * D0, im * b1 * b2 * D0, b2 * b2 * D0
+    xz, yz = b1 * b3 * D1, im * b2 * b3 * D1
+    zz = 2π * b3 * b3 * (nΩ * z2F + (ω - nΩ) * px * z1T)
+    return @SMatrix ComplexF64[xx xy xz; -xy yy -yz; xz yz zz]
+end
 
-# The 6 perp Bessel moments at one v⊥ node:
-#  2π·{powers of v⊥}·{Jₙ², JₙJₙ′, Jₙ′²} at z=a·v⊥. The f⊥ weight and
-# the ∫dp⊥ are supplied by the caller's quadrature.
-@inline function _perp_bessel_moments(n, a, v)
-    Jn, Jn′ = besselj(n, a * v), _besselj_prime(n, a * v)
-    tp = 2π
-    return (
-        JF=tp * v * Jn^2, J∂F=tp * Jn^2,
-        JdJF=tp * v^2 * Jn * Jn′, JdJ∂F=tp * v * Jn * Jn′,
-        ∂J²F=tp * v^3 * Jn′^2, ∂J²∂F=tp * v^2 * Jn′^2,
-    )
+# Symmetric 3×3 from its 6 distinct entries (row-major upper triangle).
+@inline _symmat(a11, a12, a13, a22, a23, a33) =
+    @SMatrix [a11 a12 a13; a12 a22 a23; a13 a23 a33]
+
+# Bessel triplet `bvec = (p⊥Rₙ, p⊥Jₙ′, Jₙ)`
+@inline function _perp_Bessel_triplet(n, a, px)
+    z = a * px
+    Jm, Jp = besselj(n - 1, z), besselj(n + 1, z)
+    return SVector(px * (Jm + Jp) / 2, px * (Jm - Jp) / 2, besselj(n, z))
 end
