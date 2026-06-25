@@ -17,10 +17,8 @@ end
 
 # CoupledVDF: the two closures (derivation.md §3) on an inseparable f₀.
 let
-    g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))
-    dpar(u, v) = -(2u + 0.6v) * g0(u, v)
-    dperp(u, v) = -(2v + 0.6u) * g0(u, v)
-    kw = (parlower=-8.0, parupper=8.0, perpupper=6.0, dpar=dpar, dperp=dperp)
+    g0(w, u) = exp(-(u^2 + w^2 + 0.6u * w))
+    kw = (parlower=-8.0, parupper=8.0, perpupper=6.0)
     s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))
     ω = 1.2 + 0.05im
     g = SUITE["coupled_nonrel"] = BenchmarkGroup()
@@ -33,12 +31,10 @@ end
 
 let regime=Relativistic()
     μ = 40.0
-    γ(u, w) = sqrt(1 + u^2 + w^2)
-    f0(u, w) = exp(-μ * γ(u, w))
-    dpar(u, w) = -μ * f0(u, w) * u / γ(u, w)
-    dperp(u, w) = -μ * f0(u, w) * w / γ(u, w)
+    γ(w, u) = sqrt(1 + u^2 + w^2)
+    f0(w, u) = exp(-μ * γ(w, u))
     L = sqrt((1 + 25 / μ)^2 - 1)
-    kw = (parlower=(-L), parupper=L, perpupper=L, dpar=dpar, dperp=dperp)
+    kw = (parlower=(-L), parupper=L, perpupper=L)
     vdf = CoupledVDF(f0; kw..., regime)
     ω = 0.3 + 0.05im
     g = SUITE["Relativistic"] = BenchmarkGroup()
@@ -52,8 +48,8 @@ let regime=Relativistic()
 
     ppar = collect(range(-L, L, length=81))
     pperp = collect(range(0.0, L, length=61))
-    F = [f0(u, w) for u in ppar, w in pperp]
-    vdf = GridVDF(ppar, pperp, F; tol=1e-4, regime)
+    F = [f0(u, w) for w in pperp, u in ppar]      # F[perp,par]
+    vdf = GridVDF(pperp, ppar, F; tol=1e-4, regime)
     g["gridvdf"] = @benchmarkable contribution($vdf, $ω, $k)
 end
 

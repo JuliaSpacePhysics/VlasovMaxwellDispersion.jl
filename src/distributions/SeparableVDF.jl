@@ -1,14 +1,12 @@
 """
-    SeparableVDF(fpar, fperp; parlower, parupper, perpupper, dfpar=nothing, dfperp=nothing)
+    SeparableVDF(fperp, fpar; parlower, parupper, perpupper, dfpar=nothing, dfperp=nothing)
     SeparableVDF(fpar; lower, upper, df=nothing)
 
-Arbitrary **separable analytic** VDF `f(v∥,v⊥) = f∥(v∥)·f⊥(v⊥)` for the **full
-magnetized EM** susceptibility at oblique propagation (`k⊥≠0`). Both factors must
-be evaluable at complex argument (continued onto the Landau contour).
+Arbitrary **separable analytic** VDF `f(p⊥,p∥) = f⊥(p⊥)·f∥(p∥)` for the **full
+magnetized EM** susceptibility at oblique propagation (`k⊥≠0`). Both must be evaluable at complex arguments (continued onto the Landau contour).
 
 The one-argument form is a reduced parallel distribution for the field-aligned
-electrostatic path (`k⊥=0`): Landau damping / two-stream / bump-on-tail for any
-analytic `f∥`.
+electrostatic path (`k⊥=0`): Landau damping / two-stream / bump-on-tail.
 
 Parallel moments close via the generic `hilbert` primitive; perp Bessel moments
 by adaptive quadrature. The 3×3 tensor algebra is shared with the bi-Maxwellian
@@ -35,7 +33,7 @@ function SeparableVDF(fpar; lower, upper, df=nothing, normalize=true)
 end
 
 function SeparableVDF(
-    fpar, fperp; parlower, parupper, perpupper,
+    fperp, fpar; parlower, parupper, perpupper,
     dfpar=nothing, dfperp=nothing, normalize=true
 )
     plo, phi = promote(float(parlower), float(parupper))

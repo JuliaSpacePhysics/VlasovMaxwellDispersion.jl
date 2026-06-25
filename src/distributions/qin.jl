@@ -89,7 +89,7 @@ include("qin_sigmas.jl")
     β = kperp / Ω0
     z = β * w
     r = u / w
-    dfpa, dfpe = d.dpar(u, w), d.dperp(u, w)
+    dfpa, dfpe = d.dpar(w, u), d.dperp(w, u)
     cross = w * dfpa - u * dfpe
     U = dfpe + (kz / (ω * γ)) * cross               # velocity-form numerator (§2)
     ee = (Ω0 / (γ * ω)) * r * cross                  # e∥e∥ Bernstein term (§3)
@@ -109,7 +109,7 @@ end
     β = kperp / Ω
     z = β * w
     return map(ns, ζs) do n, ζ
-        dfpa, dfpe = d.dpar(ζ, w), d.dperp(ζ, w)
+        dfpa, dfpe = d.dpar(w, ζ), d.dperp(w, ζ)
         U = dfpe + (kz / ω) * (w * dfpa - ζ * dfpe)
         ((2π * U) * (-Ω / kz)) .* _T_n_bare(n, z, ζ, w)
     end
