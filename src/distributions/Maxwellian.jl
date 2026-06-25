@@ -15,13 +15,11 @@ end
 
 Maxwellian(vth_par) = Maxwellian(; vth_par)
 
-Continuation(::Maxwellian) = Analytic()
-
 @inline thermal_par(d::Maxwellian) = d.vth_par
 @inline thermal_perp(d::Maxwellian) = d.vth_perp
 @inline drift(d::Maxwellian) = d.vd
 
-function contribution(d::Maxwellian, s::Species, ω, k; rtol=1.0e-8, kwargs...)
+function contribution(d::Maxwellian, s, ω, k; rtol=1.0e-8, kwargs...)
     Ω = s.Omega
     kz = para(k)
     kperp = perp(k)

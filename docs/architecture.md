@@ -35,7 +35,6 @@ rejected.
 | trait | values | drives |
 |---|---|---|
 | `Regime` | `NonRelativistic` / `Relativistic` | active coordinates, `γ`, pole map |
-| `Continuation` | `Analytic` / `PiecewisePoly` | how `H∥`/`P⊥` evaluate |
 | `IntegralClosure` | `HarmonicSum` / `Newberger` |
 
 Specializations are trait combinations: 

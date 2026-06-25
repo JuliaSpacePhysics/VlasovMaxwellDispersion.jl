@@ -12,8 +12,8 @@
         (-1.0, 0.5, 0.7 + 0.02im, 0.25, 0.6),
         (2.0, 0.8, 1.1 - 0.1im, 0.5, 0.2))
         k = Wavenumber(kp, kz)
-        χs = contribution(Species(Ω, Pi2, sep), ω, k)
-        χm = contribution(Species(Ω, Pi2, mx), ω, k)
+        χs = contribution(NormalizedSpecies(Ω, Pi2, sep), ω, k)
+        χm = contribution(NormalizedSpecies(Ω, Pi2, mx), ω, k)
         @test χs ≈ χm rtol = 1e-8
     end
 end
@@ -24,9 +24,9 @@ end
         v -> exp(-(v / vthq)^2) / (pi * vthq^2);
         parlower=-14vthp, parupper=14vthp, perpupper=14vthq)
     k = Wavenumber(0.2, 0.3)
-    ions = Species(1.0, 1 / 1836, ColdVDF())
-    ωs = solve(LocalDispersionProblem(Plasma(Species(-1.0, 1.0, sep), ions), k, 1.0 - 1e-3im)).omega
-    ωm = solve(LocalDispersionProblem(Plasma(Species(-1.0, 1.0, Maxwellian(vth_par=vthp, vth_perp=vthq)), ions), k, 1.0 - 1e-3im)).omega
+    ions = NormalizedSpecies(1.0, 1 / 1836, ColdVDF())
+    ωs = solve(LocalDispersionProblem((NormalizedSpecies(-1.0, 1.0, sep), ions), k, 1.0 - 1e-3im)).omega
+    ωm = solve(LocalDispersionProblem((NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_par=vthp, vth_perp=vthq)), ions), k, 1.0 - 1e-3im)).omega
     @test ωs ≈ ωm
 end
 
@@ -37,8 +37,8 @@ end
         parlower=-14vthp, parupper=14vthp, perpupper=14vthq)
     mx = Maxwellian(vth_par=vthp, vth_perp=vthq)
     k = Wavenumber(0.0, 0.4)
-    χs = contribution(Species(-1.0, 0.5, sep), 1.3 - 0.05im, k)
-    χm = contribution(Species(-1.0, 0.5, mx), 1.3 - 0.05im, k)
+    χs = contribution(NormalizedSpecies(-1.0, 0.5, sep), 1.3 - 0.05im, k)
+    χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
     @test all(isfinite, χs)
     @test χs ≈ χm
     @test abs(χs[1, 3]) < 1e-12 && abs(χs[2, 3]) < 1e-12  # transverse/parallel decouple
@@ -49,6 +49,6 @@ end
     fpar(u) = (1 + u^2 / 3)^(-2)
     sep = SeparableVDF(fpar, v -> exp(-v^2) / pi;
         parlower=-30.0, parupper=30.0, perpupper=10.0)
-    χ = contribution(Species(-1.0, 1.0, sep), 1.2 - 0.05im, Wavenumber(0.3, 0.4))
+    χ = contribution(NormalizedSpecies(-1.0, 1.0, sep), 1.2 - 0.05im, Wavenumber(0.3, 0.4))
     @test all(isfinite, χ)
 end

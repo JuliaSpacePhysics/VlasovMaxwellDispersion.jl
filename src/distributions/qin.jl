@@ -7,7 +7,7 @@
 # Empirically A is a CROSS-VALIDATION backend, not a speedup.
 # Using residue extraction so the first integrand is smooth in 2-D (near-resonance peaks removed) and
 # the second is a 1-D p⊥ integral carrying the analytic pole + Landau residue
-function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s::Species, ω, k; rtol = 1.0e-7, norm = x -> maximum(abs, x))
+function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-7, norm = x -> maximum(abs, x))
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     lo, hi = d.parlo, d.parhi
     ns = _resonance_harmonics(ω, Ω, kz, lo, hi)
@@ -35,7 +35,7 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s:
     return SMatrix{3, 3, ComplexF64}((s.Pi2 / (ω * Ω)) .* (bulk .+ poles))
 end
 
-function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s::Species, ω, k; norm = x -> maximum(abs, x))
+function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x))
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     β = kperp / Ω
     pmax = max(abs(d.parlo), abs(d.parhi))

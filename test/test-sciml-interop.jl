@@ -10,7 +10,7 @@ using VlasovMaxwellDispersion
 import SimpleNonlinearSolve as SNS
 import BracketingNonlinearSolve as BNS
 
-p = Plasma(Species(Omega=1.0, Pi2=1.0, vdf=Maxwellian(1.0)))
+p = NormalizedSpecies(Omega=1.0, Pi2=1.0, vdf=Maxwellian(1.0))
 k = Wavenumber(kperp=0.01, kz=0.5)
 prob = LocalDispersionProblem(p, k, 0.6)
 f = residual(prob)

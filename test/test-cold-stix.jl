@@ -4,7 +4,7 @@
 
 using Test
 using VlasovMaxwellDispersion
-using VlasovMaxwellDispersion: Species, Wavenumber, 𝒟
+using VlasovMaxwellDispersion: NormalizedSpecies, Wavenumber, 𝒟
 using LinearAlgebra
 using Roots
 const VM = VlasovMaxwellDispersion
@@ -16,9 +16,9 @@ const Omega_i = 1 / mp_me
 const Pi2_e = 4.0
 const Pi2_i = Pi2_e / mp_me   # quasineutral equal-density e-p: wpi^2 = wpe^2 * (me/mi)
 
-const electrons = Species(Omega_e, Pi2_e, VM.ColdVDF())
-const protons = Species(Omega_i, Pi2_i, VM.ColdVDF())
-const plasma = VM.Plasma(electrons, protons)
+const electrons = NormalizedSpecies(Omega_e, Pi2_e, VM.ColdVDF())
+const protons = NormalizedSpecies(Omega_i, Pi2_i, VM.ColdVDF())
+const plasma = (electrons, protons)
 
 # Stix S, D, P closed forms (two-fluid cold), summed over species (Ch.1-2).
 stix_S(om) = 1 - Pi2_e / (om^2 - Omega_e^2) - Pi2_i / (om^2 - Omega_i^2)
@@ -40,7 +40,7 @@ stix_L(om) = stix_S(om) - stix_D(om)
 end
 
 @testset "vacuum sanity (cold limit, Pi2=0): n^2=1 light line" begin
-    vac = VM.Plasma(Species(0.0, 0.0, VM.ColdVDF()))
+    vac = NormalizedSpecies(0.0, 0.0, VM.ColdVDF())
     ω = 1.0 + 0im
     k = Wavenumber(0.0, 1.0)  # n = kc/ω = 1
     @test abs(det(𝒟(vac, ω, k))) < 1.0e-12

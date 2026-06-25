@@ -1,7 +1,7 @@
 @testitem "arc-length track follows vacuum light branch" begin
     using VlasovMaxwellDispersion
 
-    plasma = Plasma(Species(0.0, 0.0, ColdVDF()))
+    plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
     ks = [Wavenumber(0.0, kz) for kz in range(0.5, 1.0; length=6)]
     roots = solve(BranchProblem(plasma, ks, 0.5 + 0im), ArcLength()).omega
 
@@ -10,7 +10,7 @@
 end
 
 @testitem "arc-length track accepts unsized iterables" begin
-    plasma = Plasma(Species(0.0, 0.0, ColdVDF()))
+    plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
     ks = (Wavenumber(0.0, kz) for kz in (0.5, 0.6, 0.7))
     roots = solve(BranchProblem(plasma, ks, 0.5 + 0im), ArcLength()).omega
 
@@ -32,10 +32,10 @@ end
     v0m = -nb * v0 / (nm + nb)
     v0b = v0m + v0
 
-    plasma = Plasma(
-        Species(1.0, nm * pi2_i, Maxwellian(; vth_par=vth_m, vth_perp=vth_m, vd=v0m)),
-        Species(1.0, nb * pi2_i, Maxwellian(; vth_par=vth_b, vth_perp=vth_b, vd=v0b)),
-        Species(-mp_me, pi2_i * mp_me, Maxwellian(; vth_par=vth_e, vth_perp=vth_e)),
+    plasma = (
+        NormalizedSpecies(1.0, nm * pi2_i, Maxwellian(; vth_par=vth_m, vth_perp=vth_m, vd=v0m)),
+        NormalizedSpecies(1.0, nb * pi2_i, Maxwellian(; vth_par=vth_b, vth_perp=vth_b, vd=v0b)),
+        NormalizedSpecies(-mp_me, pi2_i * mp_me, Maxwellian(; vth_par=vth_e, vth_perp=vth_e)),
     )
     ks = [Wavenumber(0.0, ka / vm_c) for ka in 0.1:-0.001:0.01]
 

@@ -5,9 +5,9 @@
     k = Wavenumber(0.2, 0.3)
     omega = 0.5 + 0.0im
 
-    epsilon_cold = dielectric(Species(Omega_e, Pi2, ColdVDF()), omega, k)
+    epsilon_cold = dielectric(NormalizedSpecies(Omega_e, Pi2, ColdVDF()), omega, k)
     for vth in (1.0e-2, 1.0e-3, 1.0e-4)
-        epsilon_hot = dielectric(Species(Omega_e, Pi2, Maxwellian(vth)), omega, k)
+        epsilon_hot = dielectric(NormalizedSpecies(Omega_e, Pi2, Maxwellian(vth)), omega, k)
         @test maximum(abs.(epsilon_hot .- epsilon_cold)) < 10 * vth^2
     end
 end
@@ -24,7 +24,7 @@ end
     kz = VM.para(k)
     lambdaD2 = vth^2 / (2 * Pi2)
 
-    pl = Plasma(Species(Omega_e, Pi2, Maxwellian(vth)))
+    pl = NormalizedSpecies(Omega_e, Pi2, Maxwellian(vth))
     f_es(omega) = electrostatic_det(pl, omega, k) / VM.abs2(k)
     f_std(omega) = 1 + (1 / (kz^2 * lambdaD2)) * (1 + (omega / (kz * vth)) * Z(omega / (kz * vth)))
 
@@ -48,7 +48,7 @@ end
     lambdaD2 = vth^2 / (2 * Pi2)
     klD = sqrt(kz^2 * lambdaD2)
 
-    pl = Plasma(Species(Omega_e, Pi2, Maxwellian(vth)))
+    pl = NormalizedSpecies(Omega_e, Pi2, Maxwellian(vth))
     f_es(omega) = electrostatic_det(pl, omega, k) / VM.abs2(k)
     f_std(omega) = 1 + (1 / (kz^2 * lambdaD2)) * (1 + (omega / (kz * vth)) * Z(omega / (kz * vth)))
 

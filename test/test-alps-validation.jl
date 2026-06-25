@@ -4,9 +4,9 @@
 
     vA = 1.0e-4
     me = 5.44662e-4
-    ion = Species(1.0, 1 / vA^2, Maxwellian(vA))
-    electron = Species(-1 / me, 1 / (me * vA^2), Maxwellian(vA / sqrt(me)))
-    plasma = Plasma(ion, electron)
+    ion = NormalizedSpecies(1.0, 1 / vA^2, Maxwellian(vA))
+    electron = NormalizedSpecies(-1 / me, 1 / (me * vA^2), Maxwellian(vA / sqrt(me)))
+    plasma = (ion, electron)
 
     data = readdlm(joinpath(@__DIR__, "fixtures/alps/test_kpar_fast.scan_kpara_1.root_1"))
     ks = [Wavenumber(row[1] / vA, row[2] / vA) for row in eachrow(data)]
@@ -24,9 +24,9 @@ end
     using DelimitedFiles
     using LinearAlgebra
 
-    ion = Species(1.0, 1.0, MaxwellJuttner(2.0))
-    electron = Species(-1.0, 1.0, MaxwellJuttner(2.0))
-    plasma = Plasma(ion, electron)
+    ion = NormalizedSpecies(1.0, 1.0, MaxwellJuttner(2.0))
+    electron = NormalizedSpecies(-1.0, 1.0, MaxwellJuttner(2.0))
+    plasma = (ion, electron)
 
     data = readdlm(joinpath(@__DIR__, "fixtures/alps/test_relativistic.scan_kpara_1.root_2"))
     residuals = map(eachrow(data)) do row
@@ -43,9 +43,9 @@ end
     using DelimitedFiles
     using LinearAlgebra
 
-    ion = Species(1.0, 1.0, MaxwellJuttner(2.0))
-    electron = Species(-1.0, 1.0, MaxwellJuttner(2.0))
-    plasma = Plasma(ion, electron)
+    ion = NormalizedSpecies(1.0, 1.0, MaxwellJuttner(2.0))
+    electron = NormalizedSpecies(-1.0, 1.0, MaxwellJuttner(2.0))
+    plasma = (ion, electron)
 
     data = readdlm(joinpath(@__DIR__, "fixtures/alps/test_relativistic.scan_kpara_1.root_1"))
 

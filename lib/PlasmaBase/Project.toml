@@ -1,0 +1,20 @@
+name = "PlasmaBase"
+uuid = "08180eed-d86e-466d-af9d-ca90f527ad29"
+authors = ["Zijin Zhang <zijin@ucla.edu>"]
+version = "0.1.0"
+
+[weakdeps]
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[extensions]
+PlasmaBaseUnitfulExt = "Unitful"
+
+[compat]
+Unitful = "1"
+julia = "1.10"
+
+[extras]
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[targets]
+test = ["Unitful"]

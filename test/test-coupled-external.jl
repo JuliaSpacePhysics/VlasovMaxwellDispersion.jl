@@ -14,10 +14,10 @@
     dpar(u, w) = (s=sqrt(u^2 + w^2); s == 0 ? 0.0 * u : f0(u, w) * (-(s - vshell) / σ2) * (u / s))
     dprp(u, w) = (s=sqrt(u^2 + w^2); s == 0 ? 0.0 * w : f0(u, w) * (-(s - vshell) / σ2) * (w / s))
     L = vshell + 9vthi
-    el = Species(-1836.2059501591832, 346868.41251994757, Maxwellian(vth_par=vthe, vth_perp=vthe))
-    ish = Species(1.0, 188.90496051920377,
+    el = NormalizedSpecies(-1836.2059501591832, 346868.41251994757, Maxwellian(vth_par=vthe, vth_perp=vthe))
+    ish = NormalizedSpecies(1.0, 188.90496051920377,
         CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar=dpar, dperp=dprp))
-    ε = dielectric(Plasma(el, ish), ω, k)
+    ε = dielectric((el, ish), ω, k)
     # LMV reference ε (row-major i,j)
     εref = ComplexF64[
         296.2155861486968-3.319922531867824im 3.7626621891157885+177.04618736508462im -0.0025053128619864605+5.637511809770261e-5im
@@ -36,7 +36,7 @@ end
         du(u, v) = (-1 - κ) * (1 + (u^2 + v^2) / s)^(-2 - κ) * (2u / s)
         dv(u, v) = (-1 - κ) * (1 + (u^2 + v^2) / s)^(-2 - κ) * (2v / s)
         L = 12vth
-        Species(Ω, Pi2, CoupledVDF(f; parlower=(-L), parupper=L, perpupper=L, dpar=du, dperp=dv))
+        NormalizedSpecies(Ω, Pi2, CoupledVDF(f; parlower=(-L), parupper=L, perpupper=L, dpar=du, dperp=dv))
     end
     plasma = (bikappa_species(1.0, 1 / vA^2, vA),
         bikappa_species(-1 / me, 1 / (me * vA^2), vA / sqrt(me)))

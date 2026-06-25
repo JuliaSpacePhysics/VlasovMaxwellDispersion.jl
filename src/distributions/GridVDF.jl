@@ -2,7 +2,7 @@
 # over the adaptive-quadrature coupled path; not yet wired.
 
 """
-    GridVDF(vpar, vperp, f; method=NonnegBSpline{3}())
+    GridVDF(vpar, vperp, f; method=NonnegBSpline{3}(), regime=NonRelativistic())
 
 Tabulated gyrotropic VDF: `f[i,j] = f₀(vpar[i], vperp[j])` on an ascending grid
 (`vperp[1] ≥ 0`). A `method` turns the grid into a **tensor** `f₀` (knots + per-cell power coeffs) — 
@@ -19,7 +19,9 @@ struct GridVDF{C,F<:TensorSplineFit} <: AbstractVDF
     coupled::C          # CoupledVDF wrapping the complex-evaluable spline
 end
 
-function GridVDF(vpar, vperp, f; tol=1.0e-3, method=nothing)
+regime(d::GridVDF) = regime(d.coupled)
+
+function GridVDF(vpar, vperp, f; tol=1.0e-3, method=nothing, regime=NonRelativistic())
     method = @something(method, NonnegBSpline{3}(; tol, maxknots_par=length(vpar), maxknots_perp=length(vperp)))
     vp, vq = collect(float.(vpar)), collect(float.(vperp))
     # rescale as a tiny-valued grid (e.g. exp(-μγ)~1e-18) would otherwise underflow the fit to all-zeros
@@ -31,7 +33,7 @@ function GridVDF(vpar, vperp, f; tol=1.0e-3, method=nothing)
     dperp = (u, v) -> _fit_dperp(fit, u, v)
     cpl = CoupledVDF(
         fit; parlower=fit.knots_par[1], parupper=fit.knots_par[end],
-        perpupper=fit.knots_perp[end], dpar, dperp, normalize=false
+        perpupper=fit.knots_perp[end], dpar, dperp, normalize=false, regime
     )
     GridVDF(vp, vq, fit, cpl)
 end
@@ -75,10 +77,10 @@ end
 # Exact parallel moments make the GridVDF far faster than the generic
 # coupled path: f₀ IS piecewise-polynomial, so the inner Landau H∥ closes per cell
 # (`cell_hilbert_landau`) instead of adaptive QuadGK.
-function contribution(d::GridVDF, s::Species, ω, k; closure::IntegralClosure=HarmonicSum())
+function contribution(d::GridVDF, s, ω, k; closure::IntegralClosure=HarmonicSum())
     if closure isa HarmonicSum
-        Regime(s) isa NonRelativistic && return _grid_contribution(d, s, complex(float(ω)), k)
-        Regime(s) isa Relativistic && return _grid_contribution_rel(d, s, complex(float(ω)), k)
+        regime(d) isa NonRelativistic && return _grid_contribution(d, s, complex(float(ω)), k)
+        regime(d) isa Relativistic && return _grid_contribution_rel(d, s, complex(float(ω)), k)
     end
     return contribution(d.coupled, s, ω, k; closure)
 end
@@ -93,7 +95,7 @@ end
 # negligible. The harmonic is the shared edge-mapped `_coupled_harmonic_rel`
 # (§5.2.2 disk→box maps, inner single-pole Plemelj) with the bicubic ∇f₀; the maps
 # keep every node on the disk (real p⊥), so the bicubic is never probed off-grid.
-function _grid_contribution_rel(d::GridVDF, s::Species, ω, k)
+function _grid_contribution_rel(d::GridVDF, s, ω, k)
     cpl = d.coupled
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
@@ -106,7 +108,7 @@ function _grid_contribution_rel(d::GridVDF, s::Species, ω, k)
     return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
 end
 
-function _grid_contribution(d::GridVDF, s::Species, ω, k)
+function _grid_contribution(d::GridVDF, s, ω, k)
     fit = d.fit
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
@@ -222,13 +224,24 @@ function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, a)
     for j in 1:(length(kq)-1)
         wl, wr = kq[j], kq[j+1]
         z0Fc, z1Fc, z2Fc, z0Tc, z1Tc = _grid_parmoment_polys(fit, j, ζ, kz)
-        seg = first(QuadGK.quadgk(wl, wr; rtol=1.0e-6, norm=x -> maximum(abs, x)) do v
+        integ = v -> begin
             t = v - wl
             z = (evalpoly(t, z0Fc.data), evalpoly(t, z1Fc.data), evalpoly(t, z2Fc.data),
                 evalpoly(t, z0Tc.data), evalpoly(t, z1Tc.data))
-            return _In_block(z, _perp_Bessel_triplet(n, a, v), v, ω, kz, n * Ω)
-        end)
+            _In_block(z, _perp_Bessel_triplet(n, a, v), v, ω, kz, n * Ω)
+        end
+        # The Bessel weight J_n(a v) has v-wavelength ≈ π/a; adaptive QuadGK over a
+        # cell spanning many wavelengths can't resolve it. Pre-split the cell at the
+        # oscillation scale (≥2 panels/wavelength) and let QuadGK adapt within each.
+        seg = first(_quadgk_osc(integ, wl, wr, a))
         acc = acc .+ seg
     end
     return acc
+end
+
+# Adaptive QuadGK with oscillation-scale breakpoints for the Bessel kernel.
+@inline function _quadgk_osc(f, wl, wr, a)
+    nb = ceil(Int, abs(a) * (wr - wl) / (π / 2))
+    pts = nb <= 1 ? (wl, wr) : range(wl, wr; length = nb + 1)
+    return QuadGK.quadgk(f, pts...; rtol = 1.0e-6, norm = x -> maximum(abs, x))
 end
