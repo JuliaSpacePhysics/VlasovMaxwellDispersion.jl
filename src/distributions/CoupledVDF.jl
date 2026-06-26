@@ -11,7 +11,7 @@
 
 Prefer [`SeparableVDF`] when `f0(p⊥,p∥)=f⊥(p⊥)f∥(p∥)`.
 """
-struct CoupledVDF{F,Dp,Dq,T,R<:Regime} <: AbstractVDF
+struct CoupledVDF{F, Dp, Dq, T, R <: Regime} <: AbstractVDF
     f0::F
     dpar::Dp        # ∂f₀/∂p∥
     dperp::Dq       # ∂f₀/∂p⊥
@@ -24,40 +24,42 @@ end
 regime(d::CoupledVDF) = d.regime
 
 function CoupledVDF(
-    f0; parlower, parupper, perpupper, dpar=nothing, dperp=nothing, normalize=true,
-    regime=NonRelativistic()
-)
+        f0; parlower, parupper, perpupper, dpar = nothing, dperp = nothing, normalize = true,
+        regime = NonRelativistic()
+    )
     plo, phi = promote(float(parlower), float(parupper))
     qhi = oftype(phi, perpupper)
     n = normalize ?
         2π * QuadGK.quadgk(
-        q -> q * QuadGK.quadgk(u -> f0(q, u), plo, phi; rtol=1.0e-9)[1],
-        zero(qhi), qhi; rtol=1.0e-9
-    )[1] : one(plo)
+            q -> q * QuadGK.quadgk(u -> f0(q, u), plo, phi; rtol = 1.0e-9)[1],
+            zero(qhi), qhi; rtol = 1.0e-9
+        )[1] : one(plo)
     fn = (q, u) -> f0(q, u) / n
     dp = isnothing(dpar) ? ((q, u) -> _dwrt2(fn, q, u)) : ((q, u) -> dpar(q, u) / n)
     dq = isnothing(dperp) ? ((q, u) -> _dwrt1(fn, q, u)) : ((q, u) -> dperp(q, u) / n)
     return CoupledVDF(fn, dp, dq, plo, phi, qhi, regime)
 end
 
-function contribution(d::CoupledVDF, s, ω, k; closure=HarmonicSum())
+function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum())
     return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k)
 end
 
-function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm=x -> maximum(abs, x))
+function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x))
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
     L, U = d.parlo, d.parhi
     p⊥²_mean = 2π * QuadGK.quadgk(
-        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol=1.0e-7)[1],
-        zero(d.perphi), d.perphi; rtol=1.0e-7
+        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol = 1.0e-7)[1],
+        zero(d.perphi), d.perphi; rtol = 1.0e-7
     )[1]
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
-    χ = first(QuadGK.quadgk(zero(d.perphi), d.perphi; rtol=1.0e-6, norm) do v
-        _coupled_perp(v, ns, d, ω, Ω, kz, a, L, U)
-    end)
-    return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
+    χ = first(
+        QuadGK.quadgk(zero(d.perphi), d.perphi; rtol = 1.0e-6, norm) do v
+            _coupled_perp(v, ns, d, ω, Ω, kz, a, L, U)
+        end
+    )
+    return (s.Pi2 / ω^2) * χ
 end
 
 # Relativistic (γ,p∥) momentum-space path. Momentum distribution f₀ must be
@@ -71,11 +73,11 @@ function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, 
     f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax)
     χ = converge(f, 1, 1.0e-6; nmax)
     χ = χ .+ _ee33(_bernstein_rel(d, γmax))
-    return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
+    return (s.Pi2 / ω^2) * χ
 end
 
-# Relativistic non-resonant e∥e∥ Bernstein term 𝒳_B (derivation §5)
-function _bernstein_rel(d, γmax; GLγ=_GLγ, GLp=_GLp)
+# Relativistic non-resonant e∥e∥ term without prefactor
+function _bernstein_rel(d, γmax; GLγ = _GLγ, GLp = _GLp)
     gn, gw = GLγ
     pn, pw = GLp
     acc = zero(ComplexF64)
@@ -113,16 +115,16 @@ const _GLp = QuadGK.gauss(32)
 @inline _rel_integrand(u, γ, n, a, ω, kz, d) = _rel_integrand(u, sqrt(complex(γ^2 - 1 - u^2)), γ, n, a, ω, kz, d)
 
 
-# One relativistic harmonic, edge-mapped (derivation §5.2.2). 
+# One relativistic harmonic, edge-mapped (derivation §5.2.2).
 # Map the disk (γ,p∥) → fixed box (q,θ)∈[0,1]×[−π/2,π/2]:
 #   p∥=umax·sinθ, p⊥=umax·cosθ  — inner Jacobian p⊥ cancels the rim 1/p⊥ exactly;
 #   γ=1+(γmax−1)q²              — outer Jacobian ∝q flattens the √(γ−1) floor.
-# Bessel stays on the fast real path. 
+# Bessel stays on the fast real path.
 # Off-disk poles (this n doesn't resonate at this γ) aren't peeled — nζ=0 there, so the subtraction reduces to direct integration
-function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ=_GLγ, GLp=_GLp)
+function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ = _GLγ, GLp = _GLp)
     gn, gw = GLγ
     pn, pw = GLp
-    acc = zero(SMatrix{3,3,ComplexF64})
+    acc = zero(SMatrix{3, 3, ComplexF64})
     for ig in eachindex(gn)
         q = (gn[ig] + 1) / 2
         γ = 1 + (γmax - 1) * q^2
@@ -130,8 +132,8 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ=_GLγ, GLp=_GLp)
         umax = sqrt(γ^2 - 1)
         ζ = (γ * ω - n * Ω) / kz                 # single Landau pole in p∥
         inrange = -umax < real(ζ) < umax
-        nζ = inrange ? _rel_integrand(ζ, γ, n, a, ω, kz, d) : zero(SMatrix{3,3,ComplexF64})
-        inner = zero(SMatrix{3,3,ComplexF64})
+        nζ = inrange ? _rel_integrand(ζ, γ, n, a, ω, kz, d) : zero(SMatrix{3, 3, ComplexF64})
+        inner = zero(SMatrix{3, 3, ComplexF64})
         for ip in eachindex(pn)
             θ = pn[ip] * (π / 2)
             u, w = umax * sin(θ), umax * cos(θ)  # p⊥=w real on the disk
@@ -147,22 +149,24 @@ end
 # I(p⊥) for the WHOLE harmonic sum at one perp node
 function _coupled_perp(v, ns, d::CoupledVDF, ω, Ω, kz, a, L, U)
     # Landau–Hilbert for 5 parallel moments: [∂⊥, u·∂⊥, u²·∂⊥, ∂∥, u·∂∥]
-    g5(u) = (q=d.dperp(v, u); p=d.dpar(v, u); SVector(q, u * q, u^2 * q, p, u * p))
+    g5(u) = (q = d.dperp(v, u); p = d.dpar(v, u); SVector(q, u * q, u^2 * q, p, u * p))
     ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = g5.(ζs)
     bs = _perp_Bessel_triplet.(ns, a, v)
     # regularized integral part: Σ_n χ_n with the Plemelj removable singularity
-    reg = first(QuadGK.quadgk(L, U; rtol=1.0e-7, norm=x -> maximum(abs, x)) do u
-        g = g5(u)
-        acc = zero(SMatrix{3,3,ComplexF64})
-        @inbounds for i in eachindex(ns)
-            m = (-1 / kz) .* ((g - gζs[i]) / (u - ζs[i]))
-            acc += _In_block((m[1], m[2], m[3], m[4], m[5]), bs[i], v, ω, kz, ns[i] * Ω)
+    reg = first(
+        QuadGK.quadgk(L, U; rtol = 1.0e-7, norm = x -> maximum(abs, x)) do u
+            g = g5(u)
+            acc = zero(SMatrix{3, 3, ComplexF64})
+            @inbounds for i in eachindex(ns)
+                m = (-1 / kz) .* ((g - gζs[i]) / (u - ζs[i]))
+                acc += _In_block((m[1], m[2], m[3], m[4], m[5]), bs[i], v, ω, kz, ns[i] * Ω)
+            end
+            acc
         end
-        acc
-    end)
+    )
     # analytic log-ratio (+ Landau) part, constant in u
-    logacc = zero(SMatrix{3,3,ComplexF64})
+    logacc = zero(SMatrix{3, 3, ComplexF64})
     @inbounds for i in eachindex(ns)
         m = (-1 / kz) .* (gζs[i] .* _landau_logfac(ζs[i], L, U))
         logacc += _In_block((m[1], m[2], m[3], m[4], m[5]), bs[i], v, ω, kz, ns[i] * Ω)

@@ -27,7 +27,7 @@ include("integrals.jl")
 include("hilbert_pwpoly.jl")   # parallel H∥ piecewise-poly primitive
 include("perp_analytic.jl")    # perpendicular P⊥ Bessel-moment primitive
 include("projection.jl")
-include("distributions.jl")
+include("distributions/distributions.jl")
 include("builders.jl")         # particle-identity + physical-unit Species adapters
 include("susceptibility.jl")
 include("solve.jl")
@@ -38,7 +38,8 @@ export Wavenumber, para, perp
 # re-exported physical vocabulary from PlasmaBase
 export AbstractVDF, Particle, Electron, Proton, Ion, Species, Plasma
 export NormalizedSpecies
-export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, CoupledVDF
+export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, CoupledVDF, GaussianRing
+export Separable, ⊗, Gaussian, GyroRing
 export plasma_dispersion_function, Z, hilbert
 export IntegralClosure, HarmonicSum, Newberger
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual
