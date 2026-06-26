@@ -182,8 +182,8 @@ end
     kp = fit.knots_par
     c = fit.coeffs
     T = complex(promote_type(Tc, typeof(ζ)))
-    z0F = z1F = z2F = zero(SVector{NQ - 1,T})   # t^0..t^{NQ-2}
-    z0T = z1T = zero(SVector{NQ,T})             # t^0..t^{NQ-1}
+    MF0 = MF1 = MF2 = zero(SVector{NQ - 1,T})   # t^0..t^{NQ-2}
+    MT0 = MT1 = zero(SVector{NQ,T})             # t^0..t^{NQ-1}
     @inbounds for i in 1:(length(kp)-1)
         vl, vr = kp[i], kp[i+1]
         cell = c[i, j]
@@ -197,9 +197,9 @@ end
             hF0 = _cellH(P, vl, vr, ζ, logr, landau)
             hF1 = _cellH(vcat(SVector(zero(eltype(P))), P), vl, vr, ζ, logr, landau)
             hF2 = _cellH(vcat(SVector(zero(eltype(P)), zero(eltype(P))), P), vl, vr, ζ, logr, landau)
-            z0F = setindex(z0F, z0F[b+1] + hF0, b + 1)
-            z1F = setindex(z1F, z1F[b+1] + hF1, b + 1)
-            z2F = setindex(z2F, z2F[b+1] + hF2, b + 1)
+            MF0 = setindex(MF0, MF0[b+1] + hF0, b + 1)
+            MF1 = setindex(MF1, MF1[b+1] + hF1, b + 1)
+            MF2 = setindex(MF2, MF2[b+1] + hF2, b + 1)
         end
         # ∂∥ slice: t-power b ⇐ column b+1; s∥-deriv poly Q (length NP-1, coeff
         # of s^{m-1} is m·cell[m+1,col]).
@@ -208,12 +208,12 @@ end
             Q = _shift_to_abs(SVector(ntuple(m -> m * cell[m+1, col], Val(NP - 1))), vl)
             hT0 = _cellH(Q, vl, vr, ζ, logr, landau)
             hT1 = _cellH(vcat(SVector(zero(eltype(Q))), Q), vl, vr, ζ, logr, landau)
-            z0T = setindex(z0T, z0T[b+1] + hT0, b + 1)
-            z1T = setindex(z1T, z1T[b+1] + hT1, b + 1)
+            MT0 = setindex(MT0, MT0[b+1] + hT0, b + 1)
+            MT1 = setindex(MT1, MT1[b+1] + hT1, b + 1)
         end
     end
     f = -1 / kz
-    return (f * z0F, f * z1F, f * z2F, f * z0T, f * z1T)
+    return (f * MF0, f * MF1, f * MF2, f * MT0, f * MT1)
 end
 
 # One cyclotron harmonic: loop perp cells, precompute the parallel-moment
@@ -225,12 +225,12 @@ function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, a)
     acc = zero(SMatrix{3,3,ComplexF64})
     for j in 1:(length(kq)-1)
         wl, wr = kq[j], kq[j+1]
-        z0Fc, z1Fc, z2Fc, z0Tc, z1Tc = _grid_parmoment_polys(fit, j, ζ, kz)
+        MF0c, MF1c, MF2c, MT0c, MT1c = _grid_parmoment_polys(fit, j, ζ, kz)
         integ = v -> begin
             t = v - wl
-            z = (evalpoly(t, z0Fc.data), evalpoly(t, z1Fc.data), evalpoly(t, z2Fc.data),
-                evalpoly(t, z0Tc.data), evalpoly(t, z1Tc.data))
-            _In_block(z, _perp_Bessel_triplet(n, a, v), v, ω, kz, n * Ω)
+            M = (evalpoly(t, MF0c.data), evalpoly(t, MF1c.data), evalpoly(t, MF2c.data),
+                evalpoly(t, MT0c.data), evalpoly(t, MT1c.data))
+            _In_block(M, _perp_Bessel_triplet(n, a, v), v, ω, kz, n * Ω)
         end
         # The Bessel weight J_n(a v) has v-wavelength ≈ π/a; adaptive QuadGK over a
         # cell spanning many wavelengths can't resolve it. Pre-split the cell at the

@@ -74,7 +74,6 @@ accelerations, both learned from the references:
 | NNLS B-spline projection | `projection.jl` | positivity/C¹/error-bound |
 | relativistic Maxwell–Jüttner | `MaxwellJuttner.jl` | ALPS `relativistic` roots 1&2; μ→∞ limit |
 | GRPF `GlobalDispersionProblem` + `BranchProblem` | `solve.jl`/`track.jl` | ALPS `kpar_fast` scan (rtol 1e-2); GRPF unit |
-| arbitrary analytic `f(u)`, electrostatic | `SeparableVDF.jl` | `hilbert(Gaussian)==Z`; bump-on-tail growth |
 | arbitrary separable `f∥·f⊥`, full EM oblique | `SeparableVDF.jl` | ≡ bi-Maxwellian χ (3e-11) & root (1e-13) |
 | arbitrary inseparable `f₀(v∥,v⊥)`, full EM | `CoupledVDF.jl` | ≡ bi-Maxwellian χ (3e-11); inseparable finite |
 
