@@ -1,7 +1,3 @@
-# --- Core 1-D resonant primitives (the spine) ---
-# Every velocity integral reduces to a Cauchy/Hilbert integral in v_par with
-# pole(s) at the resonance. Maxwellian fast path closes it via Z(zeta).
-
 # Fried-Conte plasma dispersion function `Z(z) = i√π · w(z)` with the Faddeeva function `w(z) = erfcx(-i z)`.
 @inline plasma_dispersion_function(z) = im * sqrt(oftype(real(complex(z)), pi)) * erfcx(-im * z)
 
@@ -13,12 +9,6 @@ const Z = plasma_dispersion_function
 # Scaled Bessel moment `Γ_n(λ) = I_n(λ) e^{-λ}` from perp gyro-averaging.
 # `λ = (k⊥ v_th⊥ / Ω_s)^2 / 2`. Uses scaled modified Bessel `besselix`.
 @inline Gamma_n(n, lambda) = besselix(n, lambda)
-
-# Derivative Γ_n'(λ) via the recurrence I_n' = (I_{n-1}+I_{n+1})/2; the e^{-λ}
-# factor makes Γ_n' = (Γ_{n-1}+Γ_{n+1})/2 - Γ_n.
-@inline function Gamma_n_prime(n, lambda)
-    return (Gamma_n(n - 1, lambda) + Gamma_n(n + 1, lambda)) / 2 - Gamma_n(n, lambda)
-end
 
 """
     hilbert(g, ζ; lower, upper, rtol=1e-9) -> Complex
@@ -37,7 +27,7 @@ the Landau continuation added only when `ζ` drops below the real axis with
 `Re ζ` inside the support (the growing-mode sheet). General-`g` sibling of the
 `Z` overload: `hilbert(v->exp(-v^2)/√π, ζ; lower=-Inf, upper=Inf) == Z(ζ)`.
 """
-function hilbert(g, ζ; lower, upper, rtol=1.0e-9)
+function hilbert(g, ζ; lower, upper, rtol = 1.0e-9)
     gζ = g(ζ)
     reg = QuadGK.quadgk(v -> (g(v) - gζ) / (v - ζ), lower, upper; rtol)[1]
     return reg + gζ * _landau_logfac(ζ, lower, upper)
@@ -51,7 +41,7 @@ end
     return (imag(ζ) < 0 && lo < real(ζ) < hi) ? logfac + 2π * im : logfac
 end
 
-function converge(f, nmin::Integer, rtol; nmax::Integer=200)
+function converge(f, nmin::Integer, rtol; nmax::Integer = 200)
     total = f(0)
     n = 1
     while n <= nmax
@@ -74,7 +64,7 @@ end
 Hard harmonic cap from Bessel asymptotics: `J_n` (and `I_n e^{-λ}`) negligible
 for `n > b + pad·b^{1/3}` with `b = √(2λ)`.
 """
-@inline function nmax_bessel(lambda; pad=5)
+@inline function nmax_bessel(lambda; pad = 5)
     b = sqrt(2 * lambda)
     return ceil(Int, b + pad * cbrt(b)) + 1
 end

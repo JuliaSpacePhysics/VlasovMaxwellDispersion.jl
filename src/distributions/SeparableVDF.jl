@@ -7,10 +7,6 @@ magnetized EM** susceptibility at oblique propagation (`k⊥≠0`). Both must be
 
 The one-argument form is a reduced parallel distribution for the field-aligned
 electrostatic path (`k⊥=0`): Landau damping / two-stream / bump-on-tail.
-
-Parallel moments close via the generic `hilbert` primitive; perp Bessel moments
-by adaptive quadrature. The 3×3 tensor algebra is shared with the bi-Maxwellian
-path (validated: `SeparableVDF(Gaussian,Gaussian) == Maxwellian`).
 """
 struct SeparableVDF{Fp,Dp,Fq,Dq,T,Q} <: AbstractVDF
     fpar::Fp
@@ -60,7 +56,7 @@ function contribution(d::SeparableVDF, s, ω, k; kwargs...)
     nmax = nmax_bessel(a^2 * v⊥²_mean / 2)          # harmonic cap from the perp scale
     f = n -> _separable_harmonic(n, d, ω, Ω, kz, a)
     χ = converge(f, 1, 1.0e-7; nmax)
-    return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
+    return (s.Pi2 / ω^2) * χ
 end
 
 # χ_zz = -(Π²/k∥²) ∫ f∥′(u)/(u − ω/k∥) du
@@ -80,8 +76,7 @@ function _separable_harmonic(n, d::SeparableVDF, ω, Ω, kz, a)
     L, U = d.parlo, d.parhi
     # Parallel: Landau–Hilbert for [f∥, u·f∥, u²·f∥, f∥′, u·f∥′]; the −1/kz folds the resonance kz.
     gpar(u) = (fp=d.fpar(u); dp=d.dfpar(u); SVector(fp, u * fp, u^2 * fp, dp, u * dp))
-    z = (-1 / kz) .* hilbert(gpar, ζ; lower=L, upper=U)
-    z0F, z1F, z2F, z0T, z1T = z[1], z[2], z[3], z[4], z[5]
+    M = (-1 / kz) .* hilbert(gpar, ζ; lower=L, upper=U)
     # Perp moments by quadrature over [0, perphi]: the 6 distinct entries of the
     # symmetric kernel bvec⊗bvec, bvec=(v⊥Rn, v⊥Jn′, Jn) with the ring kernel
     # Rn=(n/z)Jn=½(J_{n−1}+J_{n+1}) (regular at k⊥=0), in each of the f⊥′ (∂F) and
@@ -100,5 +95,5 @@ function _separable_harmonic(n, d::SeparableVDF, ω, Ω, kz, a)
     P = 2π .* QuadGK.quadgk(perptri, zero(Q), Q; rtol=1.0e-8)[1]
     P∂ = _symmat(P[1], P[2], P[3], P[4], P[5], P[6])
     PF = _symmat(P[7], P[8], P[9], P[10], P[11], P[12])
-    return _chi_mblock((z0F, z1F, z2F, z0T, z1T), P∂, PF, ω, kz, n * Ω)
+    return _chi_mblock(M, P∂, PF, ω, kz, n * Ω)
 end

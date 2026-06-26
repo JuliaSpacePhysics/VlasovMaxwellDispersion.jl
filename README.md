@@ -1,6 +1,6 @@
 # VlasovMaxwellDispersion.jl
 
-Linear hot-magnetized Vlasov–Maxwell dispersion solver. 
+Linear hot-magnetized Vlasov–Maxwell dispersion solver. Performant for arbitrary velocity distribution functions (VDFs), analytic or numerical. Even faster for specialized cases (e.g., bi-Maxwellian, kappa, etc.).
 
 Full derivation: [`derivation.md`](docs/derivation.md).
 Method and internals: [`architecture.md`](docs/architecture.md).
@@ -51,5 +51,5 @@ Solvers follow the `CommonSolve.solve(problem, algorithm)` interface: a
 
 Two closure for orbit integrals are available (`derivation.md` §3):
 
-- `HarmonicSum()` (default): truncate harmonic sum with `nmax ≈ k⊥ρ`, one Landau `hilbert` per harmonic. Handles damping via the Landau contour.
+- `HarmonicSum()` (default): truncate harmonic sum with `nmax ≈ k⊥ρ`. Handles damping via the Landau contour.
 - `Newberger()` — use Qin closed-orbit `T(a,z)` in complex-order Bessel `J_{±a}`, with no truncation (cost flat in `k⊥ρ`), Handles damping with residue extraction.
