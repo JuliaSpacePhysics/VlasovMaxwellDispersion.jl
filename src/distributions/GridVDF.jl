@@ -2,11 +2,10 @@
 # over the adaptive-quadrature coupled path; not yet wired.
 
 """
-    GridVDF(vpar, vperp, f; method=NonnegBSpline{3}(), regime=NonRelativistic())
+    GridVDF(vperp, vpar, f; method=NonnegBSpline{3}(), regime=NonRelativistic())
 
-Tabulated gyrotropic VDF: `f[i,j] = f₀(vpar[i], vperp[j])` on an ascending grid
-(`vperp[1] ≥ 0`). A `method` turns the grid into a **tensor** `f₀` (knots + per-cell power coeffs) — 
-a complex-evaluable `f₀` with analytic `∂∥/∂⊥`.
+Tabulated gyrotropic VDF: `f[i,j] = f₀(vperp[i], vpar[j])` on an ascending grid (`vperp[1] ≥ 0`).
+A `method` turns the grid into a **tensor** `f₀` (knots + per-cell power coeffs) — a complex-evaluable `f₀` with analytic `∂∥/∂⊥`.
 
 Fit methods (`fit_grid`): `NonnegBSpline` (default; positivity-preserving two-pass NNLS B-spline with `f ≥ 0`) or
 `BicubicHermite` (local C¹ interpolation, O(N), no positivity guard).
@@ -21,20 +20,23 @@ end
 
 regime(d::GridVDF) = regime(d.coupled)
 
-function GridVDF(vpar, vperp, f; tol=1.0e-3, method=nothing, regime=NonRelativistic())
+function GridVDF(vperp, vpar, f; tol=1.0e-3, method=nothing, regime=NonRelativistic())
     method = @something(method, NonnegBSpline{3}(; tol, maxknots_par=length(vpar), maxknots_perp=length(vperp)))
     vp, vq = collect(float.(vpar)), collect(float.(vperp))
+    fpp = permutedims(f)        # public f[perp,par] → internal [par,perp] for fit_grid
     # rescale as a tiny-valued grid (e.g. exp(-μγ)~1e-18) would otherwise underflow the fit to all-zeros
-    scale = maximum(abs, f)
+    scale = maximum(abs, fpp)
     iszero(scale) && throw(ArgumentError("GridVDF: f is all zeros"))
-    fit = fit_grid(method, vp, vq, f ./ scale)
+    fit = fit_grid(method, vp, vq, fpp ./ scale)
     fit.coeffs ./= _fit_d3p(fit)
-    dpar = (u, v) -> _fit_dpar(fit, u, v)
-    dperp = (u, v) -> _fit_dperp(fit, u, v)
-    cpl = CoupledVDF(
-        fit; parlower=fit.knots_par[1], parupper=fit.knots_par[end],
-        perpupper=fit.knots_perp[end], dpar, dperp, normalize=false, regime
-    )
+    # The spline `fit` and its derivatives are indexed (p∥,p⊥); CoupledVDF invokes its
+    # callables (p⊥,p∥), so wrap each perp-first. Raw constructor: inputs already (p⊥,p∥).
+    f0 = (q, u) -> fit(u, q)
+    dpar = (q, u) -> _fit_dpar(fit, u, q)
+    dperp = (q, u) -> _fit_dperp(fit, u, q)
+    plo, phi = promote(float(fit.knots_par[1]), float(fit.knots_par[end]))
+    qhi = oftype(phi, fit.knots_perp[end])
+    cpl = CoupledVDF(f0, dpar, dperp, plo, phi, qhi, regime)
     GridVDF(vp, vq, fit, cpl)
 end
 

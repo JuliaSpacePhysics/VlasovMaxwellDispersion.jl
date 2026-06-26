@@ -1,9 +1,7 @@
 # Derivation
 
-The susceptibility of a hot magnetized plasma is **one helical-orbit phase-space
-integral**. The whole point of this document is to show that integral collapse, step
-by step, onto **two 1-D primitives** — a parallel Cauchy transform `𝒞∥` (§5) and a
-perpendicular Bessel moment `P⊥` (§6) — which is all the code actually evaluates.
+The susceptibility of a hot magnetized plasma is **one helical-orbit phase-space integral**. 
+This document shows how this integral collapses, step by step, under specific assumptions.
 
 ## Conventions
 
@@ -16,8 +14,8 @@ Phase-space measure: `d³p = 2π p⊥ dp⊥ dp∥ = 2π γ dγ dp∥`.
 
 ## 1. Linear Vlasov → orbit integral
 
-Linearize relativistic Vlasov–Maxwell about a gyrotropic `f₀(p∥,p⊥)`. With `θ=0` the
-orbit phase is
+Linearize relativistic Vlasov–Maxwell about a gyrotropic `f₀(p⊥,p∥)`. 
+With `θ=0` the orbit phase is
 
     β = −z[sin(φ + Ω τ) − sin φ] + (ω − k∥ v∥)τ.
 
@@ -53,9 +51,9 @@ $$
 the operators
 
 $$
-U = ∂_⊥f₀ + (k_∥/ω)(v_⊥ ∂_∥f₀ − v_∥ ∂_⊥f₀),
+U = ∂_⊥f₀ + \frac{k_∥}{ωγ}(p_⊥ ∂_∥f₀ − p_∥ ∂_⊥f₀),
 \qquad
-V = (k_⊥/ω)(v_⊥ ∂_∥f₀ − v_∥ ∂_⊥f₀),
+V = \frac{k_⊥}{ωγ}(p_⊥ ∂_∥f₀ − p_∥ ∂_⊥f₀),
 \\
 
 $$
@@ -178,7 +176,7 @@ $$
 X_n = 2π ∫ dp_⊥ dp_∥ \; U 𝓣_n /(a − n) = (2π/ω) ∫ dγ dp_∥ \;𝒰 𝓣_n /(a - n)
 $$
 
-**(0) Relativistic, coupled `f₀(p∥,p⊥)`.** Work in `(γ,p∥)`. The denominator is nonlinear
+**(0) Relativistic, coupled `f₀(p⊥,p∥)`.** Work in `(γ,p∥)`. The denominator is nonlinear
 in `p∥` through `γ`, but at fixed `γ` it linearizes:
 
     ω − k∥v∥ − nΩ = (ωγ − k∥p∥ − nΩ₀)/γ = −(k∥/γ)(p∥ − ζ_n(γ)),   ζ_n(γ) = (ωγ − nΩ₀)/k∥,
@@ -353,7 +351,7 @@ front. Relativistically $z=(k_\perp/\Omega_0)\sqrt{\gamma^2-1-p_\parallel^2}$ an
 The Bessel weights cannot leave the integral, and no closed $\{M^m,P_j\}$ pair survives.
 The covariant $\mathcal U$ buys the clean single pole and the right derivative pair — but **not** the factorization.
 
-Switching to $(p_\parallel,p_\perp)$ moves $z=k_\perp p_\perp/\Omega_0$ to the outer coordinate (the perp side would factor)
+Switching to $(p_\perp,p_\parallel)$ moves $z=k_\perp p_\perp/\Omega_0$ to the outer coordinate (the perp side would factor)
 but then the resonance $\omega\gamma-k_\parallel p_\parallel=n\Omega_0$ becomes
 quadratic in $p_\parallel$ — the relativistic resonance curve, $(\omega^2-k_\parallel^2)p_\parallel^2
 -2k_\parallel n\Omega_0 p_\parallel+\omega^2(1+p_\perp^2)-n^2\Omega_0^2=0$, up to two roots per $n$ — so forfeits its single clean pole. 

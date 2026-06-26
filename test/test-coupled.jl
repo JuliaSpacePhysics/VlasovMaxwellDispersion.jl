@@ -4,7 +4,7 @@
 
 @testitem "CoupledVDF(Gaussian) ≡ bi-Maxwellian (oblique)" begin
     vthp, vthq = 0.9, 1.2
-    f0(u, v) = exp(-(u / vthp)^2) / (sqrt(pi) * vthp) * exp(-(v / vthq)^2) / (pi * vthq^2)
+    f0(w, u) = exp(-(u / vthp)^2) / (sqrt(pi) * vthp) * exp(-(w / vthq)^2) / (pi * vthq^2)
     cpl = CoupledVDF(f0; parlower=-10vthp, parupper=10vthp, perpupper=10vthq)
     mx = Maxwellian(vth_par=vthp, vth_perp=vthq)
     k = Wavenumber(0.1, 0.4)                     # small k⊥ ⇒ few harmonics ⇒ fast
@@ -38,12 +38,10 @@ end
 # tensor — itself ALPS-validated. ω<Ω keeps the Swanson time-integral stable.
 @testitem "Relativistic CoupledVDF reproduces Maxwell–Jüttner" begin
     μ = 40.0
-    γ(u, w) = sqrt(1 + u^2 + w^2)
-    f0(u, w) = exp(-μ * γ(u, w))
-    dpar(u, w) = -μ * f0(u, w) * u / γ(u, w)
-    dperp(u, w) = -μ * f0(u, w) * w / γ(u, w)
+    γ(w, u) = sqrt(1 + u^2 + w^2)
+    f0(w, u) = exp(-μ * γ(w, u))
     L = sqrt((1 + 25 / μ)^2 - 1)
-    rel = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar, dperp,
+    rel = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L,
         regime=Relativistic())
     ref = MaxwellJuttner(mu=μ)
 
@@ -63,12 +61,10 @@ end
 # folds Bernstein into m33 and is the trusted oracle.
 @testitem "Relativistic CoupledVDF carries Bernstein term (anisotropic χ_zz)" begin
     ap, aq = 100.0, 400.0                        # narrow anisotropic Gaussian (p_th∥=0.1, p_th⊥=0.05)
-    f0(u, w) = exp(-ap * u^2 - aq * w^2)
-    dpar(u, w) = -2ap * u * f0(u, w)
-    dperp(u, w) = -2aq * w * f0(u, w)
+    f0(w, u) = exp(-ap * u^2 - aq * w^2)
     L = 0.6
-    cpl = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar, dperp)
-    cpl_rel = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, dpar, dperp, regime=Relativistic())
+    cpl = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L)
+    cpl_rel = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, regime=Relativistic())
     ω, k = 0.3 + 0.02im, Wavenumber(0.7, 0.4)
     oracle = contribution(cpl, ω, k)[3, 3]                          # nonrel (m33 fold)
     relB = contribution(cpl_rel, ω, k)[3, 3]
@@ -96,12 +92,10 @@ end
 # handles damped relativistic modes (Im ω<0), cross-validating B (vs Maxwell–Jüttner).
 @testitem "Relativistic CoupledVDF Newberger (A) handles damped modes" begin
     μ = 40.0
-    γ(u, w) = sqrt(1 + u^2 + w^2)
-    f0(u, w) = exp(-μ * γ(u, w))
-    dpar(u, w) = -μ * f0(u, w) * u / γ(u, w)
-    dperp(u, w) = -μ * f0(u, w) * w / γ(u, w)
+    γ(w, u) = sqrt(1 + u^2 + w^2)
+    f0(w, u) = exp(-μ * γ(w, u))
     L = sqrt((1 + 25 / μ)^2 - 1)
-    kw = (parlower=(-L), parupper=L, perpupper=L, dpar=dpar, dperp=dperp)
+    kw = (parlower=(-L), parupper=L, perpupper=L)
     vdf = CoupledVDF(f0; kw..., regime=Relativistic())
     k = Wavenumber(0.7, 0.4)
     for ω in (0.3 - 0.05im, 0.3 - 0.005im)              # damped relativistic
@@ -113,12 +107,10 @@ end
 
 @testitem "Relativistic CoupledVDF B finite at large k⊥ (in-range pole guard)" begin
     μ = 40.0
-    γ(u, w) = sqrt(1 + u^2 + w^2)
-    f0(u, w) = exp(-μ * γ(u, w))
-    dpar(u, w) = -μ * f0(u, w) * u / γ(u, w)
-    dperp(u, w) = -μ * f0(u, w) * w / γ(u, w)
+    γ(w, u) = sqrt(1 + u^2 + w^2)
+    f0(w, u) = exp(-μ * γ(w, u))
     L = sqrt((1 + 25 / μ)^2 - 1)
-    kw = (parlower=(-L), parupper=L, perpupper=L, dpar=dpar, dperp=dperp)
+    kw = (parlower=(-L), parupper=L, perpupper=L)
     s = CoupledVDF(f0; kw..., regime=Relativistic())
     ω = 0.3 - 0.05im
     for kperp in (1.2, 2.0, 3.5)                        # k⊥ρ≳1.5: off-disk poles appear

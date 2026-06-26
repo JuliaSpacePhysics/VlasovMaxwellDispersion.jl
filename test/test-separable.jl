@@ -4,8 +4,8 @@
 
 @testitem "SeparableVDF(Gaussian) χ matches bi-Maxwellian" begin
     vthp, vthq = 0.9, 1.2
-    sep = SeparableVDF(u -> exp(-(u / vthp)^2) / (sqrt(pi) * vthp),
-        v -> exp(-(v / vthq)^2) / (pi * vthq^2);
+    sep = SeparableVDF(v -> exp(-(v / vthq)^2) / (pi * vthq^2),
+        u -> exp(-(u / vthp)^2) / (sqrt(pi) * vthp);
         parlower=-14vthp, parupper=14vthp, perpupper=14vthq)
     mx = Maxwellian(vth_par=vthp, vth_perp=vthq)
     for (Ω, Pi2, ω, kz, kp) in ((-1.0, 0.5, 1.3 - 0.05im, 0.4, 0.3),
@@ -20,8 +20,8 @@ end
 
 @testitem "SeparableVDF oblique dispersion root matches Maxwellian" begin
     vthp, vthq = 0.05, 0.05
-    sep = SeparableVDF(u -> exp(-(u / vthp)^2) / (sqrt(pi) * vthp),
-        v -> exp(-(v / vthq)^2) / (pi * vthq^2);
+    sep = SeparableVDF(v -> exp(-(v / vthq)^2) / (pi * vthq^2),
+        u -> exp(-(u / vthp)^2) / (sqrt(pi) * vthp);
         parlower=-14vthp, parupper=14vthp, perpupper=14vthq)
     k = Wavenumber(0.2, 0.3)
     ions = NormalizedSpecies(1.0, 1 / 1836, ColdVDF())
@@ -32,8 +32,8 @@ end
 
 @testitem "SeparableVDF supports parallel propagation" begin
     vthp, vthq = 0.9, 1.2
-    sep = SeparableVDF(u -> exp(-(u / vthp)^2) / (sqrt(pi) * vthp),
-        v -> exp(-(v / vthq)^2) / (pi * vthq^2);
+    sep = SeparableVDF(v -> exp(-(v / vthq)^2) / (pi * vthq^2),
+        u -> exp(-(u / vthp)^2) / (sqrt(pi) * vthp);
         parlower=-14vthp, parupper=14vthp, perpupper=14vthq)
     mx = Maxwellian(vth_par=vthp, vth_perp=vthq)
     k = Wavenumber(0.0, 0.4)
@@ -47,7 +47,7 @@ end
 @testitem "SeparableVDF accepts a non-Gaussian f (finite χ)" begin
     # Generalized-Lorentzian (kappa-like) parallel × Gaussian perp — no closed form.
     fpar(u) = (1 + u^2 / 3)^(-2)
-    sep = SeparableVDF(fpar, v -> exp(-v^2) / pi;
+    sep = SeparableVDF(v -> exp(-v^2) / pi, fpar;
         parlower=-30.0, parupper=30.0, perpupper=10.0)
     χ = contribution(NormalizedSpecies(-1.0, 1.0, sep), 1.2 - 0.05im, Wavenumber(0.3, 0.4))
     @test all(isfinite, χ)

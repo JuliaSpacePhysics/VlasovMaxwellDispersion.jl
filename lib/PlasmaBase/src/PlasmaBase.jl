@@ -6,6 +6,10 @@ It holds the PROBLEM description (identity, populations, the system and its fiel
 """
 module PlasmaBase
 
+export AbstractVDF, Particle, Electron, Proton, Species, Plasma
+export charge, mass, particle, number_density, distribution, species, magnetic_field
+export gyrofrequency_ratio, plasma_gyro_ratio
+
 abstract type AbstractVDF end
 abstract type AbstractPlasma end
 
@@ -17,19 +21,18 @@ const MP_SI = 1.67262192369e-27  # kg
 const EPS0_SI = 8.8541878128e-12   # F/m
 const KB_SI = 1.380649e-23       # J/K
 
-# ----------------------------------------------------------------------------- Particle
 """
     Particle(q, m)
 
 A charged species' identity: signed charge `q` [C] and mass `m` [kg]. Prefer
 [`Electron`](@ref), [`Proton`](@ref), [`Ion`](@ref) over raw SI numbers.
 """
-struct Particle{Q, M}
+struct Particle{Q,M}
     q::Q   # signed charge [C]
     m::M   # mass [kg]
 end
 
-Particle(; z = 1, A = 1, m = nothing) = Particle(z * E_SI, @something(m, A * MP_SI))
+Particle(; z=1, A=1, m=nothing) = Particle(z * E_SI, @something(m, A * MP_SI))
 
 Electron() = Particle(-E_SI, ME_SI)
 Proton() = Particle(E_SI, MP_SI)
@@ -43,14 +46,13 @@ with speeds in `v/c`), and number density `n` (SI m⁻³, or Unitful via the ext
 Solver-agnostic: it carries NO normalization (no `B0`, no reference). This is the shared
 "species" that every solver agrees on.
 """
-struct Species{P <: Particle, N, V}
+struct Species{P<:Particle,N,V}
     particle::P
     n::N
     vdf::V
 end
 Species(p::Particle, vdf; n) = Species(p, n, vdf)
 
-# ------------------------------------------------------------------------------- Plasma
 """
     Plasma(species::Species...; B0)
 
@@ -58,13 +60,13 @@ The physical system: its `species` and the ambient magnetic field `B0` (SI Tesla
 Unitful). `B0` is plasma-global — it sets the scale a solver normalizes to, together
 with the solver's own choice of reference. Iterable over its species.
 """
-struct Plasma{S, B} <: AbstractPlasma
+struct Plasma{S,B} <: AbstractPlasma
     species::S
     B0::B
 end
 Plasma(species::Species...; B0) = Plasma(species, B0)
 
-Base.iterate(p::AbstractPlasma, state = 1) = iterate(p.species, state)
+Base.iterate(p::AbstractPlasma, state=1) = iterate(p.species, state)
 Base.length(p::AbstractPlasma) = length(p.species)
 
 # --------------------------------------------------------------------- accessor interface
@@ -94,9 +96,5 @@ Reference-free `ω_ps/Ω_s = c/v_A,s = √(n m/ε₀)/B0` (charge-independent). 
 `m`[kg], `B0`[T]; Unitful via the extension.
 """
 plasma_gyro_ratio(n, m, B0) = sqrt(n * m / EPS0_SI) / B0
-
-export AbstractVDF, Particle, Electron, Proton, Species, Plasma
-export charge, mass, particle, number_density, distribution, species, magnetic_field
-export gyrofrequency_ratio, plasma_gyro_ratio
 
 end

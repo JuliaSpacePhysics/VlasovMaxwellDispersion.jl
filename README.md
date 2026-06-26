@@ -11,7 +11,7 @@ Method and internals: [`architecture.md`](docs/architecture.md).
 using Pkg; Pkg.develop(path="."); Pkg.instantiate()
 using VlasovMaxwellDispersion
 
-pl = Plasma(Species(-1.0, 1.0, Maxwellian(1.0)))   # Ω̃, Π̃², VDF
+pl = NormalizedSpecies(-1.0, 1.0, Maxwellian(1.0))   # Ω̃, Π̃², VDF
 k  = Wavenumber(0.0, 0.7)                           # k̃ = (k⊥, k∥)·c/Ω_ref
 
 alg = Muller()
@@ -29,7 +29,7 @@ Arbitrary distribution — e.g. bump-on-tail instability:
 
 ```julia
 f(u) = 0.94exp(-u^2)/√π + 0.06exp(-((u-4)/0.5)^2)/(0.5√π)
-pl = Plasma(Species(-1.0, 1.0, SeparableVDF(f; lower=-12.0, upper=14.0)))
+pl = NormalizedSpecies(-1.0, 1.0, SeparableVDF(f; lower=-12.0, upper=14.0))
 ω  = solve(LocalDispersionProblem(pl, Wavenumber(0.0, 0.25), 1.0 + 0.05im)).omega   # Im ω > 0 ⇒ growth
 ```
 
@@ -37,7 +37,7 @@ pl = Plasma(Species(-1.0, 1.0, SeparableVDF(f; lower=-12.0, upper=14.0)))
 
 | VDF / mode | path |
 |---|---| 
-| Arbitrary Analytic `f₀(p∥,[⊥)` |
+| Arbitrary Analytic `f₀(p⊥, p∥)` |
 | Grid / numerical VDF | NNLS B-spline → piecewise-poly `H∥`,`P⊥` |
 | Maxwell–Jüttner (relativistic) | Trubnikov/Swanson integral |
 | (bi-)Maxwellian, drifting | `Z`-function harmonic sum |
