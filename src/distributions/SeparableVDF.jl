@@ -47,7 +47,7 @@ function para_moments(p::AnalyticFactor, ω, kz, nΩ)
     end
 end
 
-# 6 distinct entries of bvec⊗bvec in each of the f⊥′ (∂F) and v⊥·f⊥ (F) slices 
+# 6 distinct entries of bvec⊗bvec in each of the f⊥′ (∂F) and v⊥·f⊥ (F) slices
 # where bvec=(v⊥Rn, v⊥Jn′, Jn) and Rn=½(J_{n−1}+J_{n+1}).
 function perp_moments(p, n, β; rtol = 1.0e-8)
     function perptri(v)
@@ -57,7 +57,7 @@ function perp_moments(p, n, β; rtol = 1.0e-8)
         k11, k12, k13, k22, k23, k33 =
             bvec[1]^2, bvec[1] * bvec[2], bvec[1] * bvec[3], bvec[2]^2, bvec[2] * bvec[3], bvec[3]^2
         fq, dfq = p.fdf(v); vfq = v * fq
-        SVector(
+        return SVector(
             dfq * k11, dfq * k12, dfq * k13, dfq * k22, dfq * k23, dfq * k33,
             vfq * k11, vfq * k12, vfq * k13, vfq * k22, vfq * k23, vfq * k33
         )
@@ -113,16 +113,18 @@ end
 # All perp moments (P∂_n, PF_n) in one v-quadrature; one Bessel ladder per node
 # feeds every harmonic instead of three besselj per (n,node).
 function _perp_moments_all(p::AnalyticFactor, ns, β; rtol = 1.0e-8)
-    kmin = first(ns) - 1
-    P = first(
+    M = last(ns) + 1
+    P = @no_escape begin
+        Jv = @alloc(typeof(β), M + 1)
         QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(_relsize, x)) do v
             z = β * v
-            Jv = [besselj(k, z) for k in kmin:(last(ns) + 1)]   # J_k ladder, shared over n
             fq, dfq = p.fdf(v)
             vfq = v * fq
-            [_perp12(v, Jv[n - 1 - kmin + 1], Jv[n - kmin + 1], Jv[n + 1 - kmin + 1], fq, dfq, vfq) for n in ns]
-        end
-    )
+
+            besselj_ladder!(Jv, M, z) # J_0..J_{nmax+1} in one recurrence
+            [_perp12(v, _jladder(Jv, n - 1), _jladder(Jv, n), _jladder(Jv, n + 1), fq, dfq, vfq) for n in ns]
+        end[1]
+    end
     P∂s = [2π .* _symmat(Pi[1], Pi[2], Pi[3], Pi[4], Pi[5], Pi[6]) for Pi in P]
     PFs = [2π .* _symmat(Pi[7], Pi[8], Pi[9], Pi[10], Pi[11], Pi[12]) for Pi in P]
     return P∂s, PFs
