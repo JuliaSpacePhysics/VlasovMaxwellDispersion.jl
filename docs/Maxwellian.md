@@ -310,5 +310,5 @@ Both routes are forced through the `erf`/`erfc` family, the computational signat
 Full-tensor `χ` (`GaussianRing` vs `SeparableVDF`): ~1e-9 and **~400–470× faster** for `\Lambda_r\lesssim8`,
 breaking (≈30%) by `\Lambda_r\approx12`.
 
-> Implemented as `GaussianRing(; vth_par, vth_perp, vd, vr)` (Route A, full tensor); `vr=0` reduces to the
+> Implemented as `GaussianRing(; vth_para, vth_perp, vd, vr)` (Route A, full tensor); `vr=0` reduces to the
 > bi-Maxwellian. Past `\Lambda_r\approx10` use `SeparableVDF`.

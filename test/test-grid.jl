@@ -3,12 +3,12 @@
     f0(u, v) = exp(-(u / vthp)^2) / (sqrt(pi) * vthp) * exp(-(v / vthq)^2) / (pi * vthq^2)
     vpar = collect(range(-6vthp, 6vthp, length=81))
     vperp = collect(range(0.0, 6vthq, length=61))
-    F = [f0(u, v) for v in vperp, u in vpar]      # F[perp,par]
+    F = [f0(u, v) for v in vperp, u in vpar]      # F[perp,para]
     g = GridVDF(vperp, vpar, F; tol=1e-4)
     k = Wavenumber(0.1, 0.4)
     ω = 1.3 - 0.05im
     χg = contribution(NormalizedSpecies(-1.0, 0.5, g), ω, k)
-    χm = contribution(NormalizedSpecies(-1.0, 0.5, Maxwellian(vth_par=vthp, vth_perp=vthq)), ω, k)
+    χm = contribution(NormalizedSpecies(-1.0, 0.5, Maxwellian(vth_para=vthp, vth_perp=vthq)), ω, k)
     acc3 = maximum(abs.(χg .- χm)) / maximum(abs, χm)
     @test acc3 < 5e-3
 
@@ -32,7 +32,7 @@ end
     L = sqrt((1 + 25 / μ)^2 - 1)
     ppar = collect(range(-L, L, length=81))
     pperp = collect(range(0.0, L, length=61))
-    F = [f0(u, w) for w in pperp, u in ppar]      # F[perp,par]
+    F = [f0(u, w) for w in pperp, u in ppar]      # F[perp,para]
     grel = GridVDF(pperp, ppar, F; tol=1e-4, regime=Relativistic())
     ref = MaxwellJuttner(mu=μ)
     k = Wavenumber(0.7, 0.4)
@@ -49,9 +49,9 @@ end
     L = 6.0
     vpar = collect(range(-L, L, length=81))
     vperp = collect(range(0.0, L, length=61))
-    F = [g0(u, v) for v in vperp, u in vpar]      # F[perp,par]
+    F = [g0(u, v) for v in vperp, u in vpar]      # F[perp,para]
     g = GridVDF(vperp, vpar, F; tol=1e-4)
-    cpl = CoupledVDF(g0; parlower=(-L), parupper=L, perpupper=L)
+    cpl = CoupledVDF(g0; para=((-L), L), perp=L)
     k = Wavenumber(0.3, 0.4)
     ω = 1.2 - 0.05im
     χg = contribution(NormalizedSpecies(-1.0, 1.0, g), ω, k)
@@ -68,9 +68,9 @@ end
     L = 12vA
     vpar = collect(range(-L, L, length=81))
     vperp = collect(range(0.0, L, length=61))
-    F = [f(v, u) for v in vperp, u in vpar]       # F[perp,par]
+    F = [f(v, u) for v in vperp, u in vpar]       # F[perp,para]
     grid = NormalizedSpecies(1.0, 1 / vA^2, GridVDF(vperp, vpar, F; tol=1e-4))
-    exact = NormalizedSpecies(1.0, 1 / vA^2, CoupledVDF(f; parlower=(-L), parupper=L, perpupper=L))
+    exact = NormalizedSpecies(1.0, 1 / vA^2, CoupledVDF(f; para=((-L), L), perp=L))
     k = Wavenumber(1e-3 / vA, 0.03 / vA)         # k̃ = k_ALPS/vA = (300, 10)
     ω = 0.029311 - 9.9693e-6im                   # ALPS bi-kappa (κ=6) root_1
     χg = contribution(grid, ω, k)

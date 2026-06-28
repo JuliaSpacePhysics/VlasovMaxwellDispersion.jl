@@ -12,9 +12,9 @@
     σ2 = vthi^2
     f0(w, u) = exp(-(sqrt(u^2 + w^2) - vshell)^2 / (2σ2))
     L = vshell + 9vthi
-    el = NormalizedSpecies(-1836.2059501591832, 346868.41251994757, Maxwellian(vth_par=vthe, vth_perp=vthe))
+    el = NormalizedSpecies(-1836.2059501591832, 346868.41251994757, Maxwellian(vth_para=vthe, vth_perp=vthe))
     ish = NormalizedSpecies(1.0, 188.90496051920377,
-        CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L))
+        CoupledVDF(f0; para=(-L, L), perp=L))
     ε = dielectric((el, ish), ω, k)
     # LMV reference ε (row-major i,j)
     εref = ComplexF64[
@@ -32,7 +32,7 @@ end
         s = κ * a2 * vth^2
         f(v, u) = (1 + (u^2 + v^2) / s)^(-1 - κ)
         L = 12vth
-        NormalizedSpecies(Ω, Pi2, CoupledVDF(f; parlower=(-L), parupper=L, perpupper=L))
+        NormalizedSpecies(Ω, Pi2, CoupledVDF(f; para=(-L, L), perp=L))
     end
     plasma = (bikappa_species(1.0, 1 / vA^2, vA),
         bikappa_species(-1 / me, 1 / (me * vA^2), vA / sqrt(me)))

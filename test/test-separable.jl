@@ -3,8 +3,8 @@
 
 @testitem "SeparableVDF(Gaussian) χ matches bi-Maxwellian" begin
     vthp, vthq = 0.9, 1.2
-    mx = Maxwellian(vth_par = vthp, vth_perp = vthq)
-    sep = SeparableVDF(mx; parlower = -14vthp, parupper = 14vthp, perpupper = 14vthq)
+    mx = Maxwellian(vth_para = vthp, vth_perp = vthq)
+    sep = SeparableVDF(mx; para = (-14vthp, 14vthp), perp = 14vthq)
     for (Ω, Pi2, ω, kz, kp) in (
             (-1.0, 0.5, 1.3 - 0.05im, 0.4, 0.3),
             (-1.0, 0.5, 0.7 + 0.02im, 0.25, 0.6),
@@ -19,8 +19,8 @@ end
 
 @testitem "SeparableVDF oblique dispersion root matches Maxwellian" begin
     vthp, vthq = 0.05, 0.05
-    mx = Maxwellian(vth_par = vthp, vth_perp = vthq)
-    sep = SeparableVDF(mx; parlower = -14vthp, parupper = 14vthp, perpupper = 14vthq)
+    mx = Maxwellian(vth_para = vthp, vth_perp = vthq)
+    sep = SeparableVDF(mx; para = (-14vthp, 14vthp), perp = 14vthq)
     k = Wavenumber(0.2, 0.3)
     ions = NormalizedSpecies(1.0, 1 / 1836, ColdVDF())
     ωs = solve(LocalDispersionProblem((NormalizedSpecies(-1.0, 1.0, sep), ions), k, 1.0 - 1.0e-3im)).omega
@@ -30,8 +30,8 @@ end
 
 @testitem "SeparableVDF supports parallel propagation" begin
     vthp, vthq = 0.9, 1.2
-    mx = Maxwellian(vth_par = vthp, vth_perp = vthq)
-    sep = SeparableVDF(mx; parlower = -14vthp, parupper = 14vthp, perpupper = 14vthq)
+    mx = Maxwellian(vth_para = vthp, vth_perp = vthq)
+    sep = SeparableVDF(mx; para = (-14vthp, 14vthp), perp = 14vthq)
     k = Wavenumber(0.0, 0.4)
     χs = contribution(NormalizedSpecies(-1.0, 0.5, sep), 1.3 - 0.05im, k)
     χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
@@ -45,7 +45,7 @@ end
     fpar(u) = (1 + u^2 / 3)^(-2)
     sep = SeparableVDF(
         v -> exp(-v^2) / pi, fpar;
-        parlower = -30.0, parupper = 30.0, perpupper = 10.0
+        para = (-30.0, 30.0), perp = 10.0
     )
     χ = contribution(NormalizedSpecies(-1.0, 1.0, sep), 1.2 - 0.05im, Wavenumber(0.3, 0.4))
     @test all(isfinite, χ)

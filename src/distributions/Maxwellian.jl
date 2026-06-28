@@ -1,19 +1,19 @@
 # Ref: LMV Tensors.jl.
 
 """
-    Maxwellian(; vth_par, vth_perp=vth_par, vd=0, vr=nothing)
-    Maxwellian(vth_par)
+    Maxwellian(; vth_para, vth_perp=vth_para, vd=0, vr=nothing)
+    Maxwellian(vth_para)
 
 Drifting bi-Maxwellian (dimensionless speeds `v/c`). A perpendicular ring speed `vr`
 selects the gyrotropic [`GyroRing`](@ref) `I₀` form. 
 
-    f ∝ (Gaussian | GyroRing) ⊗ Gaussian(vth_par, vd)
+    f ∝ (Gaussian | GyroRing) ⊗ Gaussian(vth_para, vd)
 """
-function Maxwellian(; vth_par, vth_perp = vth_par, vd = zero(vth_par), vr = nothing)
+function Maxwellian(; vth_para, vth_perp = vth_para, vd = zero(vth_para), vr = nothing)
     perp = isnothing(vr) ? Gaussian(vth_perp) : GyroRing(vth_perp, vr)
-    return perp ⊗ Gaussian(vth_par, vd)
+    return perp ⊗ Gaussian(vth_para, vd)
 end
-Maxwellian(vth_par) = Maxwellian(; vth_par)
+Maxwellian(vth_para) = Maxwellian(; vth_para)
 
 # Perp tensor from the three ring sums Γ_{n-1},Γ_n,Γ_{n+1}. Shared by the direct method
 # (Γ via besselix per call — used by the k⊥=0 energy-matched fallback) and the table path.

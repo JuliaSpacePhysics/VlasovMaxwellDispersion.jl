@@ -33,9 +33,9 @@ end
     v0b = v0m + v0
 
     plasma = (
-        NormalizedSpecies(1.0, nm * pi2_i, Maxwellian(; vth_par=vth_m, vth_perp=vth_m, vd=v0m)),
-        NormalizedSpecies(1.0, nb * pi2_i, Maxwellian(; vth_par=vth_b, vth_perp=vth_b, vd=v0b)),
-        NormalizedSpecies(-mp_me, pi2_i * mp_me, Maxwellian(; vth_par=vth_e, vth_perp=vth_e)),
+        NormalizedSpecies(1.0, nm * pi2_i, Maxwellian(; vth_para=vth_m, vth_perp=vth_m, vd=v0m)),
+        NormalizedSpecies(1.0, nb * pi2_i, Maxwellian(; vth_para=vth_b, vth_perp=vth_b, vd=v0b)),
+        NormalizedSpecies(-mp_me, pi2_i * mp_me, Maxwellian(; vth_para=vth_e, vth_perp=vth_e)),
     )
     ks = [Wavenumber(0.0, ka / vm_c) for ka in 0.1:-0.001:0.01]
 

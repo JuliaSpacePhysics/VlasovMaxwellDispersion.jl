@@ -29,12 +29,12 @@ function fit_grid(m::NonnegBSpline, vpar, vperp, F)
     Bpar = _collocation_matrix(knots_par, deg, vpar)     # nvpar × nb_par
     Bperp = _collocation_matrix(knots_perp, deg, vperp)  # nvperp × nb_perp
     nb_par, nb_perp = size(Bpar, 2), size(Bperp, 2)
-    # Pass 1 (v∥): perp columns as RHS → C1[p,j] = par control p at v⊥ = vperp[j].
+    # Pass 1 (v∥): perp columns as RHS → C1[p,j] = para control p at v⊥ = vperp[j].
     C1 = zeros(nb_par, length(vperp))
     for j in axes(F, 2)
         C1[:, j] .= nnls(Bpar, F[:, j])
     end
-    # Pass 2 (v⊥): fit each par-control row along v⊥ → ctrl[p,:] (nonneg).
+    # Pass 2 (v⊥): fit each para-control row along v⊥ → ctrl[p,:] (nonneg).
     ctrl = zeros(nb_par, nb_perp)
     for p in 1:nb_par
         ctrl[p, :] .= nnls(Bperp, C1[p, :])
