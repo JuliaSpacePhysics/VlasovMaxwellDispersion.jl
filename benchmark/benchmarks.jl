@@ -15,6 +15,22 @@ let
     end
 end
 
+# Sweep k⊥ — cost grows with nmax ∝ k⊥ρ (harmonic count + per-node Bessel ladder).
+let g = SUITE["separable"] = BenchmarkGroup()
+    vthp, vthq = 0.9, 1.2
+    sep = SeparableVDF(Maxwellian(vth_para=vthp, vth_perp=vthq); para=(-14vthp, 14vthp), perp=14vthq)
+    for kp in (0.1, 1.0, 2.5)
+        k = Wavenumber(kp, 0.4)
+        g["gaussian_kperp=$kp"] = @benchmarkable contribution($sep, 1.3 - 0.05im, $k)
+    end
+    # Non-Gaussian parallel (kappa-like) × Gaussian perp
+    sk = SeparableVDF(v -> exp(-v^2) / pi, u -> (1 + u^2 / 3)^(-2); para=(-30.0, 30.0), perp=10.0)
+    for kp in (1.0, 3.0)
+        k = Wavenumber(kp, 0.4)
+        g["kappa_kperp=$kp"] = @benchmarkable contribution($sk, 1.2 - 0.05im, $k)
+    end
+end
+
 # CoupledVDF: the two closures (derivation.md §3) on an inseparable f₀.
 let
     g0(w, u) = exp(-(u^2 + w^2 + 0.6u * w))
