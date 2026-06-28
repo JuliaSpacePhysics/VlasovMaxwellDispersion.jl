@@ -10,6 +10,9 @@ end
 
 regime(::MaxwellJuttner) = Relativistic()
 
+# Relativistic density f(q,u)∝exp(-μγ), γ=√(1+q²+u²). Feeds the general CoupledVDF path.
+@inline (d::MaxwellJuttner)(q, u) = exp(-d.mu * sqrt(1 + q^2 + u^2))
+
 # Swanson time-integral form avoids harmonic sums and relativistic resonance
 # bookkeeping for isotropic Maxwell-Juttner; ported from LMV.
 function contribution(d::MaxwellJuttner, s, ω, k; kwargs...)
