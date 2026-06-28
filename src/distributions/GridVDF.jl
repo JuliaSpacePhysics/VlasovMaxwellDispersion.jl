@@ -32,11 +32,10 @@ function GridVDF(vperp, vpar, f; tol=1.0e-3, method=nothing, regime=NonRelativis
     # The spline `fit` and its derivatives are indexed (p∥,p⊥); CoupledVDF invokes its
     # callables (p⊥,p∥), so wrap each perp-first. Raw constructor: inputs already (p⊥,p∥).
     f0 = (q, u) -> fit(u, q)
-    dpara = (q, u) -> _fit_dpara(fit, u, q)
-    dperp = (q, u) -> _fit_dperp(fit, u, q)
+    dgrad = (q, u) -> (_fit_dperp(fit, u, q), _fit_dpara(fit, u, q))   # (∂⊥, ∂∥), analytic spline
     para = promote(float(fit.knots_par[1]), float(fit.knots_par[end]))
     perp = oftype(para[2], fit.knots_perp[1]), oftype(para[2], fit.knots_perp[end])
-    cpl = CoupledVDF(f0, dpara, dperp, para, perp, regime)
+    cpl = CoupledVDF(f0, dgrad, para, perp, regime)
     GridVDF(vp, vq, fit, cpl)
 end
 
@@ -50,12 +49,14 @@ end
 
 
 @inline function _fit_dpara(fit::TensorSplineFit, u, v)
-    _insupport(fit, u, v) || return zero(complex(promote_type(typeof(float(u)), typeof(float(v)))))
+    # zero matches `_dpolyval2`'s element type — see the (fit)(u,v) note on why forcing
+    # complex here boxes the fused dgrad tuple.
+    _insupport(fit, u, v) || return zero(promote_type(typeof(float(u)), typeof(float(v)), eltype(fit.coeffs)))
     i, j = _cell(fit.knots_par, u), _cell(fit.knots_perp, v)
     _dpolyval2_s(fit.coeffs[i, j], u - fit.knots_par[i], v - fit.knots_perp[j])
 end
 @inline function _fit_dperp(fit::TensorSplineFit, u, v)
-    _insupport(fit, u, v) || return zero(complex(promote_type(typeof(float(u)), typeof(float(v)))))
+    _insupport(fit, u, v) || return zero(promote_type(typeof(float(u)), typeof(float(v)), eltype(fit.coeffs)))
     i, j = _cell(fit.knots_par, u), _cell(fit.knots_perp, v)
     _dpolyval2_t(fit.coeffs[i, j], u - fit.knots_par[i], v - fit.knots_perp[j])
 end
