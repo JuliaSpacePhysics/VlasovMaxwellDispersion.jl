@@ -98,7 +98,7 @@ end
 # negligible. The harmonic is the shared edge-mapped `_coupled_harmonic_rel`
 # (§5.2.2 disk→box maps, inner single-pole Plemelj) with the bicubic ∇f₀; the maps
 # keep every node on the disk (real p⊥), so the bicubic is never probed off-grid.
-function _grid_contribution_rel(d::GridVDF, s, ω, k)
+function _grid_contribution_rel(d::GridVDF, s, ω, k; rtol = 1.0e-6)
     cpl = d.coupled
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
@@ -106,12 +106,12 @@ function _grid_contribution_rel(d::GridVDF, s, ω, k)
     γmax = sqrt(1 + R^2)
     nmax = nmax_bessel(a^2 * R^2 / 2)
     f = n -> _coupled_harmonic_rel(n, cpl, ω, Ω, kz, a, γmax)
-    χ = converge(f, 1, 1.0e-6; nmax)
+    χ = converge(f; nmax, rtol)
     χ = χ .+ _ee33(_bernstein_rel(cpl, γmax))   # non-resonant term
     return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
 end
 
-function _grid_contribution(d::GridVDF, s, ω, k)
+function _grid_contribution(d::GridVDF, s, ω, k; rtol = 1.0e-6)
     fit = d.fit
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
@@ -121,7 +121,7 @@ function _grid_contribution(d::GridVDF, s, ω, k)
     )[1]
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     f = n -> _grid_harmonic(n, fit, ω, Ω, kz, a)
-    χ = converge(f, 1, 1.0e-6; nmax)
+    χ = converge(f; nmax, rtol)
     return SMatrix{3,3,ComplexF64}((s.Pi2 / ω^2) * χ)
 end
 

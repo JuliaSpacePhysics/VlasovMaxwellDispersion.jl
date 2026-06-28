@@ -25,7 +25,7 @@ perp_setup(perp, β) = perp
 function contribution(d::Separable, s, ω, k; rtol = 1.0e-8, kwargs...)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     β = kperp / Ω
-    return (s.Pi2 / ω^2) * _separable_harmonics(d.fpara, perp_setup(d.fperp, β), β, ω, Ω, kz, rtol)
+    return (s.Pi2 / ω^2) * _separable_harmonics(d.fpara, perp_setup(d.fperp, β), β, ω, Ω, kz; rtol)
 end
 
 function nmax_harm(p, β)
@@ -34,8 +34,8 @@ function nmax_harm(p, β)
 end
 
 # Function barrier: `prepared` type is value-dependent
-function _separable_harmonics(para, perp, β, ω, Ω, kz, rtol)
-    return converge(rtol; nmax = nmax_harm(perp, β)) do n
+function _separable_harmonics(para, perp, β, ω, Ω, kz; rtol)
+    return converge(; nmax = nmax_harm(perp, β), rtol) do n
         nΩ = n * Ω
         M = para_moments(para, ω, kz, nΩ)
         P∂, PF = perp_moments(perp, n, β)

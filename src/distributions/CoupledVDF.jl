@@ -70,7 +70,7 @@ end
 # Relativistic (γ,p∥) momentum-space path. Momentum distribution f₀ must be
 # evaluable at complex p⊥ (the pole pushes p⊥ off-axis).
 # Validated vs Maxwell–Jüttner (Swanson) to ~1e-6 and → bi-Maxwellian as μ→∞.
-function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, ω, k)
+function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-6)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
     plo, phi = d.para
@@ -78,7 +78,7 @@ function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, 
     γmax = sqrt(1 + max(phi^2, plo^2) + qhi^2)
     nmax = nmax_bessel(a^2 * qhi^2 / 2)
     f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax)
-    χ = converge(f, 1, 1.0e-6; nmax)
+    χ = converge(f; nmax, rtol)
     χ = χ .+ _ee33(_bernstein_rel(d, γmax))
     return (s.Pi2 / ω^2) * χ
 end
