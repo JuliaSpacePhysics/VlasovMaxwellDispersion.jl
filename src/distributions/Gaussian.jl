@@ -10,6 +10,9 @@ end
 
 Gaussian(vth) = Gaussian(vth, nothing)
 
+# unnormalized 1d density shape
+@inline (g::Gaussian)(v) = exp(-((v - @something(g.vd, zero(g.vth))) / g.vth)^2)
+
 # `Z(z) = i√π · w(z)` where Faddeeva function `w(z) = erfcx(-i z)`.
 @inline plasma_dispersion_function(z) = im * sqrt(oftype(real(z), pi)) * erfcx(-im * z)
 

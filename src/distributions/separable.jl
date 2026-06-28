@@ -20,6 +20,8 @@ end
 ⊗(perp, par) = Separable(perp, par)
 perp_setup(perp, β) = perp
 
+(d::Separable)(q, u) = d.fperp(q) * d.fpar(u)
+
 function contribution(d::Separable, s, ω, k; rtol = 1.0e-8, kwargs...)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     ω = complex(float(ω))

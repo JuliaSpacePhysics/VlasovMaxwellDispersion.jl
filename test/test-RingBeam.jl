@@ -1,14 +1,9 @@
 @testitem "Ring Maxwellian (vr≠0) closed form matches SeparableVDF ring" begin
-    using SpecialFunctions: besseli
-    # gyrotropic ring f⊥ ∝ e^{-(v²+vr²)/2σ²} I₀(vr v/σ²), σ²=vthperp²/2 — the f⊥
-    # that the Maxwellian(vr=…) cold-ring⊛Maxwellian convolution closes in closed form.
-    ringsep(vthpar, vthperp, vd, vr) = let σ2 = vthperp^2 / 2
-        SeparableVDF(
-            v -> exp(-(v^2 + vr^2) / (2σ2)) * besseli(0, vr * v / σ2),
-            u -> exp(-(u - vd)^2 / vthpar^2);
-            parlower = vd - 8vthpar, parupper = vd + 8vthpar, perpupper = vr + 9 * vthperp / sqrt(2)
-        )
-    end
+    # Generic Bessel-moment quadrature of the SAME vdf
+    ringsep(vthpar, vthperp, vd, vr) = SeparableVDF(
+        Maxwellian(; vth_par = vthpar, vth_perp = vthperp, vd, vr);
+        parlower = vd - 8vthpar, parupper = vd + 8vthpar, perpupper = vr + 9 * vthperp / sqrt(2)
+    )
     for (Ω, kz, kp, vthpar, vthperp, vd) in (
                 (1.0, 0.4, 0.6, 0.1, 0.12, 0.0),
                 (-1.0, 0.3, 0.8, 0.1, 0.1, 0.05),
@@ -29,20 +24,20 @@ end
 
 @testitem "GaussianRing (literal shifted-Gaussian, Route A) matches SeparableVDF" begin
     # literal magnitude-Gaussian perp f⊥=e^{-(v⊥-vr)²/c⊥²} × drifting f∥ (eq.(13) form).
-    rbsep(cpar, cperp, vdz, vdr) = SeparableVDF(
-        v -> exp(-(v - vdr)^2 / cperp^2), u -> exp(-(u - vdz)^2 / cpar^2);
-        parlower = vdz - 9cpar, parupper = vdz + 9cpar, perpupper = vdr + 12cperp
+    rbsep(vth_par, vth_perp, vdz, vdr) = SeparableVDF(
+        GaussianRing(; vth_par, vth_perp, vd = vdz, vr = vdr);
+        parlower = vdz - 9vth_par, parupper = vdz + 9vth_par, perpupper = vdr + 12vth_perp
     )
-    for (Ω, kz, kp, cpar, cperp, vdz) in (
+    for (Ω, kz, kp, vth_par, vth_perp, vdz) in (
                 (1.0, 0.4, 0.6, 0.1, 0.12, 0.0),
                 (-1.0, 0.3, 0.8, 0.1, 0.1, 0.05),
                 (2.0, 0.5, 0.5, 0.18, 0.18, 0.2),
             ),
             ω in (1.3 + 0.02im, 2.1 - 0.05im), vdr in (0.05, 0.15, 0.4)
         k = Wavenumber(kp, kz)
-        d = GaussianRing(; vth_par = cpar, vth_perp = cperp, vd = vdz, vr = vdr)
+        d = GaussianRing(; vth_par, vth_perp, vd = vdz, vr = vdr)
         χA = contribution(NormalizedSpecies(Ω, 1.0, d), ω, k)
-        χT = contribution(NormalizedSpecies(Ω, 1.0, rbsep(cpar, cperp, vdz, vdr)), ω, k)
+        χT = contribution(NormalizedSpecies(Ω, 1.0, rbsep(vth_par, vth_perp, vdz, vdr)), ω, k)
         @test χA ≈ χT rtol = 1.0e-6
     end
     # vr=0 reduces exactly to the bi-Maxwellian

@@ -28,6 +28,9 @@ function SeparableVDF(fpar; lower, upper, df=nothing, normalize=true)
     return SeparableVDF(fp, dfp, nothing, nothing, lo, up, nothing)
 end
 
+# Re-derive the oblique tensor from a closed-form Separable by quadrature over its callable factors.
+SeparableVDF(d::Separable; kwargs...) = SeparableVDF(d.fperp, d.fpar; kwargs...)
+
 function SeparableVDF(
     fperp, fpar; parlower, parupper, perpupper,
     dfpar=nothing, dfperp=nothing, normalize=true
@@ -51,10 +54,10 @@ function contribution(d::SeparableVDF, s, ω, k; kwargs...)
     reduced(d) && (iszero(kperp) ? (return _reduced_electrostatic_contribution(d, s, ω, k)) :
         throw(ArgumentError("SeparableVDF: reduced one-argument form only supports field-aligned electrostatic kperp=0")))
     ω = complex(float(ω))
-    a = kperp / Ω                                   # k⊥/Ω, uniform Bessel arg coeff
+    β = kperp / Ω                                   # k⊥/Ω, uniform Bessel arg coeff
     v⊥²_mean = 2π * QuadGK.quadgk(v -> d.fperp(v) * v^3, zero(d.perphi), d.perphi; rtol=1.0e-8)[1]
-    nmax = nmax_bessel(a^2 * v⊥²_mean / 2)          # harmonic cap from the perp scale
-    f = n -> _separable_harmonic(n, d, ω, Ω, kz, a)
+    nmax = nmax_bessel(β^2 * v⊥²_mean / 2)          # harmonic cap from the perp scale
+    f = n -> _separable_harmonic(n, d, ω, Ω, kz, β)
     χ = converge(f, 1, 1.0e-7; nmax)
     return (s.Pi2 / ω^2) * χ
 end

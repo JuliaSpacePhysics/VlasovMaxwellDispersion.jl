@@ -4,9 +4,8 @@
 
 @testitem "CoupledVDF(Gaussian) ≡ bi-Maxwellian (oblique)" begin
     vthp, vthq = 0.9, 1.2
-    f0(w, u) = exp(-(u / vthp)^2) / (sqrt(pi) * vthp) * exp(-(w / vthq)^2) / (pi * vthq^2)
-    cpl = CoupledVDF(f0; parlower=-10vthp, parupper=10vthp, perpupper=10vthq)
     mx = Maxwellian(vth_par=vthp, vth_perp=vthq)
+    cpl = CoupledVDF(mx; parlower=-10vthp, parupper=10vthp, perpupper=10vthq)
     k = Wavenumber(0.1, 0.4)                     # small k⊥ ⇒ few harmonics ⇒ fast
     χc = contribution(NormalizedSpecies(-1.0, 0.5, cpl), 1.3 - 0.05im, k)
     χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
@@ -38,12 +37,9 @@ end
 # tensor — itself ALPS-validated. ω<Ω keeps the Swanson time-integral stable.
 @testitem "Relativistic CoupledVDF reproduces Maxwell–Jüttner" begin
     μ = 40.0
-    γ(w, u) = sqrt(1 + u^2 + w^2)
-    f0(w, u) = exp(-μ * γ(w, u))
     L = sqrt((1 + 25 / μ)^2 - 1)
-    rel = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L,
-        regime=Relativistic())
     ref = MaxwellJuttner(mu=μ)
+    rel = CoupledVDF(ref; parlower=(-L), parupper=L, perpupper=L, regime=Relativistic())
 
     for ω in (0.3 - 0.005im, 0.3 + 0.05im), kperp in (0.0, 0.3, 0.6)
         k = Wavenumber(kperp, 0.4)
@@ -60,11 +56,10 @@ end
 # γ≈1) the relativistic χ_zz must converge to the non-relativistic path, which
 # folds Bernstein into m33 and is the trusted oracle.
 @testitem "Relativistic CoupledVDF carries Bernstein term (anisotropic χ_zz)" begin
-    ap, aq = 100.0, 400.0                        # narrow anisotropic Gaussian (p_th∥=0.1, p_th⊥=0.05)
-    f0(w, u) = exp(-ap * u^2 - aq * w^2)
+    mx = Maxwellian(vth_par=0.1, vth_perp=0.05)  # narrow anisotropic Gaussian
     L = 0.6
-    cpl = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L)
-    cpl_rel = CoupledVDF(f0; parlower=(-L), parupper=L, perpupper=L, regime=Relativistic())
+    cpl = CoupledVDF(mx; parlower=(-L), parupper=L, perpupper=L)
+    cpl_rel = CoupledVDF(mx; parlower=(-L), parupper=L, perpupper=L, regime=Relativistic())
     ω, k = 0.3 + 0.02im, Wavenumber(0.7, 0.4)
     oracle = contribution(cpl, ω, k)[3, 3]                          # nonrel (m33 fold)
     relB = contribution(cpl_rel, ω, k)[3, 3]
