@@ -50,8 +50,12 @@ end
 
 # Spline value / derivatives at (u,v). u may be complex (parallel Landau
 # continuation); v real. coeffs[i,j][A,B] multiplies s∥^{A-1} s⊥^{B-1}.
+# Out-of-support zero MUST match the in-support `_polyval2` element type (real for real
+# (u,v), complex only when an arg is). Forcing `complex` here made the return a
+# `Union{Float64,ComplexF64}`; harmless alone (2-way union-splits) but the fused `dgrad`
+# tuples two of these → 4-way union → boxing → per-node allocs in the relativistic loop.
 function (fit::TensorSplineFit)(u, v)
-    _insupport(fit, u, v) || return zero(complex(promote_type(typeof(float(u)), typeof(float(v)))))
+    _insupport(fit, u, v) || return zero(promote_type(typeof(float(u)), typeof(float(v)), eltype(fit.coeffs)))
     i, j = _cell(fit.knots_par, u), _cell(fit.knots_perp, v)
     _polyval2(fit.coeffs[i, j], u - fit.knots_par[i], v - fit.knots_perp[j])
 end

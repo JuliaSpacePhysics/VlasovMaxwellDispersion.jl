@@ -1,5 +1,5 @@
 """
-    CoupledVDF(f0; para=(lo,hi), perp=(lo,hi), dpara=nothing, dperp=nothing, regime=NonRelativistic())
+    CoupledVDF(f0; para=(lo,hi), perp=(lo,hi), dgrad=nothing, regime=NonRelativistic())
 
 **Most general** gyrotropic VDF: an arbitrary analytic `f0(p⊥,p∥)`.
 
@@ -7,16 +7,17 @@
 
 And `para`/`perp` are `(lower, upper)` integration ranges.
 
+`dgrad(p⊥,p∥) -> (∂⊥f0, ∂∥f0)` supplies the gradient and default to autodiff.
+
 `regime` type picks the coordinate system:
 - `NonRelativistic` (default) → (p⊥,p∥)
 - `Relativistic` → (γ,p∥)
 
 Prefer [`SeparableVDF`] when `f0(p⊥,p∥)=f⊥(p⊥)f∥(p∥)`.
 """
-struct CoupledVDF{F, Dp, Dq, T, R <: Regime} <: AbstractVDF
+struct CoupledVDF{F, Dg, T, R <: Regime} <: AbstractVDF
     f0::F
-    dpara::Dp
-    dperp::Dq
+    dgrad::Dg
     para::Tuple{T, T}
     perp::Tuple{T, T}
     regime::R
@@ -28,7 +29,7 @@ regime(d::CoupledVDF) = d.regime
 @inline _pair(x) = (zero(x), x)
 
 function CoupledVDF(
-        f0; para, perp, dpara = nothing, dperp = nothing, normalize = true,
+        f0; para, perp, dgrad = nothing, normalize = true,
         regime = NonRelativistic()
     )
     plo, phi = promote(para[1], para[2])
@@ -39,9 +40,8 @@ function CoupledVDF(
             qlo, qhi; rtol = 1.0e-9
         )[1] : one(plo)
     fn = (q, u) -> f0(q, u) / n
-    dp = isnothing(dpara) ? ((q, u) -> _dwrt2(fn, q, u)) : ((q, u) -> dpara(q, u) / n)
-    dq = isnothing(dperp) ? ((q, u) -> _dwrt1(fn, q, u)) : ((q, u) -> dperp(q, u) / n)
-    return CoupledVDF(fn, dp, dq, (plo, phi), (qlo, qhi), regime)
+    dg = isnothing(dgrad) ? ((q, u) -> _grad2(fn, q, u)) : ((q, u) -> dgrad(q, u) ./ n)
+    return CoupledVDF(fn, dg, (plo, phi), (qlo, qhi), regime)
 end
 
 function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum())
@@ -96,7 +96,8 @@ function _bernstein_rel(d, γmax; GLγ = _GLγ, GLp = _GLp)
         for ip in eachindex(pn)
             θ = pn[ip] * (π / 2)
             u, w = umax .* sincos(θ)
-            inner += pw[ip] * (π / 2) * ComplexF64(w * u * d.dpara(w, u) - u^2 * d.dperp(w, u))
+            dpe, dpa = d.dgrad(w, u)
+            inner += pw[ip] * (π / 2) * ComplexF64(w * u * dpa - u^2 * dpe)
         end
         acc += wγ * inner
     end
@@ -113,7 +114,10 @@ const _GLp = QuadGK.gauss(32)
 
 # Covariant momentum numerator 𝒰 = ω∂_γf+k∥∂_uf at (γ,p∥) with w=p⊥, rewritten via
 # ∂_γ|_u=(γ/w)∂_⊥, ∂_u|_γ=∂_∥−(u/w)∂_⊥ ⇒ 𝒰 = k∥∂_∥f + (ωγ−k∥u)/w · ∂_⊥f.
-@inline _U_cov(d, u, w, γ, ω, kz) = kz * d.dpara(w, u) + d.dperp(w, u) * (ω * γ - kz * u) / w
+@inline function _U_cov(d, u, w, γ, ω, kz)
+    dpe, dpa = d.dgrad(w, u)
+    return kz * dpa + dpe * (ω * γ - kz * u) / w
+end
 
 # 3×3 relativistic harmonic integrand 2π·𝒰·𝓣_n at (γ,p∥); bare momenta make 𝓣_n
 # regular at w=0. Caller passes w=√(γ²−1−u²) (complex off the real p∥ range).
@@ -154,8 +158,10 @@ end
 
 # I(p⊥) for the WHOLE harmonic sum at one perp node
 function _coupled_perp(v, ns, d::CoupledVDF, ω, Ω, kz, a, L, U)
-    # Landau–Hilbert for 5 parallel moments: [∂⊥, u·∂⊥, u²·∂⊥, ∂∥, u·∂∥]
-    g5(u) = (q = d.dperp(v, u); p = d.dpara(v, u); SVector(q, u * q, u^2 * q, p, u * p))
+    g5(u) = begin
+        q, p = d.dgrad(v, u)
+        SVector(q, u * q, u^2 * q, p, u * p)
+    end
     ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = g5.(ζs)
     bs = _perp_Bessel_triplet.(ns, a, v)
