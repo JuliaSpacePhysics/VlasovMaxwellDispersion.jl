@@ -58,9 +58,10 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     )[1]
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
+    ζs = [(ω - n * Ω) / kz for n in ns]   # v-independent (nonrel) → built once, not per perp node
     χ = first(
         QuadGK.quadgk(d.perp...; rtol, norm) do v
-            _coupled_perp(v, ns, d, ω, Ω, kz, a, L, U)
+            _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U)
         end
     )
     return (s.Pi2 / ω^2) * χ
@@ -157,12 +158,11 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ = _GLγ, GLp = _
 end
 
 # I(p⊥) for the WHOLE harmonic sum at one perp node
-function _coupled_perp(v, ns, d::CoupledVDF, ω, Ω, kz, a, L, U)
+function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U)
     g5(u) = begin
         q, p = d.dgrad(v, u)
         SVector(q, u * q, u^2 * q, p, u * p)
     end
-    ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = g5.(ζs)
     bs = _perp_Bessel_triplets(ns, a, v)
     # regularized integral part: Σ_n χ_n with the Plemelj removable singularity
