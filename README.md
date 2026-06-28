@@ -29,7 +29,7 @@ Arbitrary distribution — e.g. bump-on-tail instability:
 
 ```julia
 f(u) = 0.94exp(-u^2)/√π + 0.06exp(-((u-4)/0.5)^2)/(0.5√π)
-pl = NormalizedSpecies(-1.0, 1.0, SeparableVDF(f; lower=-12.0, upper=14.0))
+pl = NormalizedSpecies(-1.0, 1.0, ReducedVDF(f; para=(-12.0, 14.0)))
 ω  = solve(LocalDispersionProblem(pl, Wavenumber(0.0, 0.25), 1.0 + 0.05im)).omega   # Im ω > 0 ⇒ growth
 ```
 

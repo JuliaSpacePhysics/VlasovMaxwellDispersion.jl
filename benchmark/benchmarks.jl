@@ -7,7 +7,7 @@ const SUITE = BenchmarkGroup()
 
 # Maxwellian baseline (closed Z/Γ_n harmonic sum) — the fast reference path.
 let
-    s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_par=0.9, vth_perp=1.2))
+    s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para=0.9, vth_perp=1.2))
     g = SUITE["maxwellian"] = BenchmarkGroup()
     for kp in (0.1, 1.0)
         k = Wavenumber(kp, 0.4)
@@ -18,7 +18,7 @@ end
 # CoupledVDF: the two closures (derivation.md §3) on an inseparable f₀.
 let
     g0(w, u) = exp(-(u^2 + w^2 + 0.6u * w))
-    kw = (parlower=-8.0, parupper=8.0, perpupper=6.0)
+    kw = (para=(-8.0, 8.0), perp=6.0)
     s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))
     ω = 1.2 + 0.05im
     g = SUITE["coupled_nonrel"] = BenchmarkGroup()
@@ -34,7 +34,7 @@ let regime=Relativistic()
     γ(w, u) = sqrt(1 + u^2 + w^2)
     f0(w, u) = exp(-μ * γ(w, u))
     L = sqrt((1 + 25 / μ)^2 - 1)
-    kw = (parlower=(-L), parupper=L, perpupper=L)
+    kw = (para=(-L, L), perp=L)
     vdf = CoupledVDF(f0; kw..., regime)
     ω = 0.3 + 0.05im
     g = SUITE["Relativistic"] = BenchmarkGroup()
@@ -54,7 +54,7 @@ let regime=Relativistic()
 end
 
 let
-    s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_par=0.9, vth_perp=1.2))
+    s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para=0.9, vth_perp=1.2))
     k = Wavenumber(0.01, 0.5)
     prob = LocalDispersionProblem(s, k, 0.6)
     f = residual(prob)

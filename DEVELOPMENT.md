@@ -6,6 +6,7 @@
 
 - Optional **AAA-rational** backend for smooth analytic input (`BaryRational.jl`) with Landau-causal pole filtering.
 - Check and potentially reuse `BSplineKit.jl`/`Dierckx.jl`
+- Baalrud, S. D. (2013). The incomplete plasma dispersion function: Properties and application to waves in bounded plasmas.
 
  1. Expose Tuned GRPF Params
   Current wrapper hardcodes tess_sizehint=5000, multithreading=false, and uses same tol for initial mesh spacing and final tolerance.

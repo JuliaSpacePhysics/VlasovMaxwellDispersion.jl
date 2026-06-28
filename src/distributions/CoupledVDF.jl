@@ -1,9 +1,11 @@
 """
-    CoupledVDF(f0; parlower, parupper, perpupper, dpar=nothing, dperp=nothing, regime=NonRelativistic())
+    CoupledVDF(f0; para=(lo,hi), perp=(lo,hi), dpara=nothing, dperp=nothing, regime=NonRelativistic())
 
 **Most general** gyrotropic VDF: an arbitrary analytic `f0(p⊥,p∥)`.
 
 `f0` must be evaluable at complex argument (continued onto the Landau contour).
+
+And `para`/`perp` are `(lower, upper)` integration ranges.
 
 `regime` type picks the coordinate system:
 - `NonRelativistic` (default) → (p⊥,p∥)
@@ -13,49 +15,51 @@ Prefer [`SeparableVDF`] when `f0(p⊥,p∥)=f⊥(p⊥)f∥(p∥)`.
 """
 struct CoupledVDF{F, Dp, Dq, T, R <: Regime} <: AbstractVDF
     f0::F
-    dpar::Dp        # ∂f₀/∂p∥
-    dperp::Dq       # ∂f₀/∂p⊥
-    parlo::T
-    parhi::T
-    perphi::T
+    dpara::Dp
+    dperp::Dq
+    para::Tuple{T, T}
+    perp::Tuple{T, T}
     regime::R
 end
 
 regime(d::CoupledVDF) = d.regime
 
+@inline _pair(x::Tuple) = x
+@inline _pair(x) = (zero(x), x)
+
 function CoupledVDF(
-        f0; parlower, parupper, perpupper, dpar = nothing, dperp = nothing, normalize = true,
+        f0; para, perp, dpara = nothing, dperp = nothing, normalize = true,
         regime = NonRelativistic()
     )
-    plo, phi = promote(float(parlower), float(parupper))
-    qhi = oftype(phi, perpupper)
+    plo, phi = promote(para[1], para[2])
+    qlo, qhi = oftype(phi, _pair(perp)[1]), oftype(phi, _pair(perp)[2])
     n = normalize ?
         2π * QuadGK.quadgk(
             q -> q * QuadGK.quadgk(u -> f0(q, u), plo, phi; rtol = 1.0e-9)[1],
-            zero(qhi), qhi; rtol = 1.0e-9
+            qlo, qhi; rtol = 1.0e-9
         )[1] : one(plo)
     fn = (q, u) -> f0(q, u) / n
-    dp = isnothing(dpar) ? ((q, u) -> _dwrt2(fn, q, u)) : ((q, u) -> dpar(q, u) / n)
+    dp = isnothing(dpara) ? ((q, u) -> _dwrt2(fn, q, u)) : ((q, u) -> dpara(q, u) / n)
     dq = isnothing(dperp) ? ((q, u) -> _dwrt1(fn, q, u)) : ((q, u) -> dperp(q, u) / n)
-    return CoupledVDF(fn, dp, dq, plo, phi, qhi, regime)
+    return CoupledVDF(fn, dp, dq, (plo, phi), (qlo, qhi), regime)
 end
 
 function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum())
     return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k)
 end
 
-function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x))
+function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x), rtol = 1.0e-7)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
-    L, U = d.parlo, d.parhi
+    L, U = d.para
     p⊥²_mean = 2π * QuadGK.quadgk(
-        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol = 1.0e-7)[1],
-        zero(d.perphi), d.perphi; rtol = 1.0e-7
+        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol)[1],
+        d.perp...; rtol
     )[1]
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
     χ = first(
-        QuadGK.quadgk(zero(d.perphi), d.perphi; rtol = 1.0e-6, norm) do v
+        QuadGK.quadgk(d.perp...; rtol, norm) do v
             _coupled_perp(v, ns, d, ω, Ω, kz, a, L, U)
         end
     )
@@ -68,8 +72,10 @@ end
 function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, ω, k)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
-    γmax = sqrt(1 + max(d.parhi^2, d.parlo^2) + d.perphi^2)
-    nmax = nmax_bessel(a^2 * d.perphi^2 / 2)
+    plo, phi = d.para
+    qhi = d.perp[2]
+    γmax = sqrt(1 + max(phi^2, plo^2) + qhi^2)
+    nmax = nmax_bessel(a^2 * qhi^2 / 2)
     f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax)
     χ = converge(f, 1, 1.0e-6; nmax)
     χ = χ .+ _ee33(_bernstein_rel(d, γmax))
@@ -90,7 +96,7 @@ function _bernstein_rel(d, γmax; GLγ = _GLγ, GLp = _GLp)
         for ip in eachindex(pn)
             θ = pn[ip] * (π / 2)
             u, w = umax .* sincos(θ)
-            inner += pw[ip] * (π / 2) * ComplexF64(w * u * d.dpar(w, u) - u^2 * d.dperp(w, u))
+            inner += pw[ip] * (π / 2) * ComplexF64(w * u * d.dpara(w, u) - u^2 * d.dperp(w, u))
         end
         acc += wγ * inner
     end
@@ -107,7 +113,7 @@ const _GLp = QuadGK.gauss(32)
 
 # Covariant momentum numerator 𝒰 = ω∂_γf+k∥∂_uf at (γ,p∥) with w=p⊥, rewritten via
 # ∂_γ|_u=(γ/w)∂_⊥, ∂_u|_γ=∂_∥−(u/w)∂_⊥ ⇒ 𝒰 = k∥∂_∥f + (ωγ−k∥u)/w · ∂_⊥f.
-@inline _U_cov(d, u, w, γ, ω, kz) = kz * d.dpar(w, u) + d.dperp(w, u) * (ω * γ - kz * u) / w
+@inline _U_cov(d, u, w, γ, ω, kz) = kz * d.dpara(w, u) + d.dperp(w, u) * (ω * γ - kz * u) / w
 
 # 3×3 relativistic harmonic integrand 2π·𝒰·𝓣_n at (γ,p∥); bare momenta make 𝓣_n
 # regular at w=0. Caller passes w=√(γ²−1−u²) (complex off the real p∥ range).
@@ -149,7 +155,7 @@ end
 # I(p⊥) for the WHOLE harmonic sum at one perp node
 function _coupled_perp(v, ns, d::CoupledVDF, ω, Ω, kz, a, L, U)
     # Landau–Hilbert for 5 parallel moments: [∂⊥, u·∂⊥, u²·∂⊥, ∂∥, u·∂∥]
-    g5(u) = (q = d.dperp(v, u); p = d.dpar(v, u); SVector(q, u * q, u^2 * q, p, u * p))
+    g5(u) = (q = d.dperp(v, u); p = d.dpara(v, u); SVector(q, u * q, u^2 * q, p, u * p))
     ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = g5.(ζs)
     bs = _perp_Bessel_triplet.(ns, a, v)

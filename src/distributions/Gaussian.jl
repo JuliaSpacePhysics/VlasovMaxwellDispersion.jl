@@ -18,7 +18,7 @@ Gaussian(vth) = Gaussian(vth, nothing)
 
 const Z = plasma_dispersion_function
 
-function par_moments(p::Gaussian, ω, kz, nΩ)
+function para_moments(p::Gaussian, ω, kz, nΩ)
     vthpar = p.vth
     vd = @something p.vd zero(p.vth)
     σ⁻¹ = 1 / (kz * vthpar)

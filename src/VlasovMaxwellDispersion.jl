@@ -38,7 +38,7 @@ export Wavenumber, para, perp
 # re-exported physical vocabulary from PlasmaBase
 export AbstractVDF, Particle, Electron, Proton, Ion, Species, Plasma
 export NormalizedSpecies
-export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, CoupledVDF, GaussianRing
+export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, CoupledVDF, GaussianRing
 export Separable, ⊗, Gaussian, GyroRing
 export plasma_dispersion_function, Z, hilbert
 export IntegralClosure, HarmonicSum, Newberger

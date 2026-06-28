@@ -9,10 +9,11 @@
 # the second is a 1-D p⊥ integral carrying the analytic pole + Landau residue
 function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-7, norm = x -> maximum(abs, x))
     Ω, kz, kperp = s.Omega, para(k), perp(k)
-    lo, hi = d.parlo, d.parhi
+    lo, hi = d.para
+    qlo, qhi = d.perp
     ns = _resonance_harmonics(ω, Ω, kz, lo, hi)
     ζs = [(ω - n * Ω) / kz for n in ns]                     # p⊥-independent (nonrel)
-    ε = sqrt(eps(real(ω))) * d.perphi
+    ε = max(qlo, sqrt(eps(real(ω))) * qhi)   # perp lower bound (ε edge-removes the p⊥=0 origin)
     # 2-D smooth remainder: full resummed integrand minus the peeled poles.
     function smooth2d(x)
         u, w = x[1], x[2]
@@ -22,7 +23,7 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
         end
         return val
     end
-    bulk = first(hcubature(smooth2d, SVector(lo, ε), SVector(hi, d.perphi); rtol, norm))
+    bulk = first(hcubature(smooth2d, SVector(lo, ε), SVector(hi, qhi); rtol, norm))
     # 1-D p⊥ integral of the analytic pole terms (+ Landau for damped modes).
     function poles1d(w)
         acc = zero(SMatrix{3, 3, ComplexF64})
@@ -31,15 +32,15 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
         end
         return acc
     end
-    poles = isempty(ns) ? zero(bulk) : first(QuadGK.quadgk(poles1d, ε, d.perphi; rtol, norm))
+    poles = isempty(ns) ? zero(bulk) : first(QuadGK.quadgk(poles1d, ε, qhi; rtol, norm))
     return SMatrix{3, 3, ComplexF64}((s.Pi2 / (ω * Ω)) .* (bulk .+ poles))
 end
 
 function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x))
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     β = kperp / Ω
-    pmax = max(abs(d.parlo), abs(d.parhi))
-    γmax = sqrt(1 + pmax^2 + d.perphi^2)
+    pmax = maximum(abs, d.para)
+    γmax = sqrt(1 + pmax^2 + d.perp[2]^2)
     umaxmax = sqrt(γmax^2 - 1)
     # Generous harmonic window; the per-γ in-range filter discards non-crossing n.
     nlo = floor(Int, (real(ω) - kz * umaxmax) / Ω) - 1
@@ -89,7 +90,7 @@ include("qin_sigmas.jl")
     β = kperp / Ω0
     z = β * w
     r = u / w
-    dfpa, dfpe = d.dpar(w, u), d.dperp(w, u)
+    dfpa, dfpe = d.dpara(w, u), d.dperp(w, u)
     cross = w * dfpa - u * dfpe
     U = dfpe + (kz / (ω * γ)) * cross               # velocity-form numerator (§2)
     ee = (Ω0 / (γ * ω)) * r * cross                  # e∥e∥ Bernstein term (§3)
@@ -109,7 +110,7 @@ end
     β = kperp / Ω
     z = β * w
     return map(ns, ζs) do n, ζ
-        dfpa, dfpe = d.dpar(w, ζ), d.dperp(w, ζ)
+        dfpa, dfpe = d.dpara(w, ζ), d.dperp(w, ζ)
         U = dfpe + (kz / ω) * (w * dfpa - ζ * dfpe)
         ((2π * U) * (-Ω / kz)) .* _T_n_bare(n, z, ζ, w)
     end

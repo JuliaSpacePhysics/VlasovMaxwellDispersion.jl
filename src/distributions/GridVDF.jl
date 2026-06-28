@@ -23,7 +23,7 @@ regime(d::GridVDF) = regime(d.coupled)
 function GridVDF(vperp, vpar, f; tol=1.0e-3, method=nothing, regime=NonRelativistic())
     method = @something(method, NonnegBSpline{3}(; tol, maxknots_par=length(vpar), maxknots_perp=length(vperp)))
     vp, vq = collect(float.(vpar)), collect(float.(vperp))
-    fpp = permutedims(f)        # public f[perp,par] → internal [par,perp] for fit_grid
+    fpp = permutedims(f)        # public f[perp,para] → internal [para,perp] for fit_grid
     # rescale as a tiny-valued grid (e.g. exp(-μγ)~1e-18) would otherwise underflow the fit to all-zeros
     scale = maximum(abs, fpp)
     iszero(scale) && throw(ArgumentError("GridVDF: f is all zeros"))
@@ -32,11 +32,11 @@ function GridVDF(vperp, vpar, f; tol=1.0e-3, method=nothing, regime=NonRelativis
     # The spline `fit` and its derivatives are indexed (p∥,p⊥); CoupledVDF invokes its
     # callables (p⊥,p∥), so wrap each perp-first. Raw constructor: inputs already (p⊥,p∥).
     f0 = (q, u) -> fit(u, q)
-    dpar = (q, u) -> _fit_dpar(fit, u, q)
+    dpara = (q, u) -> _fit_dpara(fit, u, q)
     dperp = (q, u) -> _fit_dperp(fit, u, q)
-    plo, phi = promote(float(fit.knots_par[1]), float(fit.knots_par[end]))
-    qhi = oftype(phi, fit.knots_perp[end])
-    cpl = CoupledVDF(f0, dpar, dperp, plo, phi, qhi, regime)
+    para = promote(float(fit.knots_par[1]), float(fit.knots_par[end]))
+    perp = oftype(para[2], fit.knots_perp[1]), oftype(para[2], fit.knots_perp[end])
+    cpl = CoupledVDF(f0, dpara, dperp, para, perp, regime)
     GridVDF(vp, vq, fit, cpl)
 end
 
@@ -49,7 +49,7 @@ end
 end
 
 
-@inline function _fit_dpar(fit::TensorSplineFit, u, v)
+@inline function _fit_dpara(fit::TensorSplineFit, u, v)
     _insupport(fit, u, v) || return zero(complex(promote_type(typeof(float(u)), typeof(float(v)))))
     i, j = _cell(fit.knots_par, u), _cell(fit.knots_perp, v)
     _dpolyval2_s(fit.coeffs[i, j], u - fit.knots_par[i], v - fit.knots_perp[j])
@@ -91,9 +91,9 @@ end
 # (γ,p∥) integral sweeps constant-γ half-circles p∥²+p⊥²=γ²−1. Feeding the
 # straight to the coupled-rel evaluator fails (NaN): its γmax=√(1+p∥max²+p⊥max²)
 # reaches the rectangle's CORNER, where the half-circle pokes outside the grid
-# (p⊥>perphi) and the extrapolates to garbage. Fix: integrate only up to
+# (p⊥>p⊥max) and the extrapolates to garbage. Fix: integrate only up to
 # the largest γ whose whole half-circle fits inside the grid — radius R=min(p∥
-# half-width, perphi) ⇒ γmax=√(1+R²). f₀ decays, so the clipped corner is
+# half-width, p⊥max) ⇒ γmax=√(1+R²). f₀ decays, so the clipped corner is
 # negligible. The harmonic is the shared edge-mapped `_coupled_harmonic_rel`
 # (§5.2.2 disk→box maps, inner single-pole Plemelj) with the bicubic ∇f₀; the maps
 # keep every node on the disk (real p⊥), so the bicubic is never probed off-grid.
@@ -101,7 +101,7 @@ function _grid_contribution_rel(d::GridVDF, s, ω, k)
     cpl = d.coupled
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
-    R = min(min(cpl.parhi, -cpl.parlo), cpl.perphi)   # half-circle radius that fits the grid
+    R = min(min(cpl.para[2], -cpl.para[1]), cpl.perp[2])   # half-circle radius that fits the grid
     γmax = sqrt(1 + R^2)
     nmax = nmax_bessel(a^2 * R^2 / 2)
     f = n -> _coupled_harmonic_rel(n, cpl, ω, Ω, kz, a, γmax)
@@ -175,7 +175,7 @@ end
 # Key identity: the p⊥-slice coeffs are polynomials in t (= p⊥ − knots_perp[j]),
 # and `cell_hilbert` is linear in them ⇒ each moment z(t) is a polynomial in t —
 # F moments (∂⊥ slice) deg NQ-2, T moments (∂∥ slice) deg NQ-1. We compute it ONCE
-# per perp cell (and the per-par-cell log ONCE per harmonic), then the p⊥ quadrature
+# per perp cell (and the perp-para-cell log ONCE per harmonic), then the p⊥ quadrature
 # only evaluates that polynomial per node instead of re-summing `cell_hilbert` over
 # every parallel cell. Exact; −1/kz folds the resonance kz.
 @inline function _grid_parmoment_polys(fit::TensorSplineFit{Tc,NP,NQ}, j, ζ, kz) where {Tc,NP,NQ}
