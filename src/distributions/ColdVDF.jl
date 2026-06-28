@@ -5,10 +5,6 @@
 """
 struct ColdVDF <: AbstractVDF end
 
-@inline thermal_par(::ColdVDF) = false   # exact zero, type-stable additive identity
-@inline thermal_perp(::ColdVDF) = false
-@inline drift(::ColdVDF) = false
-
 #   χ = ε_cold - I:
 #   χ_xx = χ_yy = -Π²/(ω²-Ω²)
 #   χ_xy = -χ_yx = -i Ω Π²/(ω(ω²-Ω²))   (sign tracks signed Ω ⇒ charge)
