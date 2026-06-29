@@ -65,3 +65,65 @@ function perp_moments(p, n, β; rtol = 1.0e-8)
     P = 2π .* QuadGK.quadgk(perptri, p.lo, p.hi; rtol)[1]
     return _symmat(P[1], P[2], P[3], P[4], P[5], P[6]), _symmat(P[7], P[8], P[9], P[10], P[11], P[12])
 end
+
+# Fused harmonic loop for two analytic factors. The per-harmonic `para_moments`
+# (hilbert→quadgk) and `perp_moments` (quadgk) integrands are harmonic-independent
+# in `f/f′` — only the resonance pole ζ_n and the Bessel factor change with n. So
+# collapse the whole ±nmax ladder into ONE u-quadrature + ONE v-quadrature, each
+# vector-valued over n, dropping f/f′ evals from O(nodes·nmax) to O(nodes). Mirrors
+# `_coupled_perp`. Fixed `-nmax:nmax` (cap from `nmax_bessel`) replaces `converge`.
+function _separable_harmonics(para::AnalyticFactor, perp::AnalyticFactor, β, ω, Ω, kz, rtol)
+    ns = (-nmax_harm(perp, β)):nmax_harm(perp, β)
+    Ms = _para_moments_all(para, ω, kz, Ω, ns; rtol)
+    P∂s, PFs = _perp_moments_all(perp, ns, β; rtol)
+    acc = zero(SMatrix{3, 3, ComplexF64})
+    @inbounds for i in eachindex(ns)
+        acc += _chi_mblock(Ms[i], P∂s[i], PFs[i], ω, kz, ns[i] * Ω)
+    end
+    return acc
+end
+
+@inline _gpar(p, u) = (fp = p.fdf(u); SVector(fp[1], u * fp[1], u^2 * fp[1], fp[2], u * fp[2]))
+
+# All parallel moments M_n in one u-quadrature: the Plemelj split per pole reuses
+# the single g(u)=[f,uf,u²f,f′,uf′] evaluation across every harmonic.
+function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol = 1.0e-8)
+    ζs = [(ω - n * Ω) / kz for n in ns]
+    gζs = [_gpar(p, ζ) for ζ in ζs]
+    reg = first(
+        QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(_relsize, x)) do u
+            g = _gpar(p, u)
+            [(g - gζs[i]) / (u - ζs[i]) for i in eachindex(ns)]
+        end
+    )
+    return [(-1 / kz) .* (reg[i] + gζs[i] .* _landau_logfac(ζs[i], p.lo, p.hi)) for i in eachindex(ns)]
+end
+
+# 12 distinct bvec⊗bvec entries (∂F slice, then F slice) at one perp node, given the
+# Bessel triplet (J_{n−1},J_n,J_{n+1}); shared f⊥/f⊥′ across n.
+@inline function _perp12(v, Jm, Jn, Jp, fq, dfq, vfq)
+    b1, b2, b3 = v * (Jm + Jp) / 2, v * (Jm - Jp) / 2, Jn
+    k11, k12, k13, k22, k23, k33 = b1^2, b1 * b2, b1 * b3, b2^2, b2 * b3, b3^2
+    return SVector(
+        dfq * k11, dfq * k12, dfq * k13, dfq * k22, dfq * k23, dfq * k33,
+        vfq * k11, vfq * k12, vfq * k13, vfq * k22, vfq * k23, vfq * k33
+    )
+end
+
+# All perp moments (P∂_n, PF_n) in one v-quadrature; one Bessel ladder per node
+# feeds every harmonic instead of three besselj per (n,node).
+function _perp_moments_all(p::AnalyticFactor, ns, β; rtol = 1.0e-8)
+    kmin = first(ns) - 1
+    P = first(
+        QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(_relsize, x)) do v
+            z = β * v
+            Jv = [besselj(k, z) for k in kmin:(last(ns) + 1)]   # J_k ladder, shared over n
+            fq, dfq = p.fdf(v)
+            vfq = v * fq
+            [_perp12(v, Jv[n - 1 - kmin + 1], Jv[n - kmin + 1], Jv[n + 1 - kmin + 1], fq, dfq, vfq) for n in ns]
+        end
+    )
+    P∂s = [2π .* _symmat(Pi[1], Pi[2], Pi[3], Pi[4], Pi[5], Pi[6]) for Pi in P]
+    PFs = [2π .* _symmat(Pi[7], Pi[8], Pi[9], Pi[10], Pi[11], Pi[12]) for Pi in P]
+    return P∂s, PFs
+end
