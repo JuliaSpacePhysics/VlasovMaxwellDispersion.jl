@@ -36,6 +36,8 @@ jobs:
           - ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Ensure local main ref for latency baseline
+        run: git show-ref --verify --quiet refs/heads/main || git fetch --depth=1 origin main:main
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
