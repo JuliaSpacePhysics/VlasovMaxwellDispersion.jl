@@ -98,3 +98,19 @@ end
     Jm, Jp = besselj(n - 1, z), besselj(n + 1, z)
     return SVector(px * (Jm + Jp) / 2, px * (Jm - Jp) / 2, besselj(n, z))
 end
+
+# Whole ±nmax triplet ladder at one perp node
+function _perp_Bessel_triplets(ns, a, px)
+    z = a * px
+    M = last(ns) + 1
+    return @no_escape begin
+        Jv = @alloc(typeof(z), M + 1)
+        besselj_ladder!(Jv, M, z)
+        map(ns) do n
+            Rn = (_jladder(Jv, n - 1) + _jladder(Jv, n + 1)) / 2
+            Jn = _jladder(Jv, n)
+            Jn′ = (_jladder(Jv, n - 1) - _jladder(Jv, n + 1)) / 2
+            SA[px * Rn, px * Jn′, Jn]
+        end
+    end
+end

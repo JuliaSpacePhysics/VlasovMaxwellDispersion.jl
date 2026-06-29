@@ -164,7 +164,7 @@ function _coupled_perp(v, ns, d::CoupledVDF, ω, Ω, kz, a, L, U)
     end
     ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = g5.(ζs)
-    bs = _perp_Bessel_triplet.(ns, a, v)
+    bs = _perp_Bessel_triplets(ns, a, v)
     # regularized integral part: Σ_n χ_n with the Plemelj removable singularity
     reg = first(
         QuadGK.quadgk(L, U; rtol = 1.0e-7, norm = x -> maximum(abs, x)) do u

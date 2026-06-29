@@ -7,6 +7,7 @@ using .PlasmaBase: AbstractVDF, AbstractPlasma, Particle, Species, Plasma,
     gyrofrequency_ratio, plasma_gyro_ratio
 using LinearAlgebra
 using StaticArrays
+using Bumper: @no_escape, @alloc
 using Roots
 using RootsAndPoles
 using SpecialFunctions

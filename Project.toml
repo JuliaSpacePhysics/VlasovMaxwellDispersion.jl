@@ -7,6 +7,7 @@ authors = ["Zijin Zhang <zijin@ucla.edu>"]
 projects = ["test", "docs", "benchmark", "lib/PlasmaBase"]
 
 [deps]
+Bumper = "8ce10254-0962-460f-a3d8-1f77fea1446e"
 CommonSolve = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 HCubature = "19dc6840-f33b-545b-b366-655c7e3ffd49"
@@ -29,6 +30,7 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 VlasovMaxwellDispersionSciMLBaseExt = "SciMLBase"
 
 [compat]
+Bumper = "0.7"
 CommonSolve = "0.2"
 ForwardDiff = "1"
 HCubature = "1.7"
