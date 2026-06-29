@@ -179,7 +179,7 @@ end
 # per perp cell (and the perp-para-cell log ONCE per harmonic), then the p⊥ quadrature
 # only evaluates that polynomial per node instead of re-summing `cell_hilbert` over
 # every parallel cell. Exact; −1/kz folds the resonance kz.
-@inline function _grid_parmoment_polys(fit::TensorSplineFit{Tc,NP,NQ}, j, ζ, kz) where {Tc,NP,NQ}
+@inline function _grid_parmoment_polys(fit::TensorSplineFit{Tc,NP,NQ}, j, ζ) where {Tc,NP,NQ}
     kp = fit.knots_par
     c = fit.coeffs
     T = complex(promote_type(Tc, typeof(ζ)))
@@ -213,8 +213,7 @@ end
             MT1 = setindex(MT1, MT1[b+1] + hT1, b + 1)
         end
     end
-    f = -1 / kz
-    return (f * MF0, f * MF1, f * MF2, f * MT0, f * MT1)
+    return (MF0, MF1, MF2, MT0, MT1)
 end
 
 # One cyclotron harmonic: loop perp cells, precompute the parallel-moment
@@ -226,12 +225,12 @@ function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, a)
     acc = zero(SMatrix{3,3,ComplexF64})
     for j in 1:(length(kq)-1)
         wl, wr = kq[j], kq[j+1]
-        MF0c, MF1c, MF2c, MT0c, MT1c = _grid_parmoment_polys(fit, j, ζ, kz)
+        MF0c, MF1c, MF2c, MT0c, MT1c = _grid_parmoment_polys(fit, j, ζ)
         integ = v -> begin
             t = v - wl
             M = (evalpoly(t, MF0c.data), evalpoly(t, MF1c.data), evalpoly(t, MF2c.data),
                 evalpoly(t, MT0c.data), evalpoly(t, MT1c.data))
-            _In_block(M, _perp_Bessel_triplet(n, a, v), v, ω, kz, n * Ω)
+            _In_block(M, (-1 / kz), _perp_Bessel_triplet(n, a, v), v, ω, kz, n * Ω)
         end
         # The Bessel weight J_n(a v) has v-wavelength ≈ π/a; adaptive QuadGK over a
         # cell spanning many wavelengths can't resolve it. Pre-split the cell at the

@@ -6,9 +6,8 @@ import BracketingNonlinearSolve as BNS
 const SUITE = BenchmarkGroup()
 
 # Maxwellian baseline (closed Z/Γ_n harmonic sum) — the fast reference path.
-let
+let g = SUITE["Maxwellian"]
     s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para=0.9, vth_perp=1.2))
-    g = SUITE["maxwellian"] = BenchmarkGroup()
     for kp in (0.1, 1.0)
         k = Wavenumber(kp, 0.4)
         g["kperp=$kp"] = @benchmarkable contribution($s, 1.3 - 0.05im, $k)
@@ -32,20 +31,19 @@ let g = SUITE["separable"] = BenchmarkGroup()
 end
 
 # CoupledVDF: the two closures (derivation.md §3) on an inseparable f₀.
-let
+let g = SUITE["Nonrelativistic/coupled"]
     g0(w, u) = exp(-(u^2 + w^2 + 0.6u * w))
     kw = (para=(-8.0, 8.0), perp=6.0)
     s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))
     ω = 1.2 + 0.05im
-    g = SUITE["coupled_nonrel"] = BenchmarkGroup()
     for kp in (0.3, 1.0)
         k = Wavenumber(kp, 0.4)
-        g["B_truncated_kperp=$kp"] = @benchmarkable contribution($s, $ω, $k)
-        g["A_newberger_kperp=$kp"] = @benchmarkable contribution($s, $ω, $k; closure=Newberger())
+        g["B_truncated/kperp=$kp"] = @benchmarkable contribution($s, $ω, $k)
+        g["A_newberger/kperp=$kp"] = @benchmarkable contribution($s, $ω, $k; closure=Newberger())
     end
 end
 
-let regime=Relativistic()
+let g = SUITE["Relativistic"], regime=Relativistic()
     μ = 40.0
     γ(w, u) = sqrt(1 + u^2 + w^2)
     f0(w, u) = exp(-μ * γ(w, u))
@@ -53,12 +51,11 @@ let regime=Relativistic()
     kw = (para=(-L, L), perp=L)
     vdf = CoupledVDF(f0; kw..., regime)
     ω = 0.3 + 0.05im
-    g = SUITE["Relativistic"] = BenchmarkGroup()
     # Sweep k⊥: edge-mapped (γ,p∥) cost grows with nmax∝k⊥ρ
     for kp in (0.7, 3.5)
         k = Wavenumber(kp, 0.4)
-        g["coupled/A_newberger_kperp=$kp"] = @benchmarkable contribution($vdf, $ω, $k; closure=Newberger())
-        g["coupled/B_truncated_kperp=$kp"] = @benchmarkable contribution($vdf, $ω, $k)
+        g["coupled/A_newberger/kperp=$kp"] = @benchmarkable contribution($vdf, $ω, $k; closure=Newberger())
+        g["coupled/B_truncated/kperp=$kp"] = @benchmarkable contribution($vdf, $ω, $k)
     end
     k = Wavenumber(0.7, 0.4)
 
@@ -69,13 +66,12 @@ let regime=Relativistic()
     g["gridvdf"] = @benchmarkable contribution($vdf, $ω, $k)
 end
 
-let
+let g = SUITE["local_solve"]
     s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para=0.9, vth_perp=1.2))
     k = Wavenumber(0.01, 0.5)
     prob = LocalDispersionProblem(s, k, 0.6)
     f = residual(prob)
     h = 1e-3
-    g = SUITE["local_solve"] = BenchmarkGroup()
     g["muller_native"] = @benchmarkable solve($prob)
     g["secant_roots"] = @benchmarkable solve($prob, Secant())
     # Only complex-capable solvers qualify

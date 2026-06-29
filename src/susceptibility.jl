@@ -76,15 +76,18 @@ end
     return @SMatrix ComplexF64[xx xy xz; -xy yy -yz; xz yz zz]
 end
 
-# Pointwise (Coupled/Grid): the perp tensor at node v⊥ before parallel integration
-@inline function _In_block(M, bvec, px, ω, kz, nΩ)
+# Pointwise (Grid): the perp tensor at node p⊥ before parallel integration
+# M=(q,uq,u²q,p,up); here M=c·Δm
+@inline function _In_block(Δm, c, bvec, px, ω, kz, nΩ)
     b1, b2, b3 = bvec
-    MF0, MF1, MF2, MT0, MT1 = M
-    D0 = 2π * (ω * MF0 - kz * MF1 + kz * px * MT0)
-    D1 = 2π * (ω * MF1 - kz * MF2 + kz * px * MT1)
+    Δ0, Δ1, Δ2, Δ3, Δ4 = Δm
+    c2 = 2π * c
+    kzpx = kz * px
+    D0 = c2 * (ω * Δ0 - kz * Δ1 + kzpx * Δ3)
+    D1 = c2 * (ω * Δ1 - kz * Δ2 + kzpx * Δ4)
+    zz = (c2 * b3 * b3) * (nΩ * Δ2 + (ω - nΩ) * px * Δ4)
     xx, xy, yy = b1 * b1 * D0, im * b1 * b2 * D0, b2 * b2 * D0
     xz, yz = b1 * b3 * D1, im * b2 * b3 * D1
-    zz = 2π * b3 * b3 * (nΩ * MF2 + (ω - nΩ) * px * MT1)
     return @SMatrix ComplexF64[xx xy xz; -xy yy -yz; xz yz zz]
 end
 

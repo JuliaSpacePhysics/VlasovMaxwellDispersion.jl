@@ -58,12 +58,10 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     )[1]
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
-    ζs = [(ω - n * Ω) / kz for n in ns]   # v-independent (nonrel) → built once, not per perp node
-    χ = first(
-        QuadGK.quadgk(d.perp...; rtol, norm) do v
-            _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U)
-        end
-    )
+    ζs = [(ω - n * Ω) / kz for n in ns]
+    χ = QuadGK.quadgk(d.perp...; rtol, norm) do v
+        _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U)
+    end[1]
     return (s.Pi2 / ω^2) * χ
 end
 
@@ -147,7 +145,7 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ = _GLγ, GLp = _
         inner = zero(SMatrix{3, 3, ComplexF64})
         for ip in eachindex(pn)
             θ = pn[ip] * (π / 2)
-            u, w = umax * sin(θ), umax * cos(θ)  # p⊥=w real on the disk
+            u, w = umax .* sincos(θ)  # p⊥=w real on the disk
             wu = pw[ip] * (π / 2) * w             # Jacobian p⊥·dθ cancels rim 1/p⊥
             inner = inner .+ wu .* ((_rel_integrand(u, w, γ, n, a, ω, kz, d) .- nζ) ./ (u - ζ))
         end
@@ -165,14 +163,16 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U)
     end
     gζs = g5.(ζs)
     bs = _perp_Bessel_triplets(ns, a, v)
-    # regularized integral part: Σ_n χ_n with the Plemelj removable singularity
+    invkz = -1 / kz
+    # regularized integral part: Σ_n χ_n with the Plemelj removable singularity.
+    # Accumulate the 6 distinct tensor scalars across harmonics, assemble once.
     reg = first(
         QuadGK.quadgk(L, U; rtol = 1.0e-7, norm = x -> maximum(abs, x)) do u
             g = g5(u)
             acc = zero(SMatrix{3, 3, ComplexF64})
             @inbounds for i in eachindex(ns)
-                m = (-1 / kz) .* ((g - gζs[i]) / (u - ζs[i]))
-                acc += _In_block((m[1], m[2], m[3], m[4], m[5]), bs[i], v, ω, kz, ns[i] * Ω)
+                c = invkz / (u - ζs[i])      # one complex division per harmonic
+                acc += _In_block(g - gζs[i], c, bs[i], v, ω, kz, ns[i] * Ω)
             end
             acc
         end
@@ -180,8 +180,7 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U)
     # analytic log-ratio (+ Landau) part, constant in u
     logacc = zero(SMatrix{3, 3, ComplexF64})
     @inbounds for i in eachindex(ns)
-        m = (-1 / kz) .* (gζs[i] .* _landau_logfac(ζs[i], L, U))
-        logacc += _In_block((m[1], m[2], m[3], m[4], m[5]), bs[i], v, ω, kz, ns[i] * Ω)
+        logacc += _In_block(gζs[i] .* _landau_logfac(ζs[i], L, U), invkz, bs[i], v, ω, kz, ns[i] * Ω)
     end
     return reg + logacc
 end
