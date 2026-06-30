@@ -64,6 +64,7 @@ let g = SUITE["Relativistic"], regime=Relativistic()
     F = [f0(u, w) for w in pperp, u in ppar]      # F[perp,par]
     vdf = GridVDF(pperp, ppar, F; regime)
     g["gridvdf"] = @benchmarkable contribution($vdf, $ω, $k)
+    g["gridvdf_coupled"] = @benchmarkable contribution($vdf.coupled, $ω, $k)
 end
 
 let g = SUITE["local_solve"]
