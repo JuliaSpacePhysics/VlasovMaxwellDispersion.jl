@@ -4,28 +4,19 @@ How a tabulated gyrotropic `f₀` on a velocity grid becomes a magnetized
 susceptibility `χ(ω,k)`. Non-relativistic, oblique (`k⊥≠0`), harmonic-sum closure. 
 Notation: `Ω` signed gyrofrequency, `Π²` plasma-frequency ratio, `z = k⊥v⊥/Ω`.
 
-## 1. Representation: grid → tensor bicubic
+## 1. Representation: grid → tensor spline / basis projection
 
-The grid `f₀[i,j] = f₀(v∥ᵢ, v⊥ⱼ)` is fit (`fit_grid`, default `NonnegBSpline`) to a
-**tensor bicubic** on cells `[uᵢ,uᵢ₊₁]×[wⱼ,wⱼ₊₁]`,
+Fit a tabulated `f₀[i,j] = f₀(v⊥ᵢ, v∥ⱼ)` to a tensor spline on cells `[uᵢ,uᵢ₊₁]×[wⱼ,wⱼ₊₁]`.
 
-    f₀(v∥,v⊥) = Σ_{A,B=1}^{4} c[i,j,A,B] · s∥^{A-1} s⊥^{B-1},
-    s∥ = v∥ − uᵢ,  s⊥ = v⊥ − wⱼ.
+Default: **non-negative least-squares tensor B-spline** — adaptive knots to a
+relative-error tolerance, positivity by construction, analytic derivatives. Naïve
+per-cell interpolation gives negative f₀ and noisy ∂f₀ near the pole and is
+rejected.
 
-`C¹`, complex-evaluable (cell chosen by `Re v∥`, polynomial continued onto the
-Landau contour), with analytic derivatives
-
-    ∂∥f₀ = Σ (A-1) c[i,j,A,B] s∥^{A-2} s⊥^{B-1},
-    ∂⊥f₀ = Σ (B-1) c[i,j,A,B] s∥^{A-1} s⊥^{B-2}.
-
-The fit is renormalized so `∫d³p f₀ = 1` (closed form over the
-cells, `_fit_d3p`).
+The fit is renormalized so `∫d³p f₀ = 1` (closed form over the cells, `_fit_d3p`).
 
 ## 2. Susceptibility as parallel × perpendicular moments
 
-With the prefactor `χ = (Π²/ω²) Σ_n χ_n` and (non-rel) the resonance linear in `v∥`,
-
-    ω − k∥v∥ − nΩ = −k∥(v∥ − ζ_n),    ζ_n = (ω − nΩ)/k∥   (v⊥-independent).
 
 Each cyclotron tensor `χ_n` is a **bilinear form** in five parallel moments and six
 Bessel-weighted perpendicular moments:
@@ -85,7 +76,7 @@ re-summed at every `v⊥` node) to `O(N_∥cells)` precompute; the `N_⊥nodes` 
 evaluations become cubic + Bessel only. Measured ~**3–5× per `contribution`**
 (`exact = exact`, agrees with the independent `CoupledVDF` path to ~1e-8), which is the dominant per-evaluation cost of `solve` (Muller on `det 𝒟`).
 
-## 5. Scope / what is not (yet) done
+## 5. Scope / what is not done
 
 - **Newberger closure** and the general `CoupledVDF` evaluator (the bicubic is fed in as a complex-analytic `f₀`).
 - The outer `v⊥` integral is still Gauss–Kronrod. It too closes in finite form — the
