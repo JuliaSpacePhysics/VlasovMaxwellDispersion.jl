@@ -42,7 +42,7 @@ end
     return (imag(ζ) < 0 && lo < real(ζ) < hi) ? logfac + 2π * im : logfac
 end
 
-function converge(f, nmin::Integer, rtol; nmax::Integer = 200)
+function converge(f, nmin::Integer; rtol, nmax::Integer = 200)
     total = f(0)
     n = 1
     while n <= nmax
@@ -56,7 +56,7 @@ function converge(f, nmin::Integer, rtol; nmax::Integer = 200)
     return total
 end
 
-converge(f, rtol; kw...) = converge(f, 1, rtol; kw...)
+converge(f; kw...) = converge(f, 1; kw...)
 
 
 @inline _relsize(x::Number) = abs(x)
