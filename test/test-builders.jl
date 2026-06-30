@@ -2,7 +2,6 @@
 # Physical types (Particle/Species/Plasma) come from PlasmaBase.
 
 @testitem "Species→NormalizedSpecies" begin
-    using VlasovMaxwellDispersion
     V = VlasovMaxwellDispersion.PlasmaBase
     e, p = Electron(), Proton()
     B0 = 5.0e-9
@@ -50,7 +49,6 @@ end
 end
 
 @testitem "Ω_ref need not be a gyrofrequency: frequency ref carries B0 in Omega" begin
-    using VlasovMaxwellDispersion
     using VlasovMaxwellDispersion.PlasmaBase
     C = PlasmaBase
     p = Proton()

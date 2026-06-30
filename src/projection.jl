@@ -51,11 +51,9 @@ end
 # Spline value / derivatives at (u,v). u may be complex (parallel Landau
 # continuation); v real. coeffs[i,j][A,B] multiplies s∥^{A-1} s⊥^{B-1}.
 # Out-of-support zero MUST match the in-support `_polyval2` element type (real for real
-# (u,v), complex only when an arg is). Forcing `complex` here made the return a
-# `Union{Float64,ComplexF64}`; harmless alone (2-way union-splits) but the fused `dgrad`
-# tuples two of these → 4-way union → boxing → per-node allocs in the relativistic loop.
+# (u,v), complex only when an arg is).
 function (fit::TensorSplineFit)(u, v)
-    _insupport(fit, u, v) || return zero(promote_type(typeof(float(u)), typeof(float(v)), eltype(fit.coeffs)))
+    _insupport(fit, u, v) || return zero(promote_type(typeof(float(u)), typeof(float(v)), eltype(eltype(fit.coeffs))))
     i, j = _cell(fit.knots_par, u), _cell(fit.knots_perp, v)
     _polyval2(fit.coeffs[i, j], u - fit.knots_par[i], v - fit.knots_perp[j])
 end
@@ -68,17 +66,24 @@ end
     end
     acc
 end
-@inline function _dpolyval2_s(c, s, t)
-    acc = zero(promote_type(typeof(s), typeof(t), eltype(c)))
-    @inbounds for B in axes(c, 2), A in 2:size(c, 1)
-        acc += (A - 1) * c[A, B] * s^(A - 2) * t^(B - 1)
+
+# Fused (∂s, ∂t) of the cell poly in one pass.
+@inline function _dgradpolyval2(c, s, t)
+    T = promote_type(typeof(s), typeof(t), eltype(c))
+    ds = zero(T)
+    dt = zero(T)
+    tB1 = one(T)            # t^(B-1)
+    tB2 = zero(T)           # t^(B-2); B=1 column has no ∂t
+    @inbounds for B in axes(c, 2)
+        sA1 = one(T)        # s^(A-1)
+        sA2 = zero(T)       # s^(A-2); A=1 row has no ∂s
+        for A in axes(c, 1)
+            cAB = c[A, B]
+            ds += (A - 1) * cAB * sA2 * tB1
+            dt += (B - 1) * cAB * sA1 * tB2
+            sA2, sA1 = sA1, sA1 * s
+        end
+        tB2, tB1 = tB1, tB1 * t
     end
-    acc
-end
-@inline function _dpolyval2_t(c, s, t)
-    acc = zero(promote_type(typeof(s), typeof(t), eltype(c)))
-    @inbounds for B in 2:size(c, 2), A in axes(c, 1)
-        acc += (B - 1) * c[A, B] * s^(A - 1) * t^(B - 2)
-    end
-    acc
+    (ds, dt)
 end
