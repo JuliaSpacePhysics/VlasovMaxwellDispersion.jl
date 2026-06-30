@@ -57,14 +57,6 @@ end
         _besselj_series(complex(ν), complex(z))
 end
 
-"""
-    besselj_prime(ν, z) -> J_ν'(z)
-
-Derivative via the standard recurrence `J_ν'(z) = (J_{ν−1}(z) − J_{ν+1}(z))/2`.
-Valid for non-integer ν (the case Newberger needs).
-"""
-@inline besselj_prime(ν, z) = (besselj_complex(ν - 1, z) - besselj_complex(ν + 1, z)) / 2
-
 function besselj_ladder!(out, M::Integer, z::T) where {T} # out[k+1] = J_k(z), k=0..M
     # Below √eps(T) the one-term series J_k=(z/2)^k/k! is exact to O(z²)≤eps(T) rel,
     # AND it is the safe path on denormal z, where the recurrence's 2n/z → Inf.

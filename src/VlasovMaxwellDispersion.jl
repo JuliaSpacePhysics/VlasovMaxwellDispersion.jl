@@ -13,7 +13,6 @@ using RootsAndPoles
 using SpecialFunctions
 using SpecialFunctions: erfcx, gamma
 using QuadGK
-using HCubature: hcubature
 using NonNegLeastSquares: nonneg_lsq
 using CommonSolve
 import CommonSolve: solve
