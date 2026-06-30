@@ -4,7 +4,9 @@ const _QIN_ZC2 = 1.0
 
 function _qin_sigmas_closed(a, z)
     Ja, J_a = besselj_complex(a, z), besselj_complex(-a, z)
-    Jad, J_ad = besselj_prime(a, z), besselj_prime(-a, z)
+    # J_ν′=J_{ν−1}−(ν/z)J_ν
+    Jad = besselj_complex(a - 1, z) - (a / z) * Ja
+    J_ad = besselj_complex(-a - 1, z) + (a / z) * J_a
     s = sinpi(a)
     z2 = z^2
     σ0 = π * J_a * Ja / s

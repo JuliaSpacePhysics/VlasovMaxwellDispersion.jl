@@ -14,26 +14,24 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
     ns = _resonance_harmonics(ω, Ω, kz, lo, hi)
     ζs = [(ω - n * Ω) / kz for n in ns]                     # p⊥-independent (nonrel)
     ε = max(qlo, sqrt(eps(real(ω))) * qhi)   # perp lower bound (ε edge-removes the p⊥=0 origin)
-    # 2-D smooth remainder: full resummed integrand minus the peeled poles.
-    function smooth2d(x)
-        u, w = x[1], x[2]
-        val = _qin_integrand(u, w, one(real(ω)), d, ω, Ω, kz, kperp)
-        for (ζ, ρ) in zip(ζs, _qin_residues(d, ns, ζs, w, ω, Ω, kz, kperp))
-            val = val .- ρ ./ (u - ζ)
+    logfacs = [_landau_logfac(ζ, lo, hi) for ζ in ζs]       # u-integral of the analytic pole term
+    χ = QuadGK.quadgk(ε, qhi; rtol, norm) do w
+        ρs = _qin_residues(d, ns, ζs, w, ω, Ω, kz, kperp)
+        # smooth p∥ remainder: full resummed integrand minus the peeled poles.
+        inner = QuadGK.quadgk(lo, hi; rtol, norm) do u
+            val = _qin_integrand(u, w, one(real(ω)), d, ω, Ω, kz, kperp)
+            @inbounds for i in eachindex(ζs)
+                val = val .- ρs[i] ./ (u - ζs[i])
+            end
+            val
+        end[1]
+        # analytic pole terms (+ Landau for damped modes)
+        @inbounds for i in eachindex(ζs)
+            inner = inner .+ ρs[i] .* logfacs[i]
         end
-        return val
-    end
-    bulk = first(hcubature(smooth2d, SVector(lo, ε), SVector(hi, qhi); rtol, norm))
-    # 1-D p⊥ integral of the analytic pole terms (+ Landau for damped modes).
-    function poles1d(w)
-        acc = zero(SMatrix{3, 3, ComplexF64})
-        for (ζ, ρ) in zip(ζs, _qin_residues(d, ns, ζs, w, ω, Ω, kz, kperp))
-            acc = acc .+ ρ .* _landau_logfac(ζ, lo, hi)
-        end
-        return acc
-    end
-    poles = isempty(ns) ? zero(bulk) : first(QuadGK.quadgk(poles1d, ε, qhi; rtol, norm))
-    return SMatrix{3, 3, ComplexF64}((s.Pi2 / (ω * Ω)) .* (bulk .+ poles))
+        inner
+    end[1]
+    return (s.Pi2 / (ω * Ω)) .* χ
 end
 
 function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x))
@@ -57,30 +55,26 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω
         end
         fI(u, w) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _qin_T_bare((ω * γ - kz * u) / Ω, β * w, u, w)
         # Inner edge map (derivation §5.2.2)
-        acc = first(
-            QuadGK.quadgk(-π / 2, π / 2; rtol = 1.0e-7, norm) do θ
-                u, w = umax .* sincos(θ)
-                val = fI(u, w)
-                for p in ζρ
-                    val = val .- p.ρ ./ (u - p.ζ)
-                end
-                w .* val
+        acc = QuadGK.quadgk(-π / 2, π / 2; rtol = 1.0e-7, norm) do θ
+            u, w = umax .* sincos(θ)
+            val = fI(u, w)
+            for p in ζρ
+                val = val .- p.ρ ./ (u - p.ζ)
             end
-        )
+            w .* val
+        end[1]
         for p in ζρ
             acc = acc .+ p.ρ .* _landau_logfac(p.ζ, -umax, umax)
         end
         return acc
     end
-    val = first(
-        QuadGK.quadgk(zero(real(ω)), one(real(ω)); rtol = 1.0e-6, norm) do q
-            γ = 1 + (γmax - 1) * q^2
-            (2 * (γmax - 1) * q) .* inner(γ)
-        end
-    )
+    val = QuadGK.quadgk(zero(real(ω)), one(real(ω)); rtol = 1.0e-6, norm) do q
+        γ = 1 + (γmax - 1) * q^2
+        (2 * (γmax - 1) * q) .* inner(γ)
+    end[1]
     # `fI` carries only the resonant 𝒰·𝓣ₙ; add the same pole-free nonresonant 𝒳_B
     bern = _ee33((s.Pi2 / ω^2) * _bernstein_rel(d, γmax))
-    return SMatrix{3, 3, ComplexF64}((s.Pi2 / (ω^2 * Ω)) .* val) .+ bern
+    return (s.Pi2 / (ω^2 * Ω)) .* val .+ bern
 end
 
 include("qin_sigmas.jl")
