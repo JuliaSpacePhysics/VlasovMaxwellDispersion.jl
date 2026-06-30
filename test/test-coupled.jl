@@ -12,17 +12,12 @@
     @test χc ≈ χm rtol = 1.0e-7
 end
 
-@testitem "CoupledVDF inseparable f₀" begin
-    g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))      # v∥–v⊥ coupling ⇒ not separable
-    cpl = CoupledVDF(g0; para = (-8.0, 8.0), perp = 6.0)
-    χ = contribution(NormalizedSpecies(-1.0, 1.0, cpl), 1.2 - 0.05im, Wavenumber(0.1, 0.4))
-    @test all(isfinite, χ)
-end
-
-@testitem "CoupledVDF Newberger (A) ≡ HarmonicSum (B)" begin
+@testitem "CoupledVDF Newberger (A) ≡ HarmonicSum (B) for inseparable f₀" begin
     g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))
     cpl = CoupledVDF(g0; para = (-8.0, 8.0), perp = 6.0)
     s = NormalizedSpecies(-1.0, 1.0, cpl)
+    χ = contribution(s, 1.2 - 0.05im, Wavenumber(0.1, 0.4))
+    @test all(isfinite, χ)
     ω = 1.2 + 0.05im
     for kperp in (0.0, 0.3, 0.6)
         k = Wavenumber(kperp, 0.4)
