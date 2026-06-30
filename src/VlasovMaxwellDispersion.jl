@@ -20,6 +20,7 @@ import CommonSolve: solve
 function contribution end
 
 include("derivatives.jl")
+include("holomorphic_ad.jl")   # erfc/erf/gamma/… differentiable at complex argument
 include("Bessel.jl")
 include("types.jl")
 include("problems.jl")
