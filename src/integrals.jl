@@ -62,6 +62,8 @@ converge(f; kw...) = converge(f, 1; kw...)
 @inline _relsize(x::Number) = abs(x)
 @inline _relsize(x::AbstractArray) = maximum(abs, x)
 
+NORM(x) = maximum(abs, x)
+
 """
     nmax_bessel(lambda; pad=5) -> Int
 
