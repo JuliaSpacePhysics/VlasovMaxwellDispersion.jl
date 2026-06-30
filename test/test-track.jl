@@ -39,9 +39,12 @@ end
     )
     ks = [Wavenumber(0.0, ka / vm_c) for ka in 0.1:-0.001:0.01]
 
+    # Without fallback the tracker loses the branch at the transition — historically as NaN;
+    # since muller contracts overflowing trial steps it instead wanders to a distant root
+    # (the electron plasma branch). Either failure mode is what the jump fallback must catch.
     baseline = solve(BranchProblem(plasma, ks, 0.08im),
                      ArcLength(; fallback=false, atol=1.0e-10, maxiter=300)).omega
-    @test !all(isfinite, baseline)
+    @test !isapprox(baseline[end], 0.009597 + 0im; rtol=5.0e-3, atol=5.0e-5)
 
     roots = solve(BranchProblem(plasma, ks, 0.08im), ArcLength(; atol=1.0e-10, maxiter=300)).omega
 

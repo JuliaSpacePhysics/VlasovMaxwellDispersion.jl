@@ -41,7 +41,7 @@ end
 
 function para_moments(p::AnalyticFactor, ω, kz, nΩ)
     ζ = (ω - nΩ) / kz
-    return (-1 / kz) .* hilbert(ζ; lower = p.lo, upper = p.hi) do u
+    return (-1 / kz) .* hilbert(ζ, p.lo, p.hi) do u
         fp, dp = p.fdf(u)
         SVector(fp, u * fp, u^2 * fp, dp, u * dp)
     end
@@ -81,11 +81,12 @@ end
 function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol = 1.0e-8)
     ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = [_gpar(p, ζ) for ζ in ζs]
-    reg = first(
-        QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(_relsize, x)) do u
-            g = _gpar(p, u)
-            [(g - gζs[i]) / (u - ζs[i]) for i in eachindex(ns)]
-        end
-    )
-    return [(-1 / kz) .* (reg[i] + gζs[i] .* _landau_logfac(ζs[i], p.lo, p.hi)) for i in eachindex(ns)]
+    gscale = maximum(ζ -> _relsize(_gpar(p, clamp(real(ζ), p.lo, p.hi))), ζs)
+    near = [_subtract_safe(gζ, gscale) for gζ in gζs]
+    gsubs = [near[i] ? gζs[i] : zero(gζs[i]) for i in eachindex(ns)]
+    reg = QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(_relsize, x)) do u
+        g = _gpar(p, u)
+        [(g - gsubs[i]) / (u - ζs[i]) for i in eachindex(ns)]
+    end[1]
+    return [(-1 / kz) .* (reg[i] .+ _pole_corr(near[i], gζs[i], ζs[i], p.lo, p.hi)) for i in eachindex(ns)]
 end
