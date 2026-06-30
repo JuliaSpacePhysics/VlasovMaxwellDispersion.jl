@@ -30,6 +30,12 @@ Returns `NaN+NaN*im` if `maxiter` is exhausted without reaching `atol` on the st
 function muller(f, x0, x1, x2; atol=1.0e-10, maxiter=100)
     x0, x1, x2 = ComplexF64(x0), ComplexF64(x1), ComplexF64(x2)
     f0, f1, f2 = f(x0), f(x1), f(x2)
+    # The dispersion determinant overflows to Inf/NaN for strongly damped ω (the VDF's analytic
+    # continuation is evaluated far off the real velocity axis). Without a guard the quadratic
+    # step then produces NaN and the iteration wanders into — and stalls on — that region. Bail
+    # if the seeds are already non-finite; below, a non-finite trial step is contracted back
+    # toward the last finite point instead of being accepted.
+    (isfinite(f0) && isfinite(f1) && isfinite(f2)) || return ComplexF64(NaN, NaN)
     for _ in 1:maxiter
         h1 = x1 - x0
         h2 = x2 - x1
@@ -53,6 +59,15 @@ function muller(f, x0, x1, x2; atol=1.0e-10, maxiter=100)
         dx = -2c / denom
         x3 = x2 + dx
         f3 = f(x3)
+        # Contract a non-finite / wildly-diverging trial back toward x2 (which is finite).
+        nc = 0
+        while (!isfinite(f3) || abs(f3) > 1.0e6 * max(abs(f2), 1)) && nc < 12
+            dx /= 2
+            x3 = x2 + dx
+            f3 = f(x3)
+            nc += 1
+        end
+        isfinite(f3) || return ComplexF64(NaN, NaN)
         fscale = max(abs(f0), abs(f1), abs(f2), 1)
 
         if abs(f3) <= atol * fscale ||

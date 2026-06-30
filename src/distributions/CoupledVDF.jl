@@ -156,13 +156,19 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ = _GLγ, GLp = _
     return acc
 end
 
-# I(p⊥) for the WHOLE harmonic sum at one perp node
+# I(p⊥) for the WHOLE harmonic sum at one perp node.
+# Per harmonic, `near` uses the Plemelj-subtracted (smooth, accurate) integrand; `far` — set when
+# the off-axis pole value g5(ζ) exceeds the on-axis reference by the ~8-digit cancellation budget
+# (strongly-damped/overflow regime) — uses the bounded *direct* integrand g5/(u−ζ) and keeps only
+# the genuine Landau residue. See `_para_moments_all` for the identity; both branches are exact.
 function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
     g5(u) = begin
         q, p = d.dgrad(v, u)
         SVector(q, u * q, u^2 * q, p, u * p)
     end
     gζs = g5.(ζs)
+    gscale = max(maximum(ζ -> maximum(_relsize, g5(clamp(real(ζ), L, U))), ζs), one(real(ω)) * 1.0e-300)
+    near = [all(isfinite, gζs[i]) && maximum(_relsize, gζs[i]) ≤ 1.0e8 * gscale for i in eachindex(ns)]
     b2s = _perp_Bessel_bilinears(ns, a, v)
     invkz = -1 / kz
     reg = QuadGK.quadgk(L, U; kw...) do u
@@ -170,14 +176,16 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
         acc = zero(AType)
         @inbounds for i in eachindex(ns)
             c = invkz / (u - ζs[i])
-            acc += _In_block(g - gζs[i], c, b2s[i], v, ω, kz, ns[i] * Ω)
+            acc += _In_block(near[i] ? g - gζs[i] : g, c, b2s[i], v, ω, kz, ns[i] * Ω)
         end
         acc
     end[1]
-    # analytic log-ratio (+ Landau) part, constant in u
+    # analytic pole term, constant in u: subtracted → g(ζ)·(log+Landau); direct → Landau residue only.
     logacc = zero(AType)
     @inbounds for i in eachindex(ns)
-        logacc += _In_block(gζs[i] .* _landau_logfac(ζs[i], L, U), invkz, b2s[i], v, ω, kz, ns[i] * Ω)
+        corr = near[i] ? gζs[i] .* _landau_logfac(ζs[i], L, U) :
+               (_is_landau(ζs[i], L, U) ? gζs[i] .* (2π * im) : zero(gζs[i]))
+        logacc += _In_block(corr, invkz, b2s[i], v, ω, kz, ns[i] * Ω)
     end
     return reg + logacc
 end

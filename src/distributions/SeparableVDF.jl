@@ -81,11 +81,26 @@ end
 function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol = 1.0e-8)
     ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = [_gpar(p, ζ) for ζ in ζs]
+    # Per harmonic: `near` ⇒ Plemelj-subtract the removable pole (smooth, accurate); `far` ⇒ the
+    # off-axis pole value g(ζ) exceeds the on-axis reference by the ~8-digit cancellation budget
+    # (strongly-damped ω, where g(ζ) overflows), so integrate the bounded direct form g/(u−ζ) and
+    # keep only the genuine Landau residue. ∫g/(u−ζ) = ∫(g−g(ζ))/(u−ζ) + g(ζ)·log((U−ζ)/(L−ζ));
+    # both branches exact — the choice is purely numerical conditioning.
+    gscale = max(maximum(ζ -> maximum(_relsize, _gpar(p, clamp(real(ζ), p.lo, p.hi))), ζs), one(real(ω)) * 1.0e-300)
+    near = [all(isfinite, gζs[i]) && maximum(_relsize, gζs[i]) ≤ 1.0e8 * gscale for i in eachindex(ns)]
     reg = first(
         QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(_relsize, x)) do u
             g = _gpar(p, u)
-            [(g - gζs[i]) / (u - ζs[i]) for i in eachindex(ns)]
+            [near[i] ? (g - gζs[i]) / (u - ζs[i]) : g / (u - ζs[i]) for i in eachindex(ns)]
         end
     )
-    return [(-1 / kz) .* (reg[i] + gζs[i] .* _landau_logfac(ζs[i], p.lo, p.hi)) for i in eachindex(ns)]
+    return [(-1 / kz) .* (reg[i] .+ _para_pole_corr(near[i], gζs[i], ζs[i], p.lo, p.hi)) for i in eachindex(ns)]
+end
+
+# Pole term dropped by each branch: subtracted → g(ζ)·(log+Landau 2πi); direct → Landau 2πi·g(ζ)
+# only (the log is already inside the direct integral), and skipped when the residue is inactive so
+# an overflowing g(ζ) is never multiplied by zero.
+@inline function _para_pole_corr(near, gζ, ζ, lo, hi)
+    near && return gζ .* _landau_logfac(ζ, lo, hi)
+    _is_landau(ζ, lo, hi) ? gζ .* (2π * im) : zero(gζ)
 end

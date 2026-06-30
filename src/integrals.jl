@@ -30,16 +30,29 @@ the Landau continuation added only when `ζ` drops below the real axis with
 """
 function hilbert(g, ζ; lower, upper, rtol = 1.0e-9)
     gζ = g(ζ)
-    reg = QuadGK.quadgk(v -> (g(v) - gζ) / (v - ζ), lower, upper; rtol)[1]
-    return reg + gζ * _landau_logfac(ζ, lower, upper)
+    gscale = max(abs(g(clamp(real(ζ), lower, upper))), one(real(ζ)) * 1.0e-300)
+    # `near`: pole close to the support ⇒ Plemelj-subtract the removable singularity (smooth,
+    # accurate). `far`: pole so far off-axis that g(ζ) blows past the ~8-digit cancellation budget
+    # (the strongly-damped / overflow regime) ⇒ the bounded *direct* integrand ∫g/(v−ζ) is
+    # well-conditioned and only the genuine Landau residue 2πi·g(ζ) then diverges. Both exact.
+    if isfinite(gζ) && abs(gζ) ≤ 1.0e8 * gscale
+        reg = QuadGK.quadgk(v -> (g(v) - gζ) / (v - ζ), lower, upper; rtol)[1]
+        return reg + gζ * _landau_logfac(ζ, lower, upper)
+    else
+        base = QuadGK.quadgk(v -> g(v) / (v - ζ), lower, upper; rtol)[1]
+        return _is_landau(ζ, lower, upper) ? base + 2π * im * gζ : base
+    end
 end
+
+# Landau residue active: pole on the growing-mode sheet (`Im ζ<0`) with `Re ζ` over the support.
+@inline _is_landau(ζ, lo, hi) = imag(ζ) < 0 && lo < real(ζ) < hi
 
 # Plemelj branch-cut-safe log ratio `log((hi−ζ)/(lo−ζ))` of the pole `1/(p−ζ)`
 # integrated over `[lo,hi]`, plus the `2πi` Landau continuation when `ζ` sits on
 # the growing-mode sheet (`Im ζ<0`, `Re ζ` in range).
 @inline function _landau_logfac(ζ, lo, hi)
     logfac = log((hi - ζ) / (lo - ζ))
-    return (imag(ζ) < 0 && lo < real(ζ) < hi) ? logfac + 2π * im : logfac
+    return _is_landau(ζ, lo, hi) ? logfac + 2π * im : logfac
 end
 
 function converge(f, nmin::Integer; rtol, nmax::Integer = 200)
