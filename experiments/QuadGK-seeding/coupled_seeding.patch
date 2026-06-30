@@ -1,0 +1,60 @@
+diff --git a/src/distributions/CoupledVDF.jl b/src/distributions/CoupledVDF.jl
+index bd62d8f8df..44ecde9c4c 100644
+--- a/src/distributions/CoupledVDF.jl
++++ b/src/distributions/CoupledVDF.jl
+@@ -48,18 +48,27 @@
+     return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k)
+ end
+ 
++# Initial QuadGK breakpoints. f₀ support is ≪ the integration box, so seeding interior
++# points cuts adaptive over-refinement of the near-zero tails.
++# Inner (para) integrand is smooth → a fixed static seed. Outer (perp) integrand
++# carries Bessel Jₙ(a·v): oscillation frequency ∝ a=k⊥/Ω, so its seed scales with a (built
++# once per call, so a runtime range is fine).
++const _NSEG_IN = 6
++@inline _segs(lo, hi, ::Val{N}) where {N} = ntuple(i -> lo + (hi - lo) * ((i - 1) / N), Val(N + 1))
++@inline _osegs(lo, hi, a) = range(lo, hi, length = max(4, ceil(Int, abs(a) * (hi - lo) / 2)) + 1)
++
+ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x), rtol = 1.0e-7)
+     Ω, kz, kperp = s.Omega, para(k), perp(k)
+     a = kperp / Ω
+     L, U = d.para
+     p⊥²_mean = 2π * QuadGK.quadgk(
+-        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol)[1],
++        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), _segs(L, U, Val(_NSEG_IN))...; rtol)[1],
+         d.perp...; rtol
+     )[1]
+     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
+     ns = (-nmax):nmax
+     ζs = [(ω - n * Ω) / kz for n in ns]
+-    χ = QuadGK.quadgk(d.perp...; rtol, norm) do v
++    χ = QuadGK.quadgk(_osegs(d.perp..., a)...; rtol, norm) do v
+         _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U)
+     end[1]
+     return (s.Pi2 / ω^2) * χ
+@@ -121,7 +130,6 @@
+ # 3×3 relativistic harmonic integrand 2π·𝒰·𝓣_n at (γ,p∥); bare momenta make 𝓣_n
+ # regular at w=0. Caller passes w=√(γ²−1−u²) (complex off the real p∥ range).
+ @inline _rel_integrand(u, w, γ, n, a, ω, kz, d) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _T_n_bare(n, a * w, u, w)
+-@inline _rel_integrand(u, γ, n, a, ω, kz, d) = _rel_integrand(u, sqrt(complex(γ^2 - 1 - u^2)), γ, n, a, ω, kz, d)
+ 
+ 
+ # One relativistic harmonic, edge-mapped (derivation §5.2.2).
+@@ -141,7 +149,7 @@
+         umax = sqrt(γ^2 - 1)
+         ζ = (γ * ω - n * Ω) / kz                 # single Landau pole in p∥
+         inrange = -umax < real(ζ) < umax
+-        nζ = inrange ? _rel_integrand(ζ, γ, n, a, ω, kz, d) : zero(SMatrix{3, 3, ComplexF64})
++        nζ = inrange ? _rel_integrand(ζ, sqrt(complex(γ^2 - 1 - ζ^2)), γ, n, a, ω, kz, d) : zero(SMatrix{3, 3, ComplexF64})
+         inner = zero(SMatrix{3, 3, ComplexF64})
+         for ip in eachindex(pn)
+             θ = pn[ip] * (π / 2)
+@@ -167,7 +175,7 @@
+     # regularized integral part: Σ_n χ_n with the Plemelj removable singularity.
+     # Accumulate the 6 distinct tensor scalars across harmonics, assemble once.
+     reg = first(
+-        QuadGK.quadgk(L, U; rtol = 1.0e-7, norm = x -> maximum(abs, x)) do u
++        QuadGK.quadgk(_segs(L, U, Val(_NSEG_IN))...; rtol = 1.0e-7, norm = x -> maximum(abs, x)) do u
+             g = g5(u)
+             acc = zero(SMatrix{3, 3, ComplexF64})
+             @inbounds for i in eachindex(ns)
