@@ -48,7 +48,7 @@ function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum())
     return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k)
 end
 
-function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x), rtol = 1.0e-7)
+function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = NORM, rtol = 1.0e-7)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
     L, U = d.para
@@ -60,7 +60,7 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     ns = (-nmax):nmax
     ζs = [(ω - n * Ω) / kz for n in ns]
     χ = QuadGK.quadgk(d.perp...; rtol, norm) do v
-        _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U)
+        _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U; norm, rtol)
     end[1]
     return (s.Pi2 / ω^2) * χ
 end
@@ -156,7 +156,7 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ = _GLγ, GLp = _
 end
 
 # I(p⊥) for the WHOLE harmonic sum at one perp node
-function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U)
+function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
     g5(u) = begin
         q, p = d.dgrad(v, u)
         SVector(q, u * q, u^2 * q, p, u * p)
@@ -164,19 +164,15 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U)
     gζs = g5.(ζs)
     bs = _perp_Bessel_triplets(ns, a, v)
     invkz = -1 / kz
-    # regularized integral part: Σ_n χ_n with the Plemelj removable singularity.
-    # Accumulate the 6 distinct tensor scalars across harmonics, assemble once.
-    reg = first(
-        QuadGK.quadgk(L, U; rtol = 1.0e-7, norm = x -> maximum(abs, x)) do u
-            g = g5(u)
-            acc = zero(SMatrix{3, 3, ComplexF64})
-            @inbounds for i in eachindex(ns)
-                c = invkz / (u - ζs[i])      # one complex division per harmonic
-                acc += _In_block(g - gζs[i], c, bs[i], v, ω, kz, ns[i] * Ω)
-            end
-            acc
+    reg = QuadGK.quadgk(L, U; kw...) do u
+        g = g5(u)
+        acc = zero(SMatrix{3, 3, ComplexF64})
+        @inbounds for i in eachindex(ns)
+            c = invkz / (u - ζs[i])
+            acc += _In_block(g - gζs[i], c, bs[i], v, ω, kz, ns[i] * Ω)
         end
-    )
+        acc
+    end[1]
     # analytic log-ratio (+ Landau) part, constant in u
     logacc = zero(SMatrix{3, 3, ComplexF64})
     @inbounds for i in eachindex(ns)

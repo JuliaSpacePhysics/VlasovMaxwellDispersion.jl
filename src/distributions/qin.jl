@@ -1,18 +1,15 @@
 # --- Evaluator A: Qin closed-orbit  (complex-order Bessel) -----------
-# `derivation.md` §3A:. χ is then a single 2-D
-# momentum cubature of `2π U 𝓣 + 2πp⊥ Bernstein`, with `U` and
-# resonances carried by `1/sin(πa)`, `a=(ωγ−k∥p∥)/Ω₀`.
-# For `Im ω>0`, the integer-`a` poles sit off the real plane ⇒ plain nested QuadGK.
+# See derivation.md §3A
 
 # Empirically A is a CROSS-VALIDATION backend, not a speedup.
 # Using residue extraction so the first integrand is smooth in 2-D (near-resonance peaks removed) and
 # the second is a 1-D p⊥ integral carrying the analytic pole + Landau residue
-function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-7, norm = x -> maximum(abs, x))
+function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-7, norm = NORM)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     lo, hi = d.para
     qlo, qhi = d.perp
     ns = _resonance_harmonics(ω, Ω, kz, lo, hi)
-    ζs = [(ω - n * Ω) / kz for n in ns]                     # p⊥-independent (nonrel)
+    ζs = [(ω - n * Ω) / kz for n in ns]
     ε = max(qlo, sqrt(eps(real(ω))) * qhi)   # perp lower bound (ε edge-removes the p⊥=0 origin)
     logfacs = [_landau_logfac(ζ, lo, hi) for ζ in ζs]       # u-integral of the analytic pole term
     χ = QuadGK.quadgk(ε, qhi; rtol, norm) do w
@@ -25,7 +22,6 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
             end
             val
         end[1]
-        # analytic pole terms (+ Landau for damped modes)
         @inbounds for i in eachindex(ζs)
             inner = inner .+ ρs[i] .* logfacs[i]
         end
@@ -34,7 +30,7 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
     return (s.Pi2 / (ω * Ω)) .* χ
 end
 
-function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω, k; norm = x -> maximum(abs, x))
+function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω, k; norm = NORM)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     β = kperp / Ω
     pmax = maximum(abs, d.para)
