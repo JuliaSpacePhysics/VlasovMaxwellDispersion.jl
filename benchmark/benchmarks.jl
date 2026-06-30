@@ -5,7 +5,7 @@ import SimpleNonlinearSolve as SNS
 import BracketingNonlinearSolve as BNS
 const SUITE = BenchmarkGroup()
 
-# Maxwellian baseline (closed Z/Γ_n harmonic sum) — the fast reference path.
+# Maxwellian with closed Z/Γ_n harmonic sum
 let g = SUITE["Maxwellian"]
     s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para=0.9, vth_perp=1.2))
     for kp in (0.1, 1.0)
@@ -15,7 +15,7 @@ let g = SUITE["Maxwellian"]
 end
 
 # Sweep k⊥ — cost grows with nmax ∝ k⊥ρ (harmonic count + per-node Bessel ladder).
-let g = SUITE["separable"] = BenchmarkGroup()
+let g = SUITE["separable"]
     vthp, vthq = 0.9, 1.2
     sep = SeparableVDF(Maxwellian(vth_para=vthp, vth_perp=vthq); para=(-14vthp, 14vthp), perp=14vthq)
     for kp in (0.1, 1.0, 2.5)
@@ -62,7 +62,7 @@ let g = SUITE["Relativistic"], regime=Relativistic()
     ppar = collect(range(-L, L, length=81))
     pperp = collect(range(0.0, L, length=61))
     F = [f0(u, w) for w in pperp, u in ppar]      # F[perp,par]
-    vdf = GridVDF(pperp, ppar, F; tol=1e-4, regime)
+    vdf = GridVDF(pperp, ppar, F; regime)
     g["gridvdf"] = @benchmarkable contribution($vdf, $ω, $k)
 end
 
