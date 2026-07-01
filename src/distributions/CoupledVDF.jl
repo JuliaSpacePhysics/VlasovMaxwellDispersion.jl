@@ -163,21 +163,21 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
         SVector(q, u * q, u^2 * q, p, u * p)
     end
     gζs = g5.(ζs)
-    bs = _perp_Bessel_triplets(ns, a, v)
+    b2s = _perp_Bessel_bilinears(ns, a, v)
     invkz = -1 / kz
     reg = QuadGK.quadgk(L, U; kw...) do u
         g = g5(u)
         acc = zero(AType)
         @inbounds for i in eachindex(ns)
             c = invkz / (u - ζs[i])
-            acc += _In_block(g - gζs[i], c, bs[i], v, ω, kz, ns[i] * Ω)
+            acc += _In_block(g - gζs[i], c, b2s[i], v, ω, kz, ns[i] * Ω)
         end
         acc
     end[1]
     # analytic log-ratio (+ Landau) part, constant in u
     logacc = zero(AType)
     @inbounds for i in eachindex(ns)
-        logacc += _In_block(gζs[i] .* _landau_logfac(ζs[i], L, U), invkz, bs[i], v, ω, kz, ns[i] * Ω)
+        logacc += _In_block(gζs[i] .* _landau_logfac(ζs[i], L, U), invkz, b2s[i], v, ω, kz, ns[i] * Ω)
     end
     return reg + logacc
 end
