@@ -71,9 +71,9 @@ end
     xy = im * (P∂[1, 2] * wF0 + PF[1, 2] * wT0)
     yy = P∂[2, 2] * wF0 + PF[2, 2] * wT0
     xz = P∂[1, 3] * wF1 + PF[1, 3] * wT1
-    yz = im * (P∂[2, 3] * wF1 + PF[2, 3] * wT1)
+    zy = im * (P∂[2, 3] * wF1 + PF[2, 3] * wT1)
     zz = nΩ * P∂[3, 3] * MF2 + (ω - nΩ) * PF[3, 3] * MT1   # + non-resonant term
-    return @SMatrix ComplexF64[xx xy xz; -xy yy -yz; xz yz zz]
+    return SA[xx, xy, xz, yy, zy, zz]
 end
 
 # Pointwise (Grid): the perp tensor at node p⊥ before parallel integration
@@ -87,9 +87,13 @@ end
     D1 = c2 * (ω * Δ1 - kz * Δ2 + kzpx * Δ4)
     zz = (c2 * b3 * b3) * (nΩ * Δ2 + (ω - nΩ) * px * Δ4)
     xx, xy, yy = b1 * b1 * D0, im * b1 * b2 * D0, b2 * b2 * D0
-    xz, yz = b1 * b3 * D1, im * b2 * b3 * D1
-    return @SMatrix ComplexF64[xx xy xz; -xy yy -yz; xz yz zz]
+    xz, zy = b1 * b3 * D1, im * b2 * b3 * D1
+    return SA[xx, xy, xz, yy, zy, zz]
 end
+
+# Materialize the antisymmetric-paire
+@inline _antisymmat(t) =
+    @SMatrix [t[1] t[2] t[3]; -t[2] t[4] -t[5]; t[3] t[5] t[6]]
 
 # Symmetric 3×3 from its 6 distinct entries (row-major upper triangle).
 @inline _symmat(a11, a12, a13, a22, a23, a33) =
@@ -110,9 +114,11 @@ function _perp_Bessel_triplets(ns, a, px)
         Jv = @alloc(typeof(z), M + 1)
         besselj_ladder!(Jv, M, z)
         map(ns) do n
-            Rn = (_jladder(Jv, n - 1) + _jladder(Jv, n + 1)) / 2
+            Jm = _jladder(Jv, n - 1)
+            Jp = _jladder(Jv, n + 1)
+            Rn = (Jm + Jp) / 2
             Jn = _jladder(Jv, n)
-            Jn′ = (_jladder(Jv, n - 1) - _jladder(Jv, n + 1)) / 2
+            Jn′ = (Jm - Jp) / 2
             SA[px * Rn, px * Jn′, Jn]
         end
     end

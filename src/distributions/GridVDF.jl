@@ -44,7 +44,7 @@ end
 
 # ∫d³p f₀ = 2π∫∫ p⊥ f₀ dp⊥ dv∥ in closed form from the cell coeffs (cylindrical
 # weight p⊥ = knots_perp[i]+s⊥). cell[A,B] is s⊥^{A-1} s∥^{B-1}: A is the perp
-# (first) axis, B the parallel. 
+# (first) axis, B the parallel.
 # Used to normalize the fit
 function _fit_d3p(fit::TensorSplineFit)
     kq, kp, c = fit.knots_perp, fit.knots_para, fit.coeffs
@@ -88,8 +88,8 @@ function _grid_contribution_rel(d::GridVDF, s, ω, k; rtol = 1.0e-6)
     γmax = sqrt(1 + R^2)
     nmax = nmax_bessel(a^2 * R^2 / 2)
     f = n -> _coupled_harmonic_rel(n, cpl, ω, Ω, kz, a, γmax)
-    χ = converge(f; nmax, rtol)
-    χ = χ .+ _ee33(_bernstein_rel(cpl, γmax))   # non-resonant term
+    X = converge(f; nmax, rtol)
+    χ = _antisymmat(X) .+ _ee33(_bernstein_rel(cpl, γmax))   # non-resonant term
     return (s.Pi2 / ω^2) * χ
 end
 
@@ -104,7 +104,7 @@ function _grid_contribution(d::GridVDF, s, ω, k; rtol = 1.0e-6)
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     f = n -> _grid_harmonic(n, fit, ω, Ω, kz, a)
     χ = converge(f; nmax, rtol)
-    return (s.Pi2 / ω^2) * χ
+    return (s.Pi2 / ω^2) * _antisymmat(χ)
 end
 
 # ∫ f₀(v,u) du over the parallel support at fixed perp v (for the perp-scale estimate).
@@ -210,7 +210,7 @@ end
 function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, a)
     ζ = (ω - n * Ω) / kz
     kq = fit.knots_perp
-    acc = zero(SMatrix{3, 3, ComplexF64})
+    acc = zero(SVector{6, ComplexF64})
     for i in 1:(length(kq) - 1)
         wl, wr = kq[i], kq[i + 1]
         MF0c, MF1c, MF2c, MT0c, MT1c = _grid_parmoment_polys(fit, i, ζ)
@@ -235,5 +235,5 @@ end
 @inline function _quadgk_osc(f, wl, wr, a)
     nb = ceil(Int, abs(a) * (wr - wl) / (π / 2))
     pts = nb <= 1 ? (wl, wr) : range(wl, wr; length = nb + 1)
-    return QuadGK.quadgk(f, pts...; rtol = 1.0e-6, norm = x -> maximum(abs, x))
+    return QuadGK.quadgk(f, pts...; rtol = 1.0e-6, norm = NORM)
 end

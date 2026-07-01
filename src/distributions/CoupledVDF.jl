@@ -59,10 +59,10 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
     ζs = [(ω - n * Ω) / kz for n in ns]
-    χ = QuadGK.quadgk(d.perp...; rtol, norm) do v
+    X = QuadGK.quadgk(d.perp...; rtol, norm) do v
         _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U; norm, rtol)
     end[1]
-    return (s.Pi2 / ω^2) * χ
+    return (s.Pi2 / ω^2) * _antisymmat(X)
 end
 
 # Relativistic (γ,p∥) momentum-space path. Momentum distribution f₀ must be
@@ -76,9 +76,9 @@ function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, 
     γmax = sqrt(1 + max(phi^2, plo^2) + qhi^2)
     nmax = nmax_bessel(a^2 * qhi^2 / 2)
     f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax)
-    χ = converge(f; nmax, rtol)
-    χ = χ .+ _ee33(_bernstein_rel(d, γmax))
-    return (s.Pi2 / ω^2) * χ
+    X_T = converge(f; nmax, rtol)
+    X = _antisymmat(X_T) .+ _ee33(_bernstein_rel(d, γmax))
+    return (s.Pi2 / ω^2) * X
 end
 
 # Relativistic non-resonant e∥e∥ term without prefactor
@@ -123,6 +123,7 @@ end
 @inline _rel_integrand(u, w, γ, n, a, ω, kz, d) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _T_n_bare(n, a * w, u, w)
 @inline _rel_integrand(u, γ, n, a, ω, kz, d) = _rel_integrand(u, sqrt(complex(γ^2 - 1 - u^2)), γ, n, a, ω, kz, d)
 
+const AType = SVector{6, ComplexF64}
 
 # One relativistic harmonic, edge-mapped (derivation §5.2.2).
 # Map the disk (γ,p∥) → fixed box (q,θ)∈[0,1]×[−π/2,π/2]:
@@ -133,7 +134,7 @@ end
 function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ = _GLγ, GLp = _GLp)
     gn, gw = GLγ
     pn, pw = GLp
-    acc = zero(SMatrix{3, 3, ComplexF64})
+    acc = zero(AType)
     for ig in eachindex(gn)
         q = (gn[ig] + 1) / 2
         γ = 1 + (γmax - 1) * q^2
@@ -141,8 +142,8 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ = _GLγ, GLp = _
         umax = sqrt(γ^2 - 1)
         ζ = (γ * ω - n * Ω) / kz                 # single Landau pole in p∥
         inrange = -umax < real(ζ) < umax
-        nζ = inrange ? _rel_integrand(ζ, γ, n, a, ω, kz, d) : zero(SMatrix{3, 3, ComplexF64})
-        inner = zero(SMatrix{3, 3, ComplexF64})
+        nζ = inrange ? _rel_integrand(ζ, γ, n, a, ω, kz, d) : zero(AType)
+        inner = zero(AType)
         for ip in eachindex(pn)
             θ = pn[ip] * (π / 2)
             u, w = umax .* sincos(θ)  # p⊥=w real on the disk
@@ -166,7 +167,7 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
     invkz = -1 / kz
     reg = QuadGK.quadgk(L, U; kw...) do u
         g = g5(u)
-        acc = zero(SMatrix{3, 3, ComplexF64})
+        acc = zero(AType)
         @inbounds for i in eachindex(ns)
             c = invkz / (u - ζs[i])
             acc += _In_block(g - gζs[i], c, bs[i], v, ω, kz, ns[i] * Ω)
@@ -174,7 +175,7 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
         acc
     end[1]
     # analytic log-ratio (+ Landau) part, constant in u
-    logacc = zero(SMatrix{3, 3, ComplexF64})
+    logacc = zero(AType)
     @inbounds for i in eachindex(ns)
         logacc += _In_block(gζs[i] .* _landau_logfac(ζs[i], L, U), invkz, bs[i], v, ω, kz, ns[i] * Ω)
     end

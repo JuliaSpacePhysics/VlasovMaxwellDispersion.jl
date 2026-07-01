@@ -25,7 +25,8 @@ perp_setup(perp, β) = perp
 function contribution(d::Separable, s, ω, k; rtol = 1.0e-8, kwargs...)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     β = kperp / Ω
-    return (s.Pi2 / ω^2) * _separable_harmonics(d.fpara, perp_setup(d.fperp, β), β, ω, Ω, kz; rtol)
+    X = _separable_harmonics(d.fpara, perp_setup(d.fperp, β), β, ω, Ω, kz; rtol)
+    return _antisymmat((s.Pi2 / ω^2) * X)
 end
 
 function nmax_harm(p, β)

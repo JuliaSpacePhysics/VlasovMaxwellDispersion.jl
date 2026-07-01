@@ -27,7 +27,7 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
         end
         inner
     end[1]
-    return (s.Pi2 / (ω * Ω)) .* χ
+    return (s.Pi2 / (ω * Ω)) .* _antisymmat(χ)
 end
 
 function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω, k; norm = NORM)
@@ -70,7 +70,7 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω
     end[1]
     # `fI` carries only the resonant 𝒰·𝓣ₙ; add the same pole-free nonresonant 𝒳_B
     bern = _ee33((s.Pi2 / ω^2) * _bernstein_rel(d, γmax))
-    return (s.Pi2 / (ω^2 * Ω)) .* val .+ bern
+    return (s.Pi2 / (ω^2 * Ω)) .* _antisymmat(val) .+ bern
 end
 
 include("qin_sigmas.jl")
@@ -84,7 +84,7 @@ include("qin_sigmas.jl")
     cross = w * dfpa - u * dfpe
     U = dfpe + (kz / (ω * γ)) * cross               # velocity-form numerator (§2)
     ee = (Ω0 / (γ * ω)) * r * cross                  # e∥e∥ Bernstein term (§3)
-    bern = @SMatrix ComplexF64[0 0 0; 0 0 0; 0 0 ee]
+    bern = @SVector ComplexF64[0, 0, 0, 0, 0, ee]
     return (2π * U) .* _qin_T_bare(a, z, u, w) .+ (2π * w) .* bern
 end
 
@@ -111,22 +111,25 @@ end
     σ0, σ1, σD, σJ = qin_sigmas(a, z)
     w2 = w^2
     zw = z * w
-    return @SMatrix ComplexF64[
-        a * σ1 * w2 im * a * σD * w2 u * σ1 * zw
-        -im * a * σD * w2 σJ * w2 -im * u * σD * zw
-        u * σ1 * zw im * u * σD * zw u^2 * σ0
-    ]
+    xx = a * σ1 * w2
+    xy = im * a * σD * w2
+    xz = u * σ1 * zw
+    yy = σJ * w2
+    yz = im * u * σD * zw
+    zz = u^2 * σ0
+    return SA[xx, xy, xz, yy, yz, zz]
 end
 
 # harmonic tensor 𝓣_n = p⊥²·T_n (R≡p⊥·Rₙ, Jw≡p⊥·Jₙ′, Rₙ≡(n/z)Jₙ=½(J_{n−1}+J_{n+1})
 @inline function _T_n_bare(n, z, u, w)
-    Jm, Jp1 = besselj(n - 1, z), besselj(n + 1, z)
+    Jm, Jp = besselj(n - 1, z), besselj(n + 1, z)
     Jn = besselj(n, z)
-    R = w * (Jm + Jp1) / 2          # p⊥·Rₙ, regular
-    Jw = w * (Jm - Jp1) / 2         # p⊥·Jₙ′
-    return @SMatrix ComplexF64[
-        R * R im * R * Jw u * R * Jn
-        -im * R * Jw Jw * Jw -im * u * Jw * Jn
-        u * R * Jn im * u * Jw * Jn u * u * Jn^2
-    ]
+    R = w * (Jm + Jp) / 2          # p⊥·Rₙ, regular
+    Jw = w * (Jm - Jp) / 2         # p⊥·Jₙ′
+    uJn = u * Jn
+    xx, yy, zz = R * R, Jw * Jw, uJn * uJn
+    xy = im * R * Jw
+    xz = uJn * R
+    zy = im * uJn * Jw
+    return SA[xx, xy, xz, yy, zy, zz]
 end

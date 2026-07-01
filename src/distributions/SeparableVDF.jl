@@ -49,18 +49,18 @@ end
 
 # Fused harmonic loop for two analytic factors. f/f′ are harmonic-independent — only
 # the resonance pole ζ_n and the Bessel factor change with n.
-function _separable_harmonics(para::AnalyticFactor, perp::AnalyticFactor, β, ω, Ω, kz; rtol)
+function _separable_harmonics(para::AnalyticFactor, perp::AnalyticFactor, β, ω, Ω, kz; rtol, norm = NORM)
     nmax = nmax_harm(perp, β)
     ns = -nmax:nmax
     Ms = _para_moments_all(para, ω, kz, Ω, ns; rtol)
     M = last(ns) + 1
     return @no_escape begin
         Jv = @alloc(typeof(β), M + 1)
-        QuadGK.quadgk(perp.lo, perp.hi; rtol, norm = x -> maximum(abs, x)) do v
+        QuadGK.quadgk(perp.lo, perp.hi; rtol, norm) do v
             z = β * v
             fq, dfq = perp.fdf(v)
             vfq = v * fq
-            acc = zero(SMatrix{3, 3, ComplexF64})
+            acc = zero(AType)
             besselj_ladder!(Jv, M, z)        # J_0..J_{nmax+1} in one recurrence, signed-indexed
             @inbounds for (i, n) in enumerate(ns)
                 Jm, Jn, Jp = _jladder(Jv, n - 1), _jladder(Jv, n), _jladder(Jv, n + 1)
