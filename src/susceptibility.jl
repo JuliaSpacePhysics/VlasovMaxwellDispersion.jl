@@ -112,7 +112,6 @@ end
 @inline _symmat(a11, a12, a13, a22, a23, a33) =
     @SMatrix [a11 a12 a13; a12 a22 a23; a13 a23 a33]
 
-# Bessel triplet `bvec = (p⊥Rₙ, p⊥Jₙ′, Jₙ)`
 @inline function _perp_Bessel_bilinear(n, a, px)
     z = a * px
     Jm, Jp = besselj(n - 1, z), besselj(n + 1, z)
