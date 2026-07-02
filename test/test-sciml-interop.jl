@@ -1,5 +1,4 @@
-# `residual(prob)` is the public seam onto SciML. det 𝒟 is holomorphic but
-# complex-valued, so most NonlinearSolve solvers break: 
+# det 𝒟 is holomorphic but complex-valued, so most NonlinearSolve solvers break: 
 # the bracketing methods need a real sign change except `BracketingNonlinearSolve.Muller`
 # and common SimpleNonlinearSolve method Broyden/DFSane compare residual magnitudes via `isless(::Complex,…)`
 # except SimpleHalley (FiniteDiff AD).
@@ -13,8 +12,8 @@ import BracketingNonlinearSolve as BNS
 p = NormalizedSpecies(Omega=1.0, Pi2=1.0, vdf=Maxwellian(1.0))
 k = Wavenumber(kperp=0.01, kz=0.5)
 prob = LocalDispersionProblem(p, k, 0.6)
-f = residual(prob)
-ref = solve(prob).omega                       # our Muller
+f = prob.f
+ref = solve(prob).omega
 @test abs(f(ref)) < 1e-8
 
 h = 1e-3

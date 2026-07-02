@@ -71,14 +71,13 @@ let g = SUITE["local_solve"]
     s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para=0.9, vth_perp=1.2))
     k = Wavenumber(0.01, 0.5)
     prob = LocalDispersionProblem(s, k, 0.6)
-    f = residual(prob)
     h = 1e-3
     g["muller_native"] = @benchmarkable solve($prob)
     g["secant_roots"] = @benchmarkable solve($prob, Secant())
     # Only complex-capable solvers qualify
     # bracketing methods need a real sign change Broyden/DFSane assume a real residual.
     g["muller_sciml"] = @benchmarkable solve(ip, alg) setup = (
-        ip=SNS.IntervalNonlinearProblem((ω, _) -> $f(ω), ($prob.omega0 - $h, $prob.omega0 + $h));
+        ip=SNS.IntervalNonlinearProblem((ω, _) -> $prob.f(ω), ($prob.omega0 - $h, $prob.omega0 + $h));
         alg=BNS.Muller($prob.omega0 + $h * im))
     g["halley_sciml"] = @benchmarkable solve($prob, SNS.SimpleHalley())
 end

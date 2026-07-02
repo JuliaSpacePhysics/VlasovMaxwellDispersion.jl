@@ -14,7 +14,7 @@ end
 # find_zero terminates on step size, so it both throws on the iteration cap AND can return a finite step-converged non-root.
 # Guard with an explicit residual check so a finite ω genuinely means |f(ω)|≈0 (track.jl's fallback relies on)
 function CommonSolve.solve(prob::LocalDispersionProblem, alg::Secant)
-    f = residual(prob)
+    f = prob.f
     h = 1.0e-3 * max(abs(prob.omega0), 1.0)
     ω = try
         z = ComplexF64(find_zero(f, prob.omega0 + h * im, Roots.Order1(); atol=alg.atol, maxevals=alg.maxiter))
@@ -23,5 +23,5 @@ function CommonSolve.solve(prob::LocalDispersionProblem, alg::Secant)
         ComplexF64(NaN, NaN)
     end
     ok = isfinite(ω)
-    return DispersionSolution(ω, nothing, ok ? abs(f(ω)) : NaN, ok ? :Success : :Failure, prob, alg)
+    return DispersionSolution(ω, nothing, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
 end

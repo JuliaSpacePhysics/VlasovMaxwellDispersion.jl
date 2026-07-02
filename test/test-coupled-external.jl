@@ -25,7 +25,6 @@
 end
 
 @testitem "CoupledVDF bi-kappa is a root at ALPS's dispersion root" begin
-    using LinearAlgebra
     vA, me, κ = 1e-4, 5.44662e-4, 6.0
     a2 = (2κ - 3) / (2κ)
     function bikappa_species(Ω, Pi2, vth)
@@ -43,12 +42,11 @@ end
     # |det|<2e-3 spot-check was fragile (this mode is near-marginal, so the scaled
     # det at ωref is already ~1e-3 — it barely separated a true root from noise and
     # never pinned the location). Polishing to the actual root is far stronger: it
-    # lands a genuine zero (ndet→1e-14) AND recovers BOTH ALPS numbers — frequency
+    # lands a genuine zero (residual→1e-14) AND recovers BOTH ALPS numbers — frequency
     # to 1e-3 and, unusually for a near-marginal mode, the damping rate to ~1%.
-    ω = solve(LocalDispersionProblem(plasma, k, ωref)).omega
-    D = dispersion_tensor(plasma, ω, k)
-    ndet = abs(det(D)) / prod(norm(D[i, :]) for i in 1:3)  # scale-invariant residual
-    @test ndet < 1e-9                                       # genuine isolated root
+    sol = solve(LocalDispersionProblem(plasma, k, ωref))
+    ω = sol.omega
+    @test sol.resid < 1e-9                # genuine isolated root (scale-invariant)
     @test real(ω) ≈ real(ωref) rtol = 2e-3
     @test imag(ω) ≈ imag(ωref) rtol = 5e-2
 end
