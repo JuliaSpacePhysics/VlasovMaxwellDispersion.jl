@@ -1,6 +1,22 @@
 residual(prob::Union{LocalDispersionProblem,GlobalDispersionProblem}) =
     ω -> det(dispersion_tensor(prob.plasma, ω, prob.k; closure=prob.closure))
 
+"""
+    dispersion_residual(plasma, ω, k::Wavenumber; closure=HarmonicSum()) -> Float64
+
+Scale-free "rootness" of `𝒟(ω,k)`: `σ_min(𝒟)/σ_max(𝒟)` ∈ `[0,1]`, zero at a mode.
+
+Prefer this over `abs(det(𝒟))` for convergence, root validation, and cross-solver checks.
+`det(𝒟)` floors at `‖𝒟‖³·ε` from catastrophic cancellation — e.g. `|det|` bottoms out around
+`1` even at a clean root when the tensor entries are `~1e5` — so an absolute `|det| < tol` test
+is scale-dependent and may never trigger. The singular-value ratio is normalized and reaches
+`~machine-ε` at a genuine root regardless of the tensor's overall scale.
+"""
+function dispersion_residual(plasma, ω, k::Wavenumber; kwargs...)
+    s = svdvals(Matrix(dispersion_tensor(plasma, ω, k; kwargs...)))
+    return s[end] / s[1]
+end
+
 include("solver/secant.jl")
 include("solver/muller.jl")
 

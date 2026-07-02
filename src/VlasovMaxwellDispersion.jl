@@ -43,7 +43,7 @@ export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, C
 export Separable, ⊗, Gaussian, GyroRing
 export plasma_dispersion_function, Z, hilbert
 export IntegralClosure, HarmonicSum, Newberger
-export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual
+export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual, dispersion_residual
 export LocalDispersionProblem, GlobalDispersionProblem, BranchProblem
 export DispersionAlgorithm, Muller, Secant, GRPF, ArcLength, DispersionSolution
 export GridFitMethod, NonnegBSpline, BicubicHermite, fit_grid
