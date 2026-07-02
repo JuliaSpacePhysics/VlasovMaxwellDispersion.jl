@@ -12,34 +12,41 @@ GammaTable(λ, kmax::Integer) = GammaTable([Gamma_n(k, λ) for k in 0:kmax])
 @inline Base.getindex(t::GammaTable, k::Integer) = @inbounds t.v[abs(k) + 1]
 
 """
-    hilbert(g, ζ; lower, upper, rtol=1e-9) -> Complex
+    hilbert(g, ζ, L, U; rtol=1e-9) -> Complex
 
-Landau-causal Cauchy integral `∫_lower^upper g(v)/(v − ζ) dv` for any callable
-`g` that is *analytic* (evaluable at complex argument). Plemelj split, exact for
-all complex `ζ`:
+Landau-causal Cauchy integral `∫_L^U g(v)/(v − ζ) dv` for analytic `g`.
 
-    ∫ g/(v−ζ) = ∫ (g(v)−g(ζ))/(v−ζ) dv  +  g(ζ)·log((upper−ζ)/(lower−ζ))  [+ 2πi·g(ζ)]
+Plemelj split at weakly damped/growing modes to remove singularity:
 
-The first integrand has a *removable* singularity at `v=ζ` (g analytic), so plain
-adaptive quadrature handles it; the single complex `log` of the ratio carries the
-branch cut (same invariant as `cell_hilbert`). For `Im ζ → 0⁺` the log limit
-supplies the `+iπ g(ζ)` Plemelj term automatically; the explicit `2πi·g(ζ)` is
-the Landau continuation added only when `ζ` drops below the real axis with
-`Re ζ` inside the support (the growing-mode sheet). General-`g` sibling of the
-`Z` overload: `hilbert(v->exp(-v^2)/√π, ζ; lower=-Inf, upper=Inf) == Z(ζ)`.
+    ∫_L^U g/(v−ζ) = ∫_L^U (g(v)−g(ζ))/(v−ζ) dv  +  g(ζ)·log((U−ζ)/(L−ζ))  [+ 2πi·g(ζ)]
+
+Falls back to the direct integrand when the subtraction is ill-conditioned (see [`_subtract_safe`](@ref)).
+
+The residue `2πi·g(ζ)` is the Landau continuation onto the damped side.
 """
-function hilbert(g, ζ; lower, upper, rtol = 1.0e-9)
+function hilbert(g, ζ, L, U; rtol = 1.0e-9)
     gζ = g(ζ)
-    reg = QuadGK.quadgk(v -> (g(v) - gζ) / (v - ζ), lower, upper; rtol)[1]
-    return reg + gζ * _landau_logfac(ζ, lower, upper)
+    near = _subtract_safe(gζ, abs(g(clamp(real(ζ), L, U))))
+    gsub = near ? gζ : zero(gζ)
+    reg = QuadGK.quadgk(v -> (g(v) - gsub) / (v - ζ), L, U; rtol)[1]
+    return reg + _pole_corr(near, gζ, ζ, L, U)
 end
 
-# Plemelj branch-cut-safe log ratio `log((hi−ζ)/(lo−ζ))` of the pole `1/(p−ζ)`
-# integrated over `[lo,hi]`, plus the `2πi` Landau continuation when `ζ` sits on
-# the growing-mode sheet (`Im ζ<0`, `Re ζ` in range).
+# Subtracting g(ζ) cancels ~log₁₀(|g(ζ)|/gscale) digits against the analytic log term, and
+# g(ζ) overflows outright for strongly damped ζ
+@inline _subtract_safe(gζ, gscale) = all(isfinite, gζ) && _relsize(gζ) * sqrt(eps(one(gscale))) ≤ gscale
+
+@inline function _pole_corr(near, gζ, ζ, lo, hi)
+    near && return gζ .* _landau_logfac(ζ, lo, hi)
+    return _landau_active(ζ, lo, hi) ? gζ .* (2π * im) : zero(gζ)
+end
+
+# Assumes the `kz>0` convention, so `Im ζ<0 ⟺ Im ω<0`
+@inline _landau_active(ζ, lo, hi) = imag(ζ) < 0 && lo < real(ζ) < hi
+
 @inline function _landau_logfac(ζ, lo, hi)
     logfac = log((hi - ζ) / (lo - ζ))
-    return (imag(ζ) < 0 && lo < real(ζ) < hi) ? logfac + 2π * im : logfac
+    return _landau_active(ζ, lo, hi) ? logfac + 2π * im : logfac
 end
 
 function converge(f, nmin::Integer; rtol, nmax::Integer = 200)

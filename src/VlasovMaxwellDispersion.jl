@@ -40,7 +40,7 @@ export AbstractVDF, Particle, Electron, Proton, Ion, Species, Plasma
 export NormalizedSpecies
 export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, CoupledVDF, GaussianRing
 export Separable, ⊗, Gaussian, GyroRing
-export plasma_dispersion_function, Z, hilbert
+export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual
 export LocalDispersionProblem, GlobalDispersionProblem, BranchProblem

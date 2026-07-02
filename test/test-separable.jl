@@ -15,6 +15,16 @@
         χm = contribution(NormalizedSpecies(Ω, Pi2, mx), ω, k)
         @test χs ≈ χm rtol = 1.0e-8
     end
+
+    @testset "At strongly damped ω (far-branch)" begin
+        # ζ_n reaches ~5i·vth⁻¹ ⇒ g(ζ)~1e13: exercises the direct/far conditioning branch
+        k = Wavenumber(0.3, 0.4)
+        for ω in (1.3 - 1.0im, 1.3 - 2.0im, 0.8 - 3.0im)
+            χs = contribution(NormalizedSpecies(-1.0, 0.5, sep), ω, k)
+            χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), ω, k)
+            @test χs ≈ χm rtol = 1.0e-8
+        end
+    end
 end
 
 @testitem "SeparableVDF oblique dispersion root matches Maxwellian" begin

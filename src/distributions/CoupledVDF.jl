@@ -164,10 +164,13 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
     end
     invkz = -1 / kz
     nb = length(ns)
+    gscale = maximum(ζ -> _relsize(g5(clamp(real(ζ), L, U))), ζs)
     return @no_escape begin
         gζs = @alloc(SVector{5, eltype(ζs)}, nb)
+        near = @alloc(Bool, nb)
         @inbounds for i in 1:nb
             gζs[i] = g5(ζs[i])
+            near[i] = _subtract_safe(gζs[i], gscale)
         end
         b2s = @alloc(SVector{6, typeof(a * v)}, nb)
         _perp_Bessel_bilinears!(b2s, a, v)
@@ -176,14 +179,14 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
             acc = zero(AType)
             @inbounds for i in eachindex(ns)
                 c = invkz / (u - ζs[i])
-                acc += _In_block(g - gζs[i], c, b2s[i], v, ω, kz, ns[i] * Ω)
+                acc += _In_block(near[i] ? g - gζs[i] : g, c, b2s[i], v, ω, kz, ns[i] * Ω)
             end
             acc
         end[1]
-        # analytic log-ratio (+ Landau) part, constant in u
+        # analytic pole term, constant in u
         logacc = zero(AType)
         @inbounds for i in eachindex(ns)
-            logacc += _In_block(gζs[i] .* _landau_logfac(ζs[i], L, U), invkz, b2s[i], v, ω, kz, ns[i] * Ω)
+            logacc += _In_block(_pole_corr(near[i], gζs[i], ζs[i], L, U), invkz, b2s[i], v, ω, kz, ns[i] * Ω)
         end
         reg + logacc
     end

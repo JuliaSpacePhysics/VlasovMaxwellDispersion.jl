@@ -1,8 +1,9 @@
 @testitem "generic analytic hilbert reproduces Z" begin
     using VlasovMaxwellDispersion: hilbert, Z
     g(v) = exp(-v^2) / sqrt(pi)                      # ∫ g/(v-ζ) = Z(ζ), Im ζ>0
-    for ζ in (1.5 + 0.8im, 0.3 + 0.05im, 1.2 - 0.3im) # upper, near-real, lower (Landau)
-        @test abs(hilbert(g, ζ; lower = -20.0, upper = 20.0) - Z(ζ)) < 1.0e-10
+    # upper, near-real, lower (Landau)
+    for ζ in (1.5 + 0.8im, 0.3 + 0.05im, 1.2 - 0.3im, 2.0 - 5.0im, 3.0 - 9.0im)
+        @test hilbert(g, ζ, -30.0, 30.0) ≈ Z(ζ) rtol = 1.0e-10
     end
 end
 

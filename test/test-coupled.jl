@@ -10,6 +10,11 @@
     χc = contribution(NormalizedSpecies(-1.0, 0.5, cpl), 1.3 - 0.05im, k)
     χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
     @test χc ≈ χm rtol = 1.0e-7
+    # strongly damped ω ⇒ g(ζ)~1e13: exercises the direct/far conditioning branch per harmonic
+    ωd = 1.3 - 2.0im
+    χcd = contribution(NormalizedSpecies(-1.0, 0.5, cpl), ωd, k)
+    χmd = contribution(NormalizedSpecies(-1.0, 0.5, mx), ωd, k)
+    @test χcd ≈ χmd rtol = 1.0e-7
 end
 
 @testitem "CoupledVDF Newberger (A) ≡ HarmonicSum (B) for inseparable f₀" begin
