@@ -50,6 +50,26 @@ end
     @test abs(χs[1, 3]) < 1.0e-12 && abs(χs[2, 3]) < 1.0e-12  # transverse/parallel decouple
 end
 
+@testitem "dispersion_tensor degrades to NaN, no throw, at overflow-damped ω" begin
+    # ζ = (ω−nΩ)/kz has Im ζ ≈ −30: the Landau residue exp(−ζ²) overflows, the
+    # parallel moments go Inf, and QuadGK's perp integrand hits NaN ⇒ DomainError.
+    # Root-finders probe such ω; they must get a NaN tensor back, not a crash.
+    sep = SeparableVDF(v -> exp(-v^2), u -> exp(-u^2); para = (-6.0, 6.0), perp = 6.0)
+    s = NormalizedSpecies(1.0, 1.0, sep)
+    k = Wavenumber(0.1, 0.5)
+    ω = 1.0 - 15.0im
+    D = dispersion_tensor(s, ω, k)
+    @test all(x -> isnan(real(x)), D)
+    @test isnan(real(electrostatic_det(s, ω, k)))  # guard sits in dielectric: covers this too
+    sol = solve(LocalDispersionProblem(s, k, ω))  # seeded in the overflow region
+    @test sol.retcode === :Failure && isnan(sol.resid)
+
+    # Same overflow, coupled quadrature path
+    cpl = CoupledVDF((q, u) -> exp(-q^2 - u^2) / pi^1.5; para = (-6.0, 6.0), perp = 6.0)
+    Dc = dispersion_tensor(NormalizedSpecies(1.0, 1.0, cpl), ω, k)
+    @test all(x -> isnan(real(x)), Dc)
+end
+
 @testitem "SeparableVDF accepts a non-Gaussian f (finite χ)" begin
     # Generalized-Lorentzian (kappa-like) parallel × Gaussian perp — no closed form.
     fpar(u) = (1 + u^2 / 3)^(-2)
