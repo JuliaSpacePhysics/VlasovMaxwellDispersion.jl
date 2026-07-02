@@ -32,8 +32,19 @@ end
 
 `𝒟(ω,k) = ε + (k̃k̃ᵀ - k̃²I)/ω̃²`. `det(𝒟)=0` is the dispersion relation.
 """
+# NaN-filled tensor: signals "no usable value here" to root-finders without throwing.
+@inline _nan_tensor() = SMatrix{3, 3, ComplexF64}(ntuple(_ -> complex(NaN, NaN), 9))
+
 function dispersion_tensor(plasma, ω, k::Wavenumber; kwargs...)
-    ε = dielectric(plasma, ω, k; kwargs...)
+    ε = try
+        dielectric(plasma, ω, k; kwargs...)
+    catch err
+        # QuadGK raises DomainError when the susceptibility integrand goes non-finite (e.g. the
+        # Gaussian-tail continuation overflows at strongly-damped ω). Return NaN so root-finders
+        # reject the point instead of crashing. Other errors are genuine bugs — rethrow.
+        err isa DomainError || rethrow()
+        return _nan_tensor()
+    end
     return ε + _curlcurl(k) / complex(float(ω))^2
 end
 
