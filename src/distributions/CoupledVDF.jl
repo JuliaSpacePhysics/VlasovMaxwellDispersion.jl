@@ -162,24 +162,31 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
         q, p = d.dgrad(v, u)
         SVector(q, u * q, u^2 * q, p, u * p)
     end
-    gζs = g5.(ζs)
-    bs = _perp_Bessel_triplets(ns, a, v)
     invkz = -1 / kz
-    reg = QuadGK.quadgk(L, U; kw...) do u
-        g = g5(u)
-        acc = zero(AType)
-        @inbounds for i in eachindex(ns)
-            c = invkz / (u - ζs[i])
-            acc += _In_block(g - gζs[i], c, bs[i], v, ω, kz, ns[i] * Ω)
+    nb = length(ns)
+    return @no_escape begin
+        gζs = @alloc(SVector{5, eltype(ζs)}, nb)
+        @inbounds for i in 1:nb
+            gζs[i] = g5(ζs[i])
         end
-        acc
-    end[1]
-    # analytic log-ratio (+ Landau) part, constant in u
-    logacc = zero(AType)
-    @inbounds for i in eachindex(ns)
-        logacc += _In_block(gζs[i] .* _landau_logfac(ζs[i], L, U), invkz, bs[i], v, ω, kz, ns[i] * Ω)
+        b2s = @alloc(SVector{6, typeof(a * v)}, nb)
+        _perp_Bessel_bilinears!(b2s, a, v)
+        reg = QuadGK.quadgk(L, U; kw...) do u
+            g = g5(u)
+            acc = zero(AType)
+            @inbounds for i in eachindex(ns)
+                c = invkz / (u - ζs[i])
+                acc += _In_block(g - gζs[i], c, b2s[i], v, ω, kz, ns[i] * Ω)
+            end
+            acc
+        end[1]
+        # analytic log-ratio (+ Landau) part, constant in u
+        logacc = zero(AType)
+        @inbounds for i in eachindex(ns)
+            logacc += _In_block(gζs[i] .* _landau_logfac(ζs[i], L, U), invkz, b2s[i], v, ω, kz, ns[i] * Ω)
+        end
+        reg + logacc
     end
-    return reg + logacc
 end
 
 include("qin.jl")

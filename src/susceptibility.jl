@@ -79,15 +79,15 @@ end
 # Pointwise (Grid): the perp tensor at node p⊥ before parallel integration
 # M=(q,uq,u²q,p,up); here M=c·Δm
 @inline function _In_block(Δm, c, bvec, px, ω, kz, nΩ)
-    b1, b2, b3 = bvec
+    b11, b12, b22, b13, b23, b33 = bvec
     Δ0, Δ1, Δ2, Δ3, Δ4 = Δm
     c2 = 2π * c
     kzpx = kz * px
     D0 = c2 * (ω * Δ0 - kz * Δ1 + kzpx * Δ3)
     D1 = c2 * (ω * Δ1 - kz * Δ2 + kzpx * Δ4)
-    zz = (c2 * b3 * b3) * (nΩ * Δ2 + (ω - nΩ) * px * Δ4)
-    xx, xy, yy = b1 * b1 * D0, im * b1 * b2 * D0, b2 * b2 * D0
-    xz, zy = b1 * b3 * D1, im * b2 * b3 * D1
+    zz = (c2 * b33) * (nΩ * Δ2 + (ω - nΩ) * px * Δ4)
+    xx, xy, yy = b11 * D0, im * b12 * D0, b22 * D0
+    xz, zy = b13 * D1, im * b23 * D1
     return SA[xx, xy, xz, yy, zy, zz]
 end
 
@@ -100,26 +100,32 @@ end
     @SMatrix [a11 a12 a13; a12 a22 a23; a13 a23 a33]
 
 # Bessel triplet `bvec = (p⊥Rₙ, p⊥Jₙ′, Jₙ)`
-@inline function _perp_Bessel_triplet(n, a, px)
+@inline function _perp_Bessel_bilinear(n, a, px)
     z = a * px
     Jm, Jp = besselj(n - 1, z), besselj(n + 1, z)
-    return SVector(px * (Jm + Jp) / 2, px * (Jm - Jp) / 2, besselj(n, z))
+    b1 = px * (Jm + Jp) / 2
+    b2 = px * (Jm - Jp) / 2
+    b3 = besselj(n, z)
+    return SA[b1 * b1, b1 * b2, b2 * b2, b1 * b3, b2 * b3, b3 * b3]
 end
 
-# Whole ±nmax triplet ladder at one perp node
-function _perp_Bessel_triplets(ns, a, px)
+# Fill `out[i]` with the ±nmax ladder of perp bilinear products
+function _perp_Bessel_bilinears!(out, a, px)
     z = a * px
-    M = last(ns) + 1
-    return @no_escape begin
-        Jv = @alloc(typeof(z), M + 1)
-        besselj_ladder!(Jv, M, z)
-        map(ns) do n
+    nmax = (length(out) - 1) ÷ 2
+    @no_escape begin
+        Jv = @alloc(typeof(z), nmax + 2)
+        besselj_ladder!(Jv, nmax + 1, z)
+        @inbounds for (i, n) in enumerate(-nmax:nmax)
             Jm = _jladder(Jv, n - 1)
             Jp = _jladder(Jv, n + 1)
             Rn = (Jm + Jp) / 2
             Jn = _jladder(Jv, n)
             Jn′ = (Jm - Jp) / 2
-            SA[px * Rn, px * Jn′, Jn]
+            b1 = px * Rn
+            b2 = px * Jn′
+            out[i] = SA[b1 * b1, b1 * b2, b2 * b2, b1 * Jn, b2 * Jn, Jn * Jn]
         end
     end
+    return out
 end

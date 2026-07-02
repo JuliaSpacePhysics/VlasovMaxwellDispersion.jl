@@ -220,7 +220,7 @@ function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, a)
                 evalpoly(t, MF0c.data), evalpoly(t, MF1c.data), evalpoly(t, MF2c.data),
                 evalpoly(t, MT0c.data), evalpoly(t, MT1c.data),
             )
-            _In_block(M, (-1 / kz), _perp_Bessel_triplet(n, a, v), v, ω, kz, n * Ω)
+            _In_block(M, (-1 / kz), _perp_Bessel_bilinear(n, a, v), v, ω, kz, n * Ω)
         end
         # The Bessel weight J_n(a v) has v-wavelength ≈ π/a; adaptive QuadGK over a
         # cell spanning many wavelengths can't resolve it. Pre-split the cell at the
