@@ -41,6 +41,8 @@ function CoupledVDF(
         )[1] : one(plo)
     fn = (q, u) -> f0(q, u) / n
     dg = isnothing(dgrad) ? ((q, u) -> _grad2(fn, q, u)) : ((q, u) -> dgrad(q, u) ./ n)
+    isnothing(dgrad) && _assert_holo_diff(() ->
+        _grad2(fn, (qlo + qhi) / 2, complex((plo + phi) / 2, max((phi - plo) * 1e-3, 1e-6))))
     return CoupledVDF(fn, dg, (plo, phi), (qlo, qhi), regime)
 end
 

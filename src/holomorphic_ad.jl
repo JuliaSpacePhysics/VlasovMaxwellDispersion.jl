@@ -35,3 +35,22 @@ SpecialFunctions.erfcx(z::Complex{<:Dual{HoloTag}})  = _holo_chain(erfcx,  w -> 
 SpecialFunctions.erfi(z::Complex{<:Dual{HoloTag}})   = _holo_chain(erfi,   w -> 2 / sqrt(π) * exp(w^2), z)
 SpecialFunctions.dawson(z::Complex{<:Dual{HoloTag}}) = _holo_chain(dawson, w -> 1 - 2w * dawson(w), z)
 SpecialFunctions.gamma(z::Complex{<:Dual{HoloTag}})  = _holo_chain(gamma,  w -> gamma(w) * digamma(w), z)
+
+# Construction-time guard for autodiff-only arbitrary VDFs. `probe` runs the autodiff path once
+# at a complex (Landau-contour) point; a `MethodError` means some special function in `f` has no
+# `Complex{Dual}` method, so we raise actionable guidance instead of a cryptic failure at solve
+# time. Any other probe failure (e.g. an overflow at the probe point) is ignored so it can't block
+# construction — the real error, if any, still surfaces during `solve`.
+function _assert_holo_diff(probe)
+    try
+        probe()
+    catch err
+        err isa MethodError || return nothing
+        throw(ArgumentError(
+            "VDF is not auto-differentiable at a complex (Landau-contour) argument: " *
+            "`$(err.f)` has no `Complex{Dual}` method. Either pass an explicit gradient " *
+            "(`dfpara`/`dfperp`/`dgrad`), or build the VDF only from primitives the holomorphic-AD " *
+            "bridge covers — elementary ops (+ - * / ^ exp log trig) and erf/erfc/erfcx/erfi/dawson/gamma."))
+    end
+    return nothing
+end

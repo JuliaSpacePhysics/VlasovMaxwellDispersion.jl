@@ -24,6 +24,8 @@ end
 
 function _factor(f, df, n, lo, hi)
     fdf = isnothing(df) ? (x -> _val_dwrt(f, x)) : (x -> (f(x), df(x) / n))
+    isnothing(df) && _assert_holo_diff(() ->
+        _val_dwrt(f, complex((lo + hi) / 2, max((hi - lo) * 1e-3, 1e-6))))
     return AnalyticFactor(f, fdf, lo, hi)
 end
 
