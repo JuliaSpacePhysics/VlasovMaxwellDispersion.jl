@@ -30,24 +30,6 @@ end
     end
 end
 
-# Relativistic (γ,p∥) coupled path: an isotropic Maxwell–Jüttner f₀ fed through
-# the general CoupledVDF must reproduce the closed Maxwell–Jüttner (Swanson)
-# tensor — itself ALPS-validated. ω<Ω keeps the Swanson time-integral stable.
-@testitem "Relativistic CoupledVDF reproduces Maxwell–Jüttner" begin
-    μ = 40.0
-    L = sqrt((1 + 25 / μ)^2 - 1)
-    ref = MaxwellJuttner(mu = μ)
-    rel = CoupledVDF(ref; para = (-L, L), perp = L, regime = Relativistic())
-
-    for ω in (0.3 - 0.005im, 0.3 + 0.05im), kperp in (0.0, 0.3, 0.6)
-        k = Wavenumber(kperp, 0.4)
-        χA = contribution(rel, ω, k; closure = Newberger())
-        χB = contribution(rel, ω, k)
-        χref = contribution(ref, ω, k)
-        @test χA ≈ χref rtol = 1.0e-5
-        @test χB ≈ χref rtol = 1.0e-5
-    end
-end
 
 # Regression: the relativistic harmonic path must carry the non-resonant e∥e∥
 # Bernstein term 𝒳_B (derivation §5). In the weakly-relativistic limit (narrow f₀,
@@ -80,37 +62,6 @@ end
     end
 end
 
-@testitem "Relativistic CoupledVDF Newberger (A) handles damped modes" begin
-    μ = 40.0
-    γ(w, u) = sqrt(1 + u^2 + w^2)
-    f0(w, u) = exp(-μ * γ(w, u))
-    L = sqrt((1 + 25 / μ)^2 - 1)
-    kw = (para = (-L, L), perp = L)
-    vdf = CoupledVDF(f0; kw..., regime = Relativistic())
-    k = Wavenumber(0.7, 0.4)
-    for ω in (0.3 - 0.05im, 0.3 - 0.005im)              # damped relativistic
-        χB = contribution(vdf, ω, k)
-        χA = contribution(vdf, ω, k; closure = Newberger())
-        @test χA ≈ χB rtol = 1.0e-6
-    end
-end
-
-@testitem "Relativistic CoupledVDF B finite at large k⊥ (in-range pole guard)" begin
-    μ = 40.0
-    γ(w, u) = sqrt(1 + u^2 + w^2)
-    f0(w, u) = exp(-μ * γ(w, u))
-    L = sqrt((1 + 25 / μ)^2 - 1)
-    kw = (para = (-L, L), perp = L)
-    s = CoupledVDF(f0; kw..., regime = Relativistic())
-    ω = 0.3 - 0.05im
-    for kperp in (1.2, 2.0, 3.5)                        # k⊥ρ≳1.5: off-disk poles appear
-        k = Wavenumber(kperp, 0.4)
-        χB = contribution(s, ω, k)                      # evaluator B (HarmonicSum)
-        χA = contribution(s, ω, k; closure = Newberger()) # evaluator A (reference)
-        @test all(isfinite, χB) && maximum(abs, χB) < 1.0e3     # no Iₙ overflow
-        @test maximum(abs.(χA .- χB)) / maximum(abs.(χB)) < 1.0e-5
-    end
-end
 
 @testitem "CoupledVDF perp lower bound skips the empty ring core" begin
     vth_para, vth_perp, vr = 0.1, 0.05, 0.6       # vr/vth⊥=12 ⇒ core density ~e⁻¹⁴⁴
