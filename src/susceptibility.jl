@@ -16,7 +16,20 @@ end
 Dielectric tensor `ε = I + Σ_s χ_s(ω,k)`.
 """
 function dielectric(plasma, ω, k; kwargs...)
-    χ = mapreduce(s -> contribution(s, ω, k; kwargs...), +, NormalizedPlasma(plasma))
+    _nan_tensor() = SMatrix{3, 3, ComplexF64}(ntuple(_ -> complex(NaN, NaN), 9))
+    _is_quadgk_nonfinite_error(err) =
+        err isa DomainError && isdefined(err, :msg) && startswith(err.msg, "integrand produced")
+
+    # Quadrature-based χ paths raise QuadGK's DomainError when the Landau-residue
+    # continuation overflows at strongly-damped ω. Return NaN — matching the analytic
+    # Maxwellian path, which goes non-finite without throwing there — so root-finders
+    # and ω-scans reject the point instead of crashing. Any other error stays loud.
+    χ = try
+        mapreduce(s -> contribution(s, ω, k; kwargs...), +, NormalizedPlasma(plasma))
+    catch err
+        _is_quadgk_nonfinite_error(err) || rethrow()
+        return _nan_tensor()
+    end
     return χ + I
 end
 
