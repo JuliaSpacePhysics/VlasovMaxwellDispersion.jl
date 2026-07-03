@@ -1,4 +1,3 @@
-# Grid -> piecewise-poly basis
 # `fit_grid` dispatches on the method; add a method by implementing one `fit_grid`
 #
 # Two methods, by trade-off (both yield TensorSplineFit):

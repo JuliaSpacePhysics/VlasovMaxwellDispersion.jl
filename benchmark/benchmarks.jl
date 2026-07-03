@@ -3,7 +3,6 @@ using VlasovMaxwellDispersion
 using VlasovMaxwellDispersion: contribution
 import SimpleNonlinearSolve as SNS
 import BracketingNonlinearSolve as BNS
-import Roots
 const SUITE = BenchmarkGroup()
 
 # Maxwellian with closed Z/Γ_n harmonic sum
@@ -88,7 +87,6 @@ let g = SUITE["local_solve"]
     prob = LocalDispersionProblem(s, k, 0.6)
     h = 1e-3
     g["muller_native"] = @benchmarkable solve($prob)
-    g["secant_roots"] = @benchmarkable solve($prob, Roots.Order1())
     # Only complex-capable solvers qualify
     # bracketing methods need a real sign change Broyden/DFSane assume a real residual.
     g["muller_sciml"] = @benchmarkable solve(ip, alg) setup = (
