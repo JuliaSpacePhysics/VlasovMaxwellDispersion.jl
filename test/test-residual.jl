@@ -4,6 +4,7 @@
 # only works because sol.resid is Hadamard-normalized (|det|/∏‖rowᵢ‖ ~ ε at a root).
 
 @testitem "local solve residual is scale-invariant" begin
+    import Roots: Order1
     vA = 1.0e-4
     me = 5.44662e-4
     plasma = (
@@ -13,7 +14,7 @@
     k = Wavenumber(0.01 / vA, 0.01 / vA)
     prob = LocalDispersionProblem(plasma, k, 9.9881e-3 - 2.3132e-7im)  # ALPS fast-wave root
 
-    for alg in (Muller(), Secant())
+    for alg in (Muller(), Order1())
         sol = solve(prob, alg)
         @test sol.retcode == :Success
         @test sol.resid < 1.0e-10

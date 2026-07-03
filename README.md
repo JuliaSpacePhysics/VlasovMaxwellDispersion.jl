@@ -45,9 +45,8 @@ pl = NormalizedSpecies(-1.0, 1.0, ReducedVDF(f; para=(-12.0, 14.0)))
 
 Solvers follow the `CommonSolve.solve(problem, algorithm)` interface: a
 `Local`/`Global`/`BranchProblem` (seed / search box / k-sequence) solved by
-`Muller` (default; `Secant` alternative) / `GRPF` (`RootsAndPoles.jl`) /
-`ArcLength`. `solve` returns a `DispersionSolution` (`.omega`, `.poles`,
-`.retcode`).
+`Muller` (default) / `GRPF` (`RootsAndPoles.jl`) / `ArcLength`. `solve` returns a
+`DispersionSolution` (`.omega`, `.poles`, `.retcode`).
 
 Two closure for orbit integrals are available (`derivation.md` §3):
 

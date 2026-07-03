@@ -1,11 +1,10 @@
-# Holomorphic dispersion function ω -> det 𝒟(ω)
 dispersion_function(prob::AbstractDispersionProblem) =
     ω -> det(dispersion_tensor(prob.plasma, ω, prob.k; closure = prob.closure))
 
-Base.getproperty(prob::LocalDispersionProblem, s::Symbol) =
+@inline Base.getproperty(prob::LocalDispersionProblem, s::Symbol) =
     s === :f ? _scaled_dispersion_function(prob) : getfield(prob, s)
 # GRPF is phase-based and has no seed.
-Base.getproperty(prob::GlobalDispersionProblem, s::Symbol) =
+@inline Base.getproperty(prob::GlobalDispersionProblem, s::Symbol) =
     s === :f ? dispersion_function(prob) : getfield(prob, s)
 Base.propertynames(prob::AbstractDispersionProblem) =
     (fieldnames(typeof(prob))..., :f)
@@ -13,7 +12,7 @@ Base.propertynames(prob::AbstractDispersionProblem) =
 _hadamard(D) = prod(norm(D[i, :]) for i in 1:3)
 
 """
-    residual(plasma, ω, k; closure=HarmonicSum()) -> Real
+    residual(plasma, ω, k; closure=HarmonicSum())
     residual(prob, ω)
 
 Scale-invariant residual `|det 𝒟(ω)| / ∏ᵢ‖𝒟ᵢ,:‖ ∈ [0,1]`; ~machine epsilon at a
@@ -35,16 +34,12 @@ function _scaled_dispersion_function(prob::LocalDispersionProblem)
     return isfinite(s) && s > 0 ? (ω -> f(ω) / s) : f
 end
 
-include("solver/secant.jl")
 include("solver/muller.jl")
 
 """
-    solve(prob::LocalDispersionProblem, alg) -> DispersionSolution
-
-Default alg = Muller().
+    solve(prob::LocalDispersionProblem, alg = Muller()) -> DispersionSolution
 """
-CommonSolve.solve(prob::LocalDispersionProblem) =
-    CommonSolve.solve(prob, Muller())
+CommonSolve.solve(prob::LocalDispersionProblem) = CommonSolve.solve(prob, Muller())
 
 """
     solve(prob::GlobalDispersionProblem, alg=GRPF()) -> DispersionSolution
