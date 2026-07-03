@@ -10,11 +10,11 @@ end
 
 # Three seeds are clustered around `omega0` (small relative+absolute perturbation).
 function CommonSolve.solve(prob::LocalDispersionProblem, alg::Muller)
-    f = residual(prob)
+    f = prob.f
     h = 1.0e-3 * max(abs(prob.omega0), 1.0)
     ω = muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im; alg.atol, alg.maxiter)
     ok = isfinite(ω)
-    return DispersionSolution(ω, nothing, ok ? abs(f(ω)) : NaN, ok ? :Success : :Failure, prob, alg)
+    return DispersionSolution(ω, nothing, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
 end
 
 

@@ -12,7 +12,7 @@
     ks = [Wavenumber(row[1] / vA, row[2] / vA) for row in eachrow(data)]
     reference = complex.(data[:, 3], data[:, 4])
 
-    roots = solve(BranchProblem(plasma, ks, reference[1]), ArcLength(; atol=1.0e-9, maxiter=100)).omega
+    roots = solve(BranchProblem(plasma, ks, reference[1]), ArcLength(; atol = 1.0e-9, maxiter = 100)).omega
 
     @test all(isfinite, roots)
     @test maximum(abs.(real.(roots) .- real.(reference)) ./ abs.(real.(reference))) < 1.0e-2
@@ -41,7 +41,6 @@ end
 @testitem "ALPS test_relativistic root 1 (low branch)" begin
     using VlasovMaxwellDispersion
     using DelimitedFiles
-    using LinearAlgebra
 
     ion = NormalizedSpecies(1.0, 1.0, MaxwellJuttner(2.0))
     electron = NormalizedSpecies(-1.0, 1.0, MaxwellJuttner(2.0))
@@ -49,18 +48,17 @@ end
 
     data = readdlm(joinpath(@__DIR__, "fixtures/alps/test_relativistic.scan_kpara_1.root_1"))
 
-    # Raw |det D| is inflated ~1/ω⁴ by the curl-curl term at low ω̃ branch.
-    # Use a scale-invariant residual (|det| over the product of row norms) to confirm a genuine root, and compare the ROOT LOCATION to ALPS the way ALPS's own test does.
-    ndet(p, ω, k) = (D=dispersion_tensor(p, ω, k); abs(det(D)) / prod(norm(D[i, :]) for i in 1:3))
-
+    # Raw |det D| is inflated ~1/ω⁴ by the curl-curl term at low ω̃ branch, so
+    # confirm a genuine root via the scale-invariant sol.resid.
     for row in eachrow(data)
         k = Wavenumber(row[1], row[2])
         ωref = complex(row[3], row[4])
-        ω = solve(LocalDispersionProblem(plasma, k, ωref)).omega
-        @test ndet(plasma, ω, k) < 1.0e-6
+        sol = solve(LocalDispersionProblem(plasma, k, ωref))
+        ω = sol.omega
+        @test sol.resid < 1.0e-6
         # Exact analytic Maxwell-Jüttner vs ALPS's coarse 60×30 gridded+order-30
-        # fitted MJ ⇒ ~1% on Re ω̃. Damping (Im ω̃) of this near-marginal
-        # mode is far more approximation-sensitive, so only Re is asserted.
-        @test abs(real(ω) - real(ωref)) / abs(real(ωref)) < 2.0e-2
+        # Damping (Im ω̃) of this near-marginal mode is far more approximation-sensitive
+        # so only Re is asserted.
+        @test real(ω) ≈ real(ωref) rtol = 2.0e-2
     end
 end

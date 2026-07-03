@@ -10,6 +10,6 @@ end
 @testitem "cold dispersion vs Stix" begin
     include("test-cold-stix.jl")
 end
-@testitem "SciML interop via residual seam" begin
+@testitem "SciML interop" begin
     include("test-sciml-interop.jl")
 end
