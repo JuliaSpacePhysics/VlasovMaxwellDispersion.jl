@@ -15,10 +15,8 @@ core; the only variation is how their integrand is represented:
 |---|---|---|
 | Maxwellian (Gaussian) | `√π Z(ζ)` | `Γ_n(λ)=Iₙ(λ)e^{−λ}` |
 | piecewise polynomial | log-ratio formula (branch-cut invariant) | Bessel-product power series (Schläfli ₂F₃) per cell |
-| arbitrary analytic | Plemelj split | direct quadrature |
 
-So "arbitrary VDF" and "exact analytic continuation" are the *same* mechanism;
-Maxwellian/Kappa are fast overloads. The branch-cut invariant (one complex `log` of the *ratio*).
+Maxwellian/Kappa are fast overloads.
 
 ### 1a. Grid → basis projection (the other hard half)
 
@@ -40,17 +38,17 @@ rejected.
 Specializations are trait combinations: 
 - Maxwellian/Cold = `Analytic+Separable+NonRel+HarmonicSum`
 - Maxwell–Jüttner = `Analytic+Relativistic`
-- gridded relativistic `f₀(p̂∥,p̂⊥)` = `PiecewisePoly+Coupled+Relativistic`.
+- gridded relativistic `f₀(p̂⊥,p̂∥)` = `PiecewisePoly+Coupled+Relativistic`.
 
 ## 3. Cross-validation
 
 Three reference solvers in `external/` serve as ground truth for tests:
 
-| reference | language | validates |
-|---|---|---|
-| `LinearMaxwellVlasov.jl` | Julia | bi-Maxwellian χ numbers, Newberger coupled path, complex-k |
-| `ALPS` | Fortran+MPI | arbitrary gyrotropic + **relativistic** test inputs |
-| `MPDES` | MATLAB | piecewise-poly `H∥`/`P⊥`, NNLS spline, GES global finder, paper figures |
+| reference | validates |
+|---|---|
+| `LinearMaxwellVlasov.jl` | bi-Maxwellian χ numbers, Newberger coupled path, complex-k |
+| `ALPS` | arbitrary gyrotropic + **relativistic** test inputs |
+| `MPDES` | piecewise-poly `H∥`/`P⊥`, NNLS spline, GES global finder, paper figures |
 
 Plus analytic anchors with no external dep: Stix cold R/L/O/X, Maxwellian→cold limit, Langmuir+Landau vs the `Z`-function dispersion, electrostatic limit.
 
@@ -64,7 +62,11 @@ accelerations, both learned from the references:
 
 ## 4. Implementation status
 
-**Built + validated** (test count in `test/`, all ~machine precision unless noted):
+**Built + validated**:
+
+All kinetic paths specialize one nested 2-D integral (`derivation.md`):
+`CoupledVDF` (general) ⊃ `SeparableVDF` (factors) ⊃ Maxwellian/MJ (`Z`/`Γ_n`
+closed form).
 
 | capability | file | validation |
 |---|---|---|
@@ -73,9 +75,3 @@ accelerations, both learned from the references:
 | NNLS B-spline projection | `projection.jl` | positivity/C¹/error-bound |
 | relativistic Maxwell–Jüttner | `MaxwellJuttner.jl` | ALPS `relativistic` roots 1&2; μ→∞ limit |
 | GRPF `GlobalDispersionProblem` + `BranchProblem` | `solve.jl`/`track.jl` | ALPS `kpar_fast` scan (rtol 1e-2); GRPF unit |
-| arbitrary separable `f∥·f⊥`, full EM oblique | `SeparableVDF.jl` | ≡ bi-Maxwellian χ (3e-11) & root (1e-13) |
-| arbitrary inseparable `f₀(v∥,v⊥)`, full EM | `CoupledVDF.jl` | ≡ bi-Maxwellian χ (3e-11); inseparable finite |
-
-All four kinetic paths specialize one nested 2-D integral (`derivation.md`):
-`CoupledVDF` (general) ⊃ `SeparableVDF` (factors) ⊃ Maxwellian/MJ (`Z`/`Γ_n`
-closed form).

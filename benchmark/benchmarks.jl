@@ -30,6 +30,20 @@ let g = SUITE["separable"]
     end
 end
 
+let g = SUITE["kappa"]
+    ω = 1.2 - 0.05im
+    for κ in (6, 6.00001)   # integer (residue) vs non-integer (₂F₁) parallel path
+        s = NormalizedSpecies(-1.0, 0.7, BiKappa(vth_para=0.9, vth_perp=1.2, kappa=κ))
+        for kp in (0.4, 2.0)
+            g["bikappa=$κ/kperp=$kp"] = @benchmarkable contribution($s, $ω, Wavenumber($kp, 0.3))
+        end
+    end
+    pbk = NormalizedSpecies(-1.0, 0.7, ProductBiKappa(vth_para=0.9, vth_perp=1.2, kappa_para=6, kappa_perp=4))
+    for kp in (0.4, 2.0)
+        g["product/kperp=$kp"] = @benchmarkable contribution($pbk, $ω, Wavenumber($kp, 0.3))
+    end
+end
+
 # CoupledVDF: the two closures (derivation.md §3) on an inseparable f₀.
 let g = SUITE["Nonrelativistic/coupled"]
     g0(w, u) = exp(-(u^2 + w^2 + 0.6u * w))

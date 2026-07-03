@@ -12,6 +12,7 @@ using Roots
 using RootsAndPoles
 using SpecialFunctions
 using SpecialFunctions: erfcx, gamma
+using HypergeometricFunctions: _₂F₁
 using QuadGK
 using NonNegLeastSquares: nonneg_lsq
 using CommonSolve
@@ -39,6 +40,7 @@ export Wavenumber, para, perp
 export AbstractVDF, Particle, Electron, Proton, Ion, Species, Plasma
 export NormalizedSpecies
 export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, CoupledVDF, GaussianRing
+export BiKappa, ProductBiKappa, Kappa
 export Separable, ⊗, Gaussian, GyroRing
 export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger
