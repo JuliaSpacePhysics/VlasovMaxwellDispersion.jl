@@ -58,8 +58,8 @@ let g = SUITE["Nonrelativistic/coupled"]
 end
 
 let g = SUITE["Relativistic"], regime = Relativistic()
+    γ(w, u) = sqrt(1 + u^2 + w^2)
     for μ in (2.0, 40.0), kp in (0.7, 3.5)
-        γ(w, u) = sqrt(1 + u^2 + w^2)
         f0(w, u) = exp(-μ * γ(w, u))
         L = sqrt((1 + 25 / μ)^2 - 1)
         vdf = CoupledVDF(f0; para = (-L, L), perp = L, regime)
@@ -67,15 +67,14 @@ let g = SUITE["Relativistic"], regime = Relativistic()
         k = Wavenumber(kp, 0.4)
         g["coupled/A_newberger/μ=$μ/kperp=$kp"] = @benchmarkable contribution($vdf, $ω, $k; closure = Newberger())
         g["coupled/B_truncated/μ=$μ/kperp=$kp"] = @benchmarkable contribution($vdf, $ω, $k)
-    end
-    k = Wavenumber(0.7, 0.4)
 
-    ppar = collect(range(-L, L, length = 81))
-    pperp = collect(range(0.0, L, length = 61))
-    F = [f0(u, w) for w in pperp, u in ppar]      # F[perp,par]
-    vdf = GridVDF(pperp, ppar, F; regime)
-    g["gridvdf"] = @benchmarkable contribution($vdf, $ω, $k)
-    g["gridvdf_coupled"] = @benchmarkable contribution($vdf.coupled, $ω, $k)
+        ppar = collect(range(-L, L, length = 81))
+        pperp = collect(range(0.0, L, length = 61))
+        F = [f0(u, w) for w in pperp, u in ppar]      # F[perp,par]
+        vdf = GridVDF(pperp, ppar, F; regime)
+        g["gridvdf/μ=$μ/kperp=$kp"] = @benchmarkable contribution($vdf, $ω, $k)
+        g["gridvdf_coupled/μ=$μ/kperp=$kp"] = @benchmarkable contribution($vdf.coupled, $ω, $k)
+    end
 end
 
 let g = SUITE["local_solve"]
