@@ -3,9 +3,19 @@ dispersion_function(prob::AbstractDispersionProblem) =
 
 @inline Base.getproperty(prob::LocalDispersionProblem, s::Symbol) =
     s === :f ? _scaled_dispersion_function(prob) : getfield(prob, s)
-# GRPF is phase-based and has no seed.
+
+# GRPF is phase-based and has no seed. det𝒟 has a genuine pole at ω=0 (Maxwell
+# light term c²k²/ω², order ≤6) whose winding partially cancels nearby roots, so
+# the argument principle sees det(ω²𝒟) = ω⁶det𝒟, which is entire there. The
+# deflation leaves an artifact zero of order 6−p at exactly ω=0; solve filters it.
 @inline Base.getproperty(prob::GlobalDispersionProblem, s::Symbol) =
-    s === :f ? dispersion_function(prob) : getfield(prob, s)
+    s === :f ? _deflated_dispersion_function(prob) : getfield(prob, s)
+
+function _deflated_dispersion_function(prob::GlobalDispersionProblem)
+    f = dispersion_function(prob)
+    return ω -> ω^6 * f(ω)
+end
+
 Base.propertynames(prob::AbstractDispersionProblem) =
     (fieldnames(typeof(prob))..., :f)
 
@@ -44,10 +54,14 @@ CommonSolve.solve(prob::LocalDispersionProblem) = CommonSolve.solve(prob, Muller
 """
     solve(prob::GlobalDispersionProblem, alg=GRPF()) -> DispersionSolution
 
-All roots and poles in `prob.region` via the argument principle.
+All roots and poles in `prob.region` via the argument principle, applied to the
+deflated determinant `det(ω²𝒟) = ω⁶ det𝒟` so the ω=0 light-term pole cannot
+cancel or displace nearby roots. Roots within `alg.tol` of ω=0 are dropped:
+at that distance they are indistinguishable from the deflation artifact.
 """
 function CommonSolve.solve(prob::GlobalDispersionProblem, alg = GRPF())
     roots, poles = _grpf_roots(prob.f, prob.region; alg.tol, alg.params)
+    filter!(ω -> abs(ω) > alg.tol, roots)   # deflation artifact at ω=0
     # GRPF roots are mesh-accurate (~tol), so these sit well above ε
     res = [residual(prob, ω) for ω in roots]
     return DispersionSolution(roots, poles, res, isempty(roots) ? :Failure : :Success, prob, alg)
