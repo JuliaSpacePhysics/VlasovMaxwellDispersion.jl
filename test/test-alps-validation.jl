@@ -1,5 +1,4 @@
 @testitem "ALPS test_kpar_fast scan" begin
-    using VlasovMaxwellDispersion
     using DelimitedFiles
 
     vA = 1.0e-4
@@ -20,7 +19,6 @@
 end
 
 @testitem "ALPS test_relativistic generated root 2" begin
-    using VlasovMaxwellDispersion
     using DelimitedFiles
     using LinearAlgebra
 
@@ -39,12 +37,19 @@ end
 end
 
 @testitem "ALPS test_relativistic root 1 (low branch)" begin
-    using VlasovMaxwellDispersion
     using DelimitedFiles
 
-    ion = NormalizedSpecies(1.0, 1.0, MaxwellJuttner(2.0))
-    electron = NormalizedSpecies(-1.0, 1.0, MaxwellJuttner(2.0))
+    mj = MaxwellJuttner(2.0)
+    ion = NormalizedSpecies(1.0, 1.0, mj)
+    electron = NormalizedSpecies(-1.0, 1.0, mj)
     plasma = (ion, electron)
+
+    pperp = range(0.0, 5.0, length = 31)
+    ppar = range(-5.0, 5.0, length = 61)
+
+    F = [mj(w, u) for w in pperp, u in ppar]      # F[perp, para]
+    g = GridVDF(pperp, ppar, F; rtol = 1.0e-4, regime = Relativistic())
+    plasma_grid = (NormalizedSpecies(1.0, 1.0, g), NormalizedSpecies(-1.0, 1.0, g))
 
     data = readdlm(joinpath(@__DIR__, "fixtures/alps/test_relativistic.scan_kpara_1.root_1"))
 
@@ -53,12 +58,15 @@ end
     for row in eachrow(data)
         k = Wavenumber(row[1], row[2])
         ωref = complex(row[3], row[4])
-        sol = solve(LocalDispersionProblem(plasma, k, ωref))
-        ω = sol.omega
-        @test sol.resid < 1.0e-6
-        # Exact analytic Maxwell-Jüttner vs ALPS's coarse 60×30 gridded+order-30
-        # Damping (Im ω̃) of this near-marginal mode is far more approximation-sensitive
-        # so only Re is asserted.
-        @test real(ω) ≈ real(ωref) rtol = 2.0e-2
+        for p in (plasma,)
+            sol = solve(LocalDispersionProblem(p, k, ωref))
+            ω = sol.omega
+            @test sol.resid < 1.0e-6
+            # Exact analytic Maxwell-Jüttner vs ALPS's coarse 60×30 gridded+order-30
+            # Damping (Im ω̃) of this near-marginal mode is far more approximation-sensitive
+            # so only Re is asserted.
+            @test real(ω) ≈ real(ωref) rtol = 2.0e-2
+        end
+
     end
 end

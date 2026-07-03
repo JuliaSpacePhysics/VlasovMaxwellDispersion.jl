@@ -25,6 +25,11 @@ function contribution(d::MaxwellJuttner, s, ω, k; kwargs...)
     if imag(ω) < 0 && iszero(kz)
         throw(ArgumentError("MaxwellJuttner with imag(ω)<0 and kz=0 needs Landau contour continuation"))
     end
+    # ξ-integrand decay ~ e^{-ξ√(kz²-ω²)}: for damped superluminal ω (|Re ω|>|k∥|)
+    # the integral stops converging to the analytic continuation (to be verified)
+    if imag(ω) < 0 && real(ω)^2 > kz^2
+        @warn "MaxwellJuttner Swanson integral is not the analytic continuation for damped superluminal ω (|Re ω| > |k∥|); use CoupledVDF(MaxwellJuttner(μ); regime=Relativistic()) instead" maxlog = 1
+    end
 
     invK2μ = inv(besselkx(2, μ))
     igrand = _maxwell_juttner_swanson_integral(μ, invK2μ, ω, Ω, kz, kperp)

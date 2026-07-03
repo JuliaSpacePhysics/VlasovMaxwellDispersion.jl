@@ -24,7 +24,7 @@
     @test acc3 > acc4
 end
 
-# isotropic Maxwell–Jüttner sampled on a (p∥,p⊥) grid. (γmax clipped to the grid, support-zeroed bicubic, resonance-gated Plemelj)
+# isotropic Maxwell–Jüttner sampled on a (p∥,p⊥) grid, routed through the coupled (p⊥,p∥) path
 @testitem "Relativistic GridVDF reproduces Maxwell–Jüttner" begin
     μ = 40.0
     γ(u, w) = sqrt(1 + u^2 + w^2)

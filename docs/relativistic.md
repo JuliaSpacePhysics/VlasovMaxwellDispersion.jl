@@ -1,105 +1,119 @@
-Relativistic f₀ works better in $(\gamma,p_\parallel)$ coordinates.
+# Relativistic path: (p⊥,p∥) slicing
 
-The denominator is nonlinear in `p∥` through `γ`, but at fixed `γ` it linearizes:
-
-    ω − k∥v∥ − nΩ = (ωγ − k∥p∥ − nΩ₀)/γ = −(k∥/γ)(p∥ − ζ_n(γ)),   ζ_n(γ) = (ωγ − nΩ₀)/k∥,
-
-with a clean rational pole in `p∥`:
-
-    χ_n = (Π²/ω²)·(−2π/k∥) ∫ dγ ∫_{|p∥|<√(γ²−1)} dp∥ · 𝒰 𝓣_n /(p∥ − ζ_n(γ)).
-
-This straightens A's `sin πa=0` resonance curve into the line `p∥=ζ_n(γ)`. What stays
-coupled is only `z=(k⊥/Ω₀)√(γ²−1−p∥²)`, so the `p∥` integral is the analytic `𝒞` branch over a finite interval.
-
-The outer-coordinate density `I` is given by
+The relativistic resonant denominator, in momentum variables $p/mc$ with $\gamma=\sqrt{1+p_\perp^2+p_\parallel^2}$,
 
 $$
-I = I(\gamma)=\sum_n I_n(\gamma)+\mathbf e_\parallel\mathbf e_\parallel\,I_B(\gamma),
-\\
-I_n(\gamma)=-\frac{2\pi}{k_\parallel} \int dp_\parallel
-\frac{\mathcal U\, {\mathcal T}_n}{p_\parallel-\zeta_n(\gamma)}, \quad
-I_B(\gamma)=2\pi\int dp_\parallel
-\Bigl(p_\parallel\,\partial_\parallel f_0-\frac{p_\parallel^2}{p_\perp}\,\partial_\perp f_0\Bigr).
+\omega - k_\parallel v_\parallel - \frac{n\Omega_0}{\gamma} = \frac{D_n}{\gamma},\qquad
+D_n = \omega\gamma - k_\parallel p_\parallel - n\Omega_0,
 $$
 
-The inner $p_\parallel$ integral of $I_n$ is the §5 parallel Cauchy transform at the single pole
-$\zeta_n(\gamma)$ (Plemelj plus growing-sheet Landau residue), over $|p_\parallel|<\sqrt{\gamma^2-1}$.
-
-**Assembly.** Unlike the non-relativistic case there is **no factored assembly**: because
-$z=(k_\perp/\Omega_0)\sqrt{\gamma^2-1-p_\parallel^2}$ couples $\gamma$ and $p_\parallel$ inside
-$\boldsymbol{\mathcal T}_n$, the $p_\parallel$ integral cannot become closed moments. One simply forms the
-full §3B integrand $2\pi\,\mathcal U\,\boldsymbol{\mathcal T}_n$ **pointwise** at each $(\gamma,p_\parallel)$
-node and quadratures in $p_\parallel$. Two consequences: (i) the §5 summed cancellation that cures the
-$m_{33}$ $k_\parallel\!\to\!0$ divergence is moot — that divergence lives in the parallel _moments_, which
-are never formed here, so nothing needs cancelling. $I_B$ is the same explicit separate addend
-as in the non-relativistic case;
-
-### 5.2.1 Pushing the relativistic density with the covariant `𝒰`
-
-The same machinery _almost_ factors $I(\gamma)$. Write $\mathcal U$ in its covariant form
-($\partial_\gamma$ at fixed $p_\parallel$, $\partial_{p_\parallel}$ at fixed $\gamma$)
+gives per harmonic
 
 $$
-\mathcal U=\omega\,\partial_\gamma f_0+k_\parallel\,\partial_{p_\parallel}f_0,
+\chi_n \propto \int_0^{p_{\perp\max}}\!\!dp_\perp \int_{-P}^{P}\!\!dp_\parallel\;
+\frac{\mathcal U\,\boldsymbol{\mathcal T}_n\;p_\perp/\gamma}{D_n},
 $$
 
-With the single-pole Cauchy transform at $\zeta_n(\gamma)$,
-$\mathcal C[g]\equiv\int_{|p_\parallel|<\sqrt{\gamma^2-1}}\!g/(p_\parallel-\zeta_n(\gamma))\,dp_\parallel$,
-the inner integral is:
+with the covariant numerator $\mathcal U = k_\parallel\partial_\parallel f_0 + (\omega\gamma-k_\parallel p_\parallel)\,p_\perp^{-1}\partial_\perp f_0$.
+The Bessel argument $z = k_\perp p_\perp/\Omega_0$ is **independent of the inner
+$p_\parallel$**, so $J$'s are computed once per slice and $\boldsymbol{\mathcal T}_n(p_\parallel)$ is
+mere power scaling of fixed bilinears. No moment closure survives ($\gamma(p_\parallel)$ is
+algebraic in the inner variable), so the integrand is formed pointwise; the non-resonant
+$\mathbf e_\parallel\mathbf e_\parallel$ addend
+$I_B = 2\pi\iint (p_\perp p_\parallel \partial_\parallel f_0 - p_\parallel^2\,\partial_\perp f_0)/\gamma$
+is a separate smooth integral over the same box.
+
+## Pole structure: rationalization
+
+$D_n$ is not rational in $p_\parallel$, but
 
 $$
-I_n(\gamma)=-\frac{2\pi}{k_\parallel}\Bigl[\,
-\omega\,\mathcal C[\partial_\gamma f_0\,\boldsymbol{\mathcal T}_n]
-+k_\parallel\,\mathcal C[\partial_{p_\parallel}f_0\,\boldsymbol{\mathcal T}_n]\,\Bigr].
+D_n\tilde D_n = \omega^2\gamma^2 - (k_\parallel p_\parallel + n\Omega_0)^2
+= A\,p_\parallel^2 + B\,p_\parallel + C,\qquad \tilde D_n = \omega\gamma + k_\parallel p_\parallel + n\Omega_0,
 $$
 
-**Where it halts.** Non-relativistically the transcendental part of ${\mathcal T}_n$ (Bessel in
-$z$) sat in the **outer** coordinate $p_\perp$, leaving the inner integrand polynomial in $p_\parallel$;
-$\mathcal C$ then collapsed to the finite moment set $\{M^m_F,M^m_T\}$ with the Bessel weights pulled out
-front. Relativistically $z=(k_\perp/\Omega_0)\sqrt{\gamma^2-1-p_\parallel^2}$ and $p_\perp$ depend on the
-**inner** $p_\parallel$, so $\boldsymbol{\mathcal T}_n$ stays transcendental in $p_\parallel$. Then
-The Bessel weights cannot leave the integral, and no closed $\{M^m,P_j\}$ pair survives.
-The covariant $\mathcal U$ buys the clean single pole and the right derivative pair — but **not** the factorization.
+with $A=\omega^2-k_\parallel^2$, $B=-2k_\parallel n\Omega_0$, $C=\omega^2 m_\perp^2 - n^2\Omega_0^2$,
+$m_\perp^2 \equiv 1+p_\perp^2$. So $1/D_n = \tilde D_n/[A(p_\parallel-p_+)(p_\parallel-p_-)]$: two
+explicit simple poles, and the **squaring ghost** — the quadratic root that solves
+$\tilde D_n=0$ — carries an identically-zero residue.
+No root classification is ever needed. 
+Residues are $r_\pm = \mp g(p_\pm)\tilde D_n(p_\pm)/\sqrt{B^2-4AC}$; near-axis poles are peeled by the standard Plemelj subtraction, far ones left to plain quadrature.
 
-Switching to $(p_\perp,p_\parallel)$ moves $z=k_\perp p_\perp/\Omega_0$ to the outer coordinate (the perp side would factor)
-but then the resonance $\omega\gamma-k_\parallel p_\parallel=n\Omega_0$ becomes
-quadratic in $p_\parallel$ — the relativistic resonance curve, $(\omega^2-k_\parallel^2)p_\parallel^2
--2k_\parallel n\Omega_0 p_\parallel+\omega^2(1+p_\perp^2)-n^2\Omega_0^2=0$, up to two roots per $n$ — so forfeits its single clean pole.
+## The Landau rule: poles cross the axis only at Im ω = 0
 
-Neither coordinate gives a product of independent 1-D primitives: the coupled relativistic density is irreducibly 2-D, and only $\gamma\!\to\!1$ unties $z$ from $p_\parallel$.
+For $\omega=\omega_r+i\nu$, $B$ is real and $\operatorname{Im}A = 2\omega_r\nu$,
+$\operatorname{Im}C = 2\omega_r\nu\,m_\perp^2$; a real root would need
+$\operatorname{Im}(Ap^2+Bp+C) = 2\omega_r\nu\,(p^2+m_\perp^2)=0$, i.e. $p^2=-m_\perp^2$ —
+impossible. **Poles touch the real $p_\parallel$ axis only at $\nu=0$**, in every regime.
+Hence the complete continuation bookkeeping (continuation defined from $\nu\to+\infty$,
+$k_\parallel>0$ convention):
 
-### 5.2.2 Edge-removing quadrature maps
+- $\nu>0$: straight integral, no residue terms;
+- $\nu=0$: boundary value from each pole's home side, given exactly by the local slope $dp/d\omega = \gamma^2/(k_\parallel\gamma-\omega p)$;
+- $\nu<0$: $+2\pi i\,r$ for in-range poles found below the axis. This is the exact
+  continuation **iff subluminal** ($\omega_r^2<k_\parallel^2$): there
+  $\operatorname{disc} = B^2-4AC = 4\omega^2[\,n^2\Omega_0^2+(k_\parallel^2-\omega^2)m_\perp^2\,]$
+  is uniformly nonzero, the true pole has home side $+$ for all $(n,p_\perp)$
+  ($k_\parallel\gamma-\omega p>0$ on the physical branch) and crosses downward, while the
+  ghost crosses upward with null coefficient.
 
-Both $I_n(\gamma)$ and $I_B(\gamma)$ integrate the momentum disk $|p_\parallel|<u_{\max}$, $u_{\max}\equiv\sqrt{\gamma^2-1}$,
-with $p_\perp=\sqrt{u_{\max}^2-p_\parallel^2}$, and the outer $\gamma\in[1,\gamma_{\max}]$. Two square-root edges
-make the integrand non-smooth on the boundary and stall any quadrature that resolves them directly:
+Support endpoints $|p_\parallel|=P$ sit where $f_0\approx 0$, so pole–endpoint collisions
+carry negligible coefficients: no endpoint corrections.
 
-- **Rim** $p_\perp\to0$ (at $|p_\parallel|=u_{\max}$): the numerator carries an explicit $1/p_\perp$ —
-  $\mathcal U\supset(\omega\gamma-k_\parallel p_\parallel)\,p_\perp^{-1}\partial_\perp f_0$ and
-  $I_B\supset p_\parallel^2 p_\perp^{-1}\partial_\perp f_0$ — and $p_\perp(p_\parallel)=\sqrt{u_{\max}^2-p_\parallel^2}$
-  has a vertical tangent there.
-- **Floor** $\gamma\to1$: $u_{\max}=\sqrt{\gamma^2-1}\sim\sqrt{2(\gamma-1)}$ collapses the disk with a
-  $\sqrt{\gamma-1}$ edge.
+## Why damped superluminal is special
 
-Two substitutions remove both, mapping the disk to a fixed square $(q,\theta)\in[0,1]\times[-\tfrac\pi2,\tfrac\pi2]$:
-
-$$
-p_\parallel=u_{\max}\sin\theta,\quad p_\perp=u_{\max}\cos\theta,\quad dp_\parallel=u_{\max}\cos\theta\,d\theta\;(=p_\perp\,d\theta);
-\qquad
-\gamma=1+(\gamma_{\max}-1)\,q^2,\quad d\gamma=2(\gamma_{\max}-1)\,q\,dq.
-$$
-
-The inner Jacobian $u_{\max}\cos\theta=p_\perp$ **cancels the $1/p_\perp$** exactly and renders $p_\perp$ the
-analytic $u_{\max}\cos\theta$; the outer $q^2$ map makes $u_{\max}\propto q$ and $d\gamma\propto q\,dq$, so the
-integrand $\times$ Jacobian vanishes smoothly as $q\to0$. A relativistic contribution becomes
+Superluminally ($\omega_r^2>k_\parallel^2$) the resonance curve is an ellipse and
+$\operatorname{disc}$ vanishes at its apex,
 
 $$
-\int_1^{\gamma_{\max}}\!\!\!d\gamma\!\!\int_{-u_{\max}}^{u_{\max}}\!\!\!\!dp_\parallel\,(\cdots)
-=\int_0^1\!\!\!dq\!\!\int_{-\pi/2}^{\pi/2}\!\!\!\!d\theta\;
-\underbrace{2(\gamma_{\max}-1)\,q\;u_{\max}\cos\theta}_{\text{Jacobian}}\;(\cdots),
+m_\perp^{*2}(\omega) = \frac{n^2\Omega_0^2}{\omega^2-k_\parallel^2},
 $$
 
-with the integrand now smooth on the closed box. The analytic Landau term
-$\propto\log\frac{u_{\max}-\zeta_n}{-u_{\max}-\zeta_n}$ (the pole part of $\mathcal C$, §5.3) is left untouched —
-only the regularized remainder is quadratured. Fixed Gauss–Legendre on the box then converges geometrically;
-on the raw disk the boundary edges cap it near $\sim\!10^{-4}$.
+real and inside the support for harmonics in the resonant band
+$k_\parallel^2<\omega^2<k_\parallel^2+n^2\Omega_0^2$. There the two poles coalesce — a
+**pinch** of the $p_\parallel$ contour — and the slice function $H_n(p_\perp,\omega)$ has a
+branch point at $p_\perp^*(\omega)$. Its migration under $\omega\to\omega+i\nu$ follows
+$\operatorname{Im}m_\perp^{*2} = -2\omega_r\nu\,n^2\Omega_0^2/|\omega^2-k_\parallel^2|^2$:
+
+- $\nu>0$: the branch point sits **below** the real $p_\perp$ path — straight integral is
+  analytic, equals $\chi_n$. At $\nu=0$
+  the apex is an integrable $1/\sqrt{\,}$ kink on the path;
+- $\nu<0$: it **crosses to above the path**, so the straight real-sliced integral is no
+  longer the analytic continuation — the missing piece is the cut discontinuity around
+  $p_\perp^*(\omega)$.
+
+This is a geometric invariant, not a coordinate artifact: the apex lies at
+$\gamma = n\Omega_0\omega/(\omega^2-k_\parallel^2)$ — the vertex of the same quadratic
+$\gamma^2(\omega^2-k_\parallel^2) - 2\gamma n\Omega_0\omega + n^2\Omega_0^2+k_\parallel^2=0$
+whose roots were the rim crossings of the retired $(\gamma,p_\parallel)$ slicing. Any real
+slicing of the 2-D momentum integral meets this tangency for damped superluminal $\omega$
+and needs either a cut correction or a complex path.
+
+Rather than re-grow cut-correction machinery for this physically thin regime (heavily
+damped EM branches; the Swanson closed form is not the continuation there either and
+warns), damped superluminal $\omega$ is **not supported**: `contribution` warns and
+returns the straight integral, which is off by the O(1) missed crossings. To reach such
+roots, evaluate on $\operatorname{Im}\omega\ge0$ — where the path is exact — and continue
+externally (least-squares polynomial in $\operatorname{Im}\omega$; recipe and
+cross-grid certification in `test-relativistic.jl`). Building this into the evaluator
+was tried and dropped: correct, but 12 samples per call made root polishing ~200× slower
+and the fit noise capped the achievable residual.
+
+Subluminally the apex roots give $p_\perp^{*2}\le -1$: imaginary, at distance $\ge1$ from
+the path — uniformly harmless, which is why the subluminal rule above is exact at any
+damping depth reached before the poles approach the $\gamma$ branch points at
+$p_\parallel=\pm i\,m_\perp$ ($|\operatorname{Im}p_\parallel|\sim|\nu|\gamma/|k_\parallel-\omega v_\parallel|\lesssim 1$;
+validated to $\operatorname{Im}\tilde\omega=-0.15$ at $\mu=2$, where the old rim-corrected
+path had drifted to $2.6\times10^{-4}$).
+
+Caveat: for **tabulated** f₀ (GridVDF) the damped-side residues probe the spline's
+analytic continuation at $|\operatorname{Im}p_\parallel|\sim|\nu|\gamma/|k_\parallel-\omega v_\parallel|$
+— several cell-widths off-axis by $\nu\sim-0.02$, where piecewise-polynomial
+continuation amplifies fit noise (observed floor $\sim3\times10^{-2}$ at $\mu=2$ on a
+61×121 grid vs $10^{-5}$ for analytic f₀). Finer grids push it down.
+
+Caveat: the **Newberger** relativistic backend (cross-validation only) still slices in
+$(\gamma,p_\parallel)$ with per-slice Landau rules and no damped-side continuation — it is
+correct for $\operatorname{Im}\omega\ge0$ or when no resonance lies in the support; for
+damped modes with in-range resonances use the default `HarmonicSum` path, and A/B
+agreement does not certify that regime.

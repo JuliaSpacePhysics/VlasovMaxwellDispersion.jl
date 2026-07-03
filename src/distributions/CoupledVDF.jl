@@ -12,10 +12,6 @@ And `para`/`perp` are `(lower, upper)` integration ranges.
 
 `n ≡ ∫d³p f₀`; default `nothing` autocomputes `n` by quadrature.
 
-`regime` type picks the coordinate system:
-- `NonRelativistic` (default) → (p⊥,p∥)
-- `Relativistic` → (γ,p∥)
-
 Prefer [`SeparableVDF`] when `f0(p⊥,p∥)=f⊥(p⊥)f∥(p∥)`.
 """
 struct CoupledVDF{F, Dg, T, R <: Regime} <: AbstractVDF
@@ -67,18 +63,26 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     return (s.Pi2 / ω^2) * _antisymmat(X)
 end
 
-# Relativistic (γ,p∥) momentum-space path. Momentum distribution f₀ must be
-# evaluable at complex p⊥ (the pole pushes p⊥ off-axis).
-# Validated vs Maxwell–Jüttner (Swanson) to ~1e-6 and → bi-Maxwellian as μ→∞.
+# Relativistic path, sliced in (p⊥,p∥) — docs/relativistic.md.
+# Resonance D(p∥) = ωγ − k∥p∥ − nΩ₀ with γ=√(1+p⊥²+p∥²) rationalizes,
+#   D·D̃ = A(p∥−p₊)(p∥−p₋),  D̃ = ωγ + k∥p∥ + nΩ₀,  A = ω²−k∥²,
+# into two explicit simple poles; the squaring ghost (zero of D̃) carries a null
+# residue automatically. Poles cross the real p∥ axis ONLY at Im ω = 0.
+# Endpoints |p∥|=P sit where f₀≈0, so no endpoint (rim-type) corrections arise.
+# f₀ must be evaluable at complex p∥ (poles sit off-axis for complex ω).
+# Validated vs Maxwell–Jüttner (Swanson) to ~1e-5 down to Im ω = −0.15 at μ=2.
 function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-6)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
+    if imag(ω) < 0 && real(ω)^2 > kz^2
+        @warn "damped superluminal ω (|Re ω| > |k∥|): the (p⊥,p∥) integral is not the analytic continuation there (apex branch cut, docs/relativistic.md); evaluate at Im ω ≥ 0 and continue externally" maxlog = 1
+    end
     a = kperp / Ω
     plo, phi = d.para
     qhi = d.perp[2]
     γmax = sqrt(1 + max(phi^2, plo^2) + qhi^2)
     nmax = nmax_bessel(a^2 * qhi^2 / 2)
-    f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax)
-    X_T = converge(f; nmax, rtol)
+    f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a)
+    X_T = 2π * converge(f; nmax, rtol)
     X = _antisymmat(X_T) .+ _ee33(_bernstein_rel(d, γmax))
     return (s.Pi2 / ω^2) * X
 end
@@ -120,42 +124,101 @@ const _GLp = QuadGK.gauss(32)
     return kz * dpa + dpe * (ω * γ - kz * u) / w
 end
 
-# 3×3 relativistic harmonic integrand 2π·𝒰·𝓣_n at (γ,p∥); bare momenta make 𝓣_n
-# regular at w=0. Caller passes w=√(γ²−1−u²) (complex off the real p∥ range).
-@inline _rel_integrand(u, w, γ, n, a, ω, kz, d) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _T_n_bare(n, a * w, u, w)
-@inline _rel_integrand(u, γ, n, a, ω, kz, d) = _rel_integrand(u, sqrt(complex(γ^2 - 1 - u^2)), γ, n, a, ω, kz, d)
 
 const AType = SVector{6, ComplexF64}
 
-# One relativistic harmonic, edge-mapped (derivation §5.2.2).
-# Map the disk (γ,p∥) → fixed box (q,θ)∈[0,1]×[−π/2,π/2]:
-#   p∥=umax·sinθ, p⊥=umax·cosθ  — inner Jacobian p⊥ cancels the rim 1/p⊥ exactly;
-#   γ=1+(γmax−1)q²              — outer Jacobian ∝q flattens the √(γ−1) floor.
-# Bessel stays on the fast real path.
-# Off-disk poles (this n doesn't resonate at this γ) aren't peeled — nζ=0 there, so the subtraction reduces to direct integration
-function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, γmax; GLγ = _GLγ, GLp = _GLp)
-    gn, gw = GLγ
-    pn, pw = GLp
-    acc = zero(AType)
-    for ig in eachindex(gn)
-        q = (gn[ig] + 1) / 2
-        γ = 1 + (γmax - 1) * q^2
-        wγ = gw[ig] * (γmax - 1) * q             # gw·½·2(γmax−1)q
-        umax = sqrt(γ^2 - 1)
-        ζ = (γ * ω - n * Ω) / kz                 # single Landau pole in p∥
-        inrange = -umax < real(ζ) < umax
-        nζ = inrange ? _rel_integrand(ζ, γ, n, a, ω, kz, d) : zero(AType)
-        inner = zero(AType)
-        for ip in eachindex(pn)
-            θ = pn[ip] * (π / 2)
-            u, w = umax .* sincos(θ)  # p⊥=w real on the disk
-            wu = pw[ip] * (π / 2) * w             # Jacobian p⊥·dθ cancels rim 1/p⊥
-            inner = inner .+ wu .* ((_rel_integrand(u, w, γ, n, a, ω, kz, d) .- nζ) ./ (u - ζ))
+
+# Poles farther than this from the real p∥ segment leave the integrand smooth enough
+# for plain adaptive quadrature; nearer (or Landau-crossed) poles are peeled. Also keeps
+# the γ=0 artifact roots of D·D̃ (at p∥=±i√(1+p⊥²), |Im|≥1) out of the peeled set.
+const _PQ_NEAR = 1.5
+
+# Partial fractions of the rationalized resonance (docs/relativistic.md) at fixed
+# m⊥² = 1+p⊥²: D_n·D̃_n = A·u² + B·u + C, so
+#   1/D_n = D̃_n·[c₁/(u−p₁) + c₂/(u−p₂)],  c₁₂ = ∓1/√(B²−4AC).
+# Vieta gives the second root without cancellation; A→0 sends p₁→∞, marked non-finite
+# (its term is O(A); callers drop non-finite poles).
+@inline function _Dn_poles(ω, kz, nΩ, m2)
+    A = ω^2 - kz^2
+    B = -2 * kz * nΩ
+    C = ω^2 * m2 - nΩ^2
+    sq = sqrt(B^2 - 4 * A * C)
+    abs2(B + sq) < abs2(B - sq) && (sq = -sq)
+    return (_home_side((-B - sq) / (2A), ω, kz, m2), -1 / sq),
+        (_home_side(2 * C / (-B - sq), ω, kz, m2), 1 / sq)
+end
+
+# Exactly-real ω leaves a real pole ON the path: a signed zero nudges it to its home
+# side (the Im ω→0⁺ limit, slope dp/dω = γ²/(k∥γ−ωp)) so the boundary-value log in
+# `_peel_residue` lands on the correct sheet.
+@inline function _home_side(p, ω, kz, m2)
+    isfinite(p) || return complex(Inf)
+    iszero(imag(p)) || return p
+    γp = sqrt(complex(m2 + p^2))
+    return complex(real(p), sign(real(γp^2 / (kz * γp - ω * p))) * 0.0)
+end
+
+# Residue r = c·W(p) of a peeled pole and its analytic across-box term
+# r·[log((hi−p)/(lo−p)) + 2πi if Landau-crossed]; (0, 0) when not peeled.
+# Peel when Landau-crossed (Im ω<0 dragged the pole below the axis inside the box —
+# the +2πi is the continuation residue) or within _PQ_NEAR of the segment (Plemelj
+# subtraction for quadrature health). The squaring ghost peels harmlessly (W(p)=0 ⇒
+# r=0); γ-artifact roots (γ(p)=0 ⇒ W=∞) are left unpeeled.
+@inline function _peel_residue(p, c, W, γof, ν, lo, hi)
+    zz = (zero(AType), zero(AType))
+    isfinite(p) || return zz
+    crossed = ν < 0 && imag(p) < 0 && lo < real(p) < hi
+    near = abs(imag(p)) < _PQ_NEAR && lo - _PQ_NEAR < real(p) < hi + _PQ_NEAR
+    (crossed || near) || return zz
+    r = c .* W(p, γof(p))
+    all(isfinite, r) || return zz
+    return r, r .* (log((hi - p) / (lo - p)) + (crossed ? 2π * im : 0))
+end
+
+# One harmonic of the (p⊥,p∥) box integral: outer Gauss–Legendre in p⊥; per slice
+#   ∫ σ𝓣_n/D_n du = ∫ Σᵢ cᵢ·W/(u−pᵢ) du,  W = σ·D̃_n·𝓣_n,  σ = 𝒰·p⊥/γ,
+# with peeled poles kept as single fractions (c·W(u)−r)/(u−p) — the split form
+# σ𝓣/D − r/(u−p) carries 1/(u−p)² rounding noise near the pole.
+function _coupled_harmonic_rel(n, d, ω, Ω, kz, a; GLq = _GLγ, GLp = _GLp)
+    plo, phi = d.para
+    qlo, qhi = d.perp
+    nΩ = n * Ω
+    ν = imag(ω)
+    qn, qw = GLq
+    un, uw = GLp
+    qmid, qhalf = (qlo + qhi) / 2, (qhi - qlo) / 2
+    umid, uhalf = (plo + phi) / 2, (phi - plo) / 2
+    total = zero(AType)
+    for iq in eachindex(qn)
+        q = qmid + qhalf * qn[iq]
+        m2 = 1 + q^2
+        z = a * q
+        γof(u) = sqrt(complex(m2 + u^2))
+        σof(u, γ) = begin
+            dpe, dpa = d.dgrad(q, u)
+            (kz * dpa + dpe * (ω * γ - kz * u) / q) * (q / γ)
         end
-        inrange && (inner = inner .+ nζ .* _landau_logfac(ζ, -umax, umax))
-        acc = acc .+ wγ .* ((-1 / kz) .* inner)
+        Wof = (u, γ) -> (σof(u, γ) * (ω * γ + kz * u + nΩ)) .* _T_n_bare(n, z, u, q)
+        (p1, c1), (p2, c2) = _Dn_poles(ω, kz, nΩ, m2)
+        r1, lg1 = _peel_residue(p1, c1, Wof, γof, ν, plo, phi)
+        r2, lg2 = _peel_residue(p2, c2, Wof, γof, ν, plo, phi)
+        reg = zero(AType)
+        for iu in eachindex(un)
+            u = umid + uhalf * un[iu]
+            γ = γof(u)
+            acc = zero(AType)
+            if isfinite(p1) || isfinite(p2)
+                Wu = Wof(u, γ)
+                isfinite(p1) && (acc = acc .+ (c1 .* Wu .- r1) ./ (u - p1))
+                isfinite(p2) && (acc = acc .+ (c2 .* Wu .- r2) ./ (u - p2))
+            else                       # A=B=0 (ω=±k∥, n=0): quadratic degenerate, no poles
+                acc = (σof(u, γ) .* _T_n_bare(n, z, u, q)) ./ (ω * γ - kz * u - nΩ)
+            end
+            reg = reg .+ (uhalf * uw[iu]) .* acc
+        end
+        total = total .+ (qhalf * qw[iq]) .* (reg .+ lg1 .+ lg2)
     end
-    return acc
+    return total
 end
 
 # I(p⊥) for the WHOLE harmonic sum at one perp node
