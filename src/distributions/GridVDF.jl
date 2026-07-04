@@ -30,7 +30,7 @@ function GridVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonR
     dgrad = (v, u) -> _grad2(fit, v, u)
     para = promote(float(fit.knots_para[1]), float(fit.knots_para[end]))
     perp = oftype(para[2], fit.knots_perp[1]), oftype(para[2], fit.knots_perp[end])
-    cpl = CoupledVDF(fit, dgrad, para, perp, regime)
+    cpl = CoupledVDF(fit, dgrad, para, perp, one(para[1]), regime)
     return GridVDF(vpara, vperp, fit, cpl)
 end
 
