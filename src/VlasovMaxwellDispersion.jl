@@ -8,7 +8,6 @@ using .PlasmaBase: AbstractVDF, AbstractPlasma, Particle, Species, Plasma,
 using LinearAlgebra
 using StaticArrays
 using Bumper: @no_escape, @alloc
-using Roots
 using RootsAndPoles
 using SpecialFunctions
 using SpecialFunctions: erfcx, gamma
@@ -46,7 +45,7 @@ export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual
 export LocalDispersionProblem, GlobalDispersionProblem, BranchProblem
-export DispersionAlgorithm, Muller, Secant, GRPF, ArcLength, DispersionSolution
+export DispersionAlgorithm, Muller, GRPF, ArcLength, DispersionSolution
 export GridFitMethod, NonnegBSpline, BicubicHermite, fit_grid
 
 end
