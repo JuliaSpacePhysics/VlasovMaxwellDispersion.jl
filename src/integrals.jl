@@ -74,7 +74,7 @@ NORM(x) = maximum(abs, x)
 """
     nmax_bessel(lambda; pad=5) -> Int
 
-Hard harmonic cap from Bessel asymptotics: `J_n` (and `I_n e^{-λ}`) negligible
+Hard harmonic cap from Bessel asymptotics: `J_n` negligible
 for `n > b + pad·b^{1/3}` with `b = √(2λ)`.
 """
 @inline function nmax_bessel(lambda; pad = 5)
