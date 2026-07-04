@@ -1,6 +1,4 @@
-# Most-general path: arbitrary f₀(v∥,v⊥), full magnetized EM.
-# Kept fast with small k⊥ (few harmonics) — the equivalence is k-independent;
-# the general nested quadrature is the slow path by design.
+# Most-general path: arbitrary f₀, full magnetized EM
 
 @testitem "CoupledVDF(Gaussian) ≡ bi-Maxwellian (oblique)" begin
     vthp, vthq = 0.9, 1.2
@@ -9,12 +7,12 @@
     k = Wavenumber(0.1, 0.4)                     # small k⊥ ⇒ few harmonics ⇒ fast
     χc = contribution(NormalizedSpecies(-1.0, 0.5, cpl), 1.3 - 0.05im, k)
     χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
-    @test χc ≈ χm rtol = 1.0e-7
+    @test χc ≈ χm
     # strongly damped ω ⇒ g(ζ)~1e13: exercises the direct/far conditioning branch per harmonic
     ωd = 1.3 - 2.0im
     χcd = contribution(NormalizedSpecies(-1.0, 0.5, cpl), ωd, k)
     χmd = contribution(NormalizedSpecies(-1.0, 0.5, mx), ωd, k)
-    @test χcd ≈ χmd rtol = 1.0e-7
+    @test χcd ≈ χmd
 end
 
 @testitem "CoupledVDF Newberger (A) ≡ HarmonicSum (B) for inseparable f₀" begin
@@ -28,7 +26,7 @@ end
         k = Wavenumber(kperp, 0.4)
         χB = contribution(s, ω, k)
         χA = contribution(s, ω, k; closure = Newberger())
-        @test χA ≈ χB rtol = 1.0e-6
+        @test χA ≈ χB
     end
 end
 
@@ -82,9 +80,6 @@ end
     end
 end
 
-# Relativistic evaluator A in (γ,p∥): the resonance ellipse straightens to a linear
-# pole ζ_n(γ)=(ωγ−nΩ₀)/k∥, peeled by residue extraction with the Landau term — so it
-# handles damped relativistic modes (Im ω<0), cross-validating B (vs Maxwell–Jüttner).
 @testitem "Relativistic CoupledVDF Newberger (A) handles damped modes" begin
     μ = 40.0
     γ(w, u) = sqrt(1 + u^2 + w^2)
@@ -96,7 +91,7 @@ end
     for ω in (0.3 - 0.05im, 0.3 - 0.005im)              # damped relativistic
         χB = contribution(vdf, ω, k)
         χA = contribution(vdf, ω, k; closure = Newberger())
-        @test maximum(abs.(χA .- χB)) / maximum(abs.(χB)) < 1.0e-5
+        @test χA ≈ χB rtol = 1.0e-6
     end
 end
 

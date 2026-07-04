@@ -48,13 +48,13 @@ function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum())
     return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k)
 end
 
-function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = NORM, rtol = 1.0e-7)
+function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = NORM, rtol = 1.0e-6)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
     L, U = d.para
     p⊥²_mean = 2π * QuadGK.quadgk(
-        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol)[1],
-        d.perp...; rtol
+        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol = 1.0e-3)[1],
+        d.perp...; rtol = 1.0e-3
     )[1]
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
