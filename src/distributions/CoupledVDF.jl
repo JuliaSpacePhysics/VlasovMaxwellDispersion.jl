@@ -1,13 +1,16 @@
 """
-    CoupledVDF(f0; para=(lo,hi), perp=(lo,hi), dgrad=nothing, regime=NonRelativistic())
+    CoupledVDF(f0; para=(lo,hi), perp=(lo,hi), dgrad=nothing, n=nothing, regime=NonRelativistic())
 
 **Most general** gyrotropic VDF: an arbitrary analytic `f0(p⊥,p∥)`.
 
 `f0` must be evaluable at complex argument (continued onto the Landau contour).
+It is stored raw; χ is linear in `f₀`, so `contribution` scales it by `1/n`.
 
 And `para`/`perp` are `(lower, upper)` integration ranges.
 
 `dgrad(p⊥,p∥) -> (∂⊥f0, ∂∥f0)` supplies the gradient and default to autodiff.
+
+`n ≡ ∫d³p f₀`; default `nothing` autocomputes `n` by quadrature.
 
 `regime` type picks the coordinate system:
 - `NonRelativistic` (default) → (p⊥,p∥)
@@ -20,6 +23,7 @@ struct CoupledVDF{F, Dg, T, R <: Regime} <: AbstractVDF
     dgrad::Dg
     para::Tuple{T, T}
     perp::Tuple{T, T}
+    n::T           # ∫d³p f₀
     regime::R
 end
 
@@ -29,23 +33,21 @@ regime(d::CoupledVDF) = d.regime
 @inline _pair(x) = (zero(x), x)
 
 function CoupledVDF(
-        f0; para, perp, dgrad = nothing, normalize = true,
+        f0; para, perp, dgrad = nothing, n = nothing,
         regime = NonRelativistic()
     )
     plo, phi = promote(para[1], para[2])
     qlo, qhi = oftype(phi, _pair(perp)[1]), oftype(phi, _pair(perp)[2])
-    n = normalize ?
-        2π * QuadGK.quadgk(
-            q -> q * QuadGK.quadgk(u -> f0(q, u), plo, phi; rtol = 1.0e-9)[1],
-            qlo, qhi; rtol = 1.0e-9
-        )[1] : one(plo)
-    fn = (q, u) -> f0(q, u) / n
-    dg = isnothing(dgrad) ? ((q, u) -> _grad2(fn, q, u)) : ((q, u) -> dgrad(q, u) ./ n)
-    return CoupledVDF(fn, dg, (plo, phi), (qlo, qhi), regime)
+    n = @something n 2π * QuadGK.quadgk(
+        q -> q * QuadGK.quadgk(u -> f0(q, u), plo, phi; rtol = 1.0e-9)[1],
+        qlo, qhi; rtol = 1.0e-9
+    )[1]
+    dg = isnothing(dgrad) ? ((q, u) -> _grad2(f0, q, u)) : dgrad
+    return CoupledVDF(f0, dg, (plo, phi), (qlo, qhi), oftype(phi, n), regime)
 end
 
 function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum())
-    return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k)
+    return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k) / d.n
 end
 
 function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = NORM, rtol = 1.0e-6)
@@ -55,7 +57,7 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     p⊥²_mean = 2π * QuadGK.quadgk(
         v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol = 1.0e-3)[1],
         d.perp...; rtol = 1.0e-3
-    )[1]
+    )[1] / d.n
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
     ζs = [(ω - n * Ω) / kz for n in ns]
