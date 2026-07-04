@@ -17,17 +17,17 @@ end
 # Knots picked per axis (adaptive 1-D fit on the max-norm slice),
 # then the control coeffs by two sets of small 1-D NNLS instead of one Kronecker solve.
 # F[i,j] = f₀(x[i], y[j])
-function fit_grid(m::NonnegBSpline, x, y, F)
+function fit_grid(m::NonnegBSpline, x, y, F; rtol = m.rtol)
     @assert all(>=(0), F) "NonnegBSpline needs f₀ ≥ 0"
     deg = order(m)
     ref_col = argmax(j -> norm(view(F, :, j)), axes(F, 2))
     knotsx = select_knots_1d(
-        x, F[:, ref_col]; rtol = m.rtol, order = deg,
+        x, F[:, ref_col]; rtol, order = deg,
         maxknots = min(m.maxknots_perp, length(x))
     )
     ref_row = argmax(i -> norm(view(F, i, :)), axes(F, 1))
     knotsy = select_knots_1d(
-        y, F[ref_row, :]; rtol = m.rtol, order = deg,
+        y, F[ref_row, :]; rtol, order = deg,
         maxknots = min(m.maxknots_para, length(y))
     )
     Bx = _collocation_matrix(knotsx, deg, x)
@@ -50,7 +50,6 @@ end
 # alg`:nnls`  beat `:fnnls`/`:pivot` for our small-n shapes.
 nnls(A::AbstractMatrix, b::AbstractVector) = vec(nonneg_lsq(A, b; alg = :nnls))
 
-# --- 1-D adaptive NNLS knot selection ---
 
 # Evaluate B-spline with control coeffs `c` at `x` (used in B-spline→power conversion).
 function _bspline_eval(breakpoints, p, c, x)
@@ -60,9 +59,8 @@ function _bspline_eval(breakpoints, p, c, x)
     return sum(N[i] * c[i] for i in 1:nb)
 end
 
-# Convert nonneg-B-spline control coeffs to per-cell power-basis [a,b,c,d] via
-# local Vandermonde solve at 4 equispaced nodes per cell (degree-3 exact: 4
-# points determine a cubic exactly, no least-squares needed).
+# Convert nonneg-B-spline control coeffs to per-cell power-basis via
+# local Vandermonde solve at 4 equispaced nodes per cell
 function _bspline_to_power(breakpoints, p, c)
     ncell = length(breakpoints) - 1
     coeffs = zeros(eltype(c), ncell, p + 1)
@@ -100,22 +98,23 @@ function select_knots_1d(v::AbstractVector, f::AbstractVector; rtol = 1.0e-3, or
         resid = f .- B * nnls(B, f)
         ncells = length(breakpoints) - 1
         (norm(resid) / fnorm <= rtol || ncells >= maxknots || ncells >= n - 1) && return breakpoints
-        # bin squared residual into cells, split the worst one at its
-        # data-index midpoint (mirrors annlsSp's newKnots cumulative-residual rule)
+        # bin squared residual into cells, split the worst one at its data-index midpoint.
+        # Only cells with an interior data point are splittable
         res2 = resid .^ 2
-        worst_cell, worst_val = 1, -Inf
+        worst_cell, worst_val = 0, -Inf
         for i in 1:ncells
             lo, hi = breakpoints[i], breakpoints[i + 1]
+            any(x -> lo < x < hi, v) || continue
             s = sum(res2[(v .>= lo) .& (v .<= hi)])
             if s > worst_val
                 worst_val = s
                 worst_cell = i
             end
         end
+        worst_cell == 0 && return breakpoints   # every data point is a breakpoint
         lo, hi = breakpoints[worst_cell], breakpoints[worst_cell + 1]
         idxs = findall(x -> lo < x < hi, v)
-        newpt = isempty(idxs) ? (lo + hi) / 2 : v[idxs[(length(idxs) + 1) ÷ 2]]
-        insert!(breakpoints, worst_cell + 1, newpt)
+        insert!(breakpoints, worst_cell + 1, v[idxs[(length(idxs) + 1) ÷ 2]])
     end
     return
 end
