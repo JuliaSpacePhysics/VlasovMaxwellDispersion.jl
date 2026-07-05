@@ -5,6 +5,8 @@
 # Using residue extraction so the first integrand is smooth in 2-D (near-resonance peaks removed) and
 # the second is a 1-D p⊥ integral carrying the analytic pole + Landau residue
 function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-7, norm = NORM)
+    d isa FiniteCoupledVDF ||
+        throw(ArgumentError("Newberger closure needs finite para/perp bounds (cross-validation backend)"))
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     lo, hi = d.para
     qlo, qhi = d.perp
