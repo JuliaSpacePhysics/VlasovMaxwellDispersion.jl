@@ -28,7 +28,7 @@ function contribution(d::MaxwellJuttner, s, ω, k; kwargs...)
     # ξ-integrand decay ~ e^{-ξ√(kz²-ω²)}: for damped superluminal ω (|Re ω|>|k∥|)
     # the integral stops converging to the analytic continuation (to be verified)
     if imag(ω) < 0 && real(ω)^2 > kz^2
-        @warn "MaxwellJuttner Swanson integral is not the analytic continuation for damped superluminal ω (|Re ω| > |k∥|); use CoupledVDF(MaxwellJuttner(μ); regime=Relativistic()) instead" maxlog = 1
+        @warn "MaxwellJuttner Swanson integral is not the analytic continuation for damped superluminal ω (|Re ω| > |k∥|); use CoupledVDF(MaxwellJuttner(μ); para=(-P,P), perp=P, regime=Relativistic()) instead" maxlog = 1
     end
 
     invK2μ = inv(besselkx(2, μ))

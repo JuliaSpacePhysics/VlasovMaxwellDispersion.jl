@@ -73,3 +73,58 @@ end
     @test contribution(full, ω, k) ≈ contribution(cut, ω, k) rtol = 1.0e-6
     @test contribution(full, ω, k; closure = Newberger()) ≈ contribution(cut, ω, k; closure = Newberger()) rtol = 1.0e-6
 end
+
+# --- Bounds-free (sinc/cot) path -----------------------------------------------
+
+@testitem "CoupledVDF bounds-free ≡ bi-Maxwellian across ω regimes" begin
+    mx = Maxwellian(vth_para = 0.9, vth_perp = 1.2)
+    cpl = CoupledVDF(mx)                                # no bounds
+    k = Wavenumber(1.0, 0.4)
+    s(v) = NormalizedSpecies(-1.0, 0.5, v)
+    # damped / growing / exactly-real / marginal / strongly-damped: the uniform
+    # cot+i formula must hold on both sides of Im ω = 0 with no branch glitch
+    for ω in (1.3 - 0.05im, 1.3 + 0.05im, 1.3 + 0.0im, 0.9 - 1.0e-10im, 1.3 - 2.0im)
+        @test contribution(s(cpl), ω, k) ≈ contribution(s(mx), ω, k) rtol = 1.0e-6
+    end
+end
+
+@testitem "CoupledVDF bounds-free: heavy-tail kappa (finite box truncates)" begin
+    # κ=2: a (-30,30)/30 box truncates to ~2e-5 relative error; infinite bounds must
+    # hit the 1e-6 target against the BiKappa closed form
+    vdf = BiKappa(vth_para = 0.9, vth_perp = 1.2, kappa = 2.0)
+    cpl = NormalizedSpecies(-1.0, 0.7, CoupledVDF(vdf))
+    bik = NormalizedSpecies(-1.0, 0.7, vdf)
+    ω, k = 1.2 - 0.05im, Wavenumber(0.4, 0.3)
+    @test contribution(cpl, ω, k) ≈ contribution(bik, ω, k) rtol = 1.0e-6
+end
+
+@testitem "CoupledVDF bounds-free: drifted beam exercises the centered map" begin
+    ud = 2.0
+    f0(q, u) = exp(-(q^2 + (u - ud)^2))
+    inf = CoupledVDF(f0)
+    box = CoupledVDF(f0; para = (ud - 7.0, ud + 7.0), perp = 7.0)
+    s(v) = NormalizedSpecies(-1.0, 0.5, v)
+    k = Wavenumber(0.4, 0.3)
+    @test inf.upar ≈ ud rtol = 1.0e-3
+    for ω in (1.2 - 0.05im, 1.2 + 0.05im)
+        @test contribution(s(inf), ω, k) ≈ contribution(s(box), ω, k) rtol = 1.0e-6
+    end
+end
+
+@testitem "CoupledVDF bounds-free: narrow ring (GyroRing overflow-safe)" begin
+    vth_para, vth_perp, vr = 0.1, 0.05, 0.6
+    f0 = Maxwellian(; vth_para, vth_perp, vr)
+    @test isfinite(f0(50.0, 0.0))                       # raw besseli overflowed here
+    inf = CoupledVDF(f0)
+    cut = CoupledVDF(f0; para = (-8vth_para, 8vth_para), perp = (vr - 6vth_perp, vr + 9vth_perp))
+    k, ω = Wavenumber(0.6, 0.4), 1.3 + 0.02im
+    @test contribution(inf, ω, k) ≈ contribution(cut, ω, k) rtol = 1.0e-6
+end
+
+@testitem "CoupledVDF bounds validation and closure/regime requirements" begin
+    g0(q, u) = exp(-(q^2 + u^2))
+    @test_throws ArgumentError CoupledVDF(g0; para = (-8.0, 8.0))            # mixed
+    @test_throws ArgumentError CoupledVDF(g0; regime = Relativistic())       # rel needs box
+    s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0))
+    @test_throws ArgumentError contribution(s, 1.2 - 0.05im, Wavenumber(0.3, 0.4); closure = Newberger())
+end
