@@ -30,6 +30,9 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
     return (s.Pi2 / (ω * Ω)) .* _antisymmat(χ)
 end
 
+# (γ,p∥) edge-mapped relativistic Newberger backend, cross-validation only.
+# Valid for Im ω ≥ 0 (and damped ω with no resonance in support); it has no
+# damped-side continuation (rim branch-cut / apex).
 function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω, k; norm = NORM)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     β = kperp / Ω

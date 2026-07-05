@@ -62,35 +62,14 @@ end
 # Exact parallel moments make the GridVDF far faster than the generic
 # coupled path: f₀ IS piecewise-polynomial, so the inner Landau H∥ closes per cell
 # (`cell_hilbert_landau`) instead of adaptive QuadGK.
+# Relativistic grids route through the coupled (p⊥,p∥) path: it integrates exactly the
+# grid rectangle (only p∥ goes complex, at the near-axis poles), so the spline is never
+# probed off-grid.
 function contribution(d::GridVDF, s, ω, k; closure::IntegralClosure = HarmonicSum())
-    if closure isa HarmonicSum
-        regime(d) isa NonRelativistic && return _grid_contribution(d, s, complex(float(ω)), k)
-        regime(d) isa Relativistic && return _grid_contribution_rel(d, s, complex(float(ω)), k)
+    if closure isa HarmonicSum && regime(d) isa NonRelativistic
+        return _grid_contribution(d, s, complex(float(ω)), k)
     end
     return contribution(d.coupled, s, ω, k; closure)
-end
-
-# Relativistic grid path. The grid tabulates f₀ on a (p∥,p⊥) RECTANGLE, but the
-# (γ,p∥) integral sweeps constant-γ half-circles p∥²+p⊥²=γ²−1. Feeding the
-# straight to the coupled-rel evaluator fails (NaN): its γmax=√(1+p∥max²+p⊥max²)
-# reaches the rectangle's CORNER, where the half-circle pokes outside the grid
-# (p⊥>p⊥max) and the extrapolates to garbage. Fix: integrate only up to
-# the largest γ whose whole half-circle fits inside the grid — radius R=min(p∥
-# half-width, p⊥max) ⇒ γmax=√(1+R²). f₀ decays, so the clipped corner is
-# negligible. The harmonic is the shared edge-mapped `_coupled_harmonic_rel`
-# (§5.2.2 disk→box maps, inner single-pole Plemelj) with the bicubic ∇f₀; the maps
-# keep every node on the disk (real p⊥), so the bicubic is never probed off-grid.
-function _grid_contribution_rel(d::GridVDF, s, ω, k; rtol = 1.0e-6)
-    cpl = d.coupled
-    Ω, kz, kperp = s.Omega, para(k), perp(k)
-    a = kperp / Ω
-    R = min(min(cpl.para[2], -cpl.para[1]), cpl.perp[2])   # half-circle radius that fits the grid
-    γmax = sqrt(1 + R^2)
-    nmax = nmax_bessel(a^2 * R^2 / 2)
-    f = n -> _coupled_harmonic_rel(n, cpl, ω, Ω, kz, a, γmax)
-    X = converge(f; nmax, rtol)
-    χ = _antisymmat(X) .+ _ee33(_bernstein_rel(cpl, γmax))   # non-resonant term
-    return (s.Pi2 / ω^2) * χ
 end
 
 function _grid_contribution(d::GridVDF, s, ω, k; rtol = 1.0e-6)
