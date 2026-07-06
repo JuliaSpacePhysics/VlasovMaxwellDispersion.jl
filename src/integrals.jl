@@ -1,3 +1,44 @@
+NORM(x) = maximum(abs, x)
+const _2πim = 2π * im
+
+function _lpole_term(ζ, lo, hi, side, peeled)
+    inside = lo < real(ζ) < hi
+    cross = (inside && side * imag(ζ) < 0) ? side * _2πim : zero(_2πim)
+    peeled || return cross
+    return if inside && iszero(imag(ζ))
+        complex(log((hi - real(ζ)) / (real(ζ) - lo)), side * π)
+    else
+        log((hi - ζ) / (lo - ζ)) + cross
+    end
+end
+
+struct PeeledQuadGK{T, V, G, P, I}
+    lims::T
+    ζs::V
+    gζs::G
+    peel::P
+    _I::I
+end
+
+function (alg::PeeledQuadGK)(g; side = 1, maxratio = 1.0e6, kw...)
+    lo, hi = alg.lims
+    ζs, gζs, peel = alg.ζs, alg.gζs, alg.peel
+    gscale = maximum(ζ -> NORM(g(clamp(real(ζ), lo, hi))), ζs)
+    @. gζs = g(ζs)
+    @. peel = all(isfinite, gζs) && NORM(gζs) <= maxratio * gscale
+    pts = (lo, hi)
+    f! = function (y, u)
+        gu = g(u)
+        return @inbounds for i in eachindex(gζs)
+            y[i] = ifelse(peel[i], gu - gζs[i], gu) * inv(u - ζs[i])
+        end
+    end
+    I = alg._I
+    QuadGK.quadgk!(f!, I, pts...; norm = v -> maximum(NORM, v), kw...)
+    @. I = I + gζs * _lpole_term(ζs, lo, hi, side, peel)
+    return I
+end
+
 # Scaled Bessel moment `Γ_n(λ) = I_n(λ) e^{-λ}` from perp gyro-averaging.
 # `λ = (k⊥ v_th⊥ / Ω_s)^2 / 2`. Uses scaled modified Bessel `besselix`.
 @inline Gamma_n(n, lambda) = besselix(n, lambda)
@@ -30,24 +71,12 @@ function hilbert(g, ζ, L, U; rtol = 1.0e-9, σ = 1)
     near = _subtract_safe(gζ, abs(g(clamp(real(ζ), L, U))))
     gsub = near ? gζ : zero(gζ)
     reg = QuadGK.quadgk(v -> (g(v) - gsub) / (v - ζ), L, U; rtol)[1]
-    return reg + _pole_corr(near, gζ, ζ, L, U, σ)
+    return reg + gζ .* _lpole_term(ζ, L, U, σ, near)
 end
 
 # Subtracting g(ζ) cancels ~log₁₀(|g(ζ)|/gscale) digits against the analytic log term, and
 # g(ζ) overflows outright for strongly damped ζ
-@inline _subtract_safe(gζ, gscale) = all(isfinite, gζ) && _relsize(gζ) * sqrt(eps(one(gscale))) ≤ gscale
-
-@inline function _pole_corr(near, gζ, ζ, lo, hi, σ = 1)
-    near && return gζ .* _landau_logfac(ζ, lo, hi, σ)
-    return _landau_active(ζ, lo, hi, σ) ? gζ .* (σ * 2π * im) : zero(gζ)
-end
-
-@inline _landau_active(ζ, lo, hi, σ = 1) = σ * imag(ζ) < 0 && lo < real(ζ) < hi
-
-@inline function _landau_logfac(ζ, lo, hi, σ = 1)
-    logfac = log((hi - ζ) / (lo - ζ))
-    return _landau_active(ζ, lo, hi, σ) ? logfac + σ * 2π * im : logfac
-end
+@inline _subtract_safe(gζ, gscale) = all(isfinite, gζ) && NORM(gζ) * sqrt(eps(one(gscale))) ≤ gscale
 
 function converge(f, nmin::Integer; rtol, nmax::Integer = 200)
     total = f(0)
@@ -55,7 +84,7 @@ function converge(f, nmin::Integer; rtol, nmax::Integer = 200)
     while n <= nmax
         shell = f(n) + f(-n)
         total += shell
-        if n >= nmin && _relsize(shell) <= rtol * _relsize(total)
+        if n >= nmin && NORM(shell) <= rtol * NORM(total)
             break
         end
         n += 1
@@ -64,12 +93,6 @@ function converge(f, nmin::Integer; rtol, nmax::Integer = 200)
 end
 
 converge(f; kw...) = converge(f, 1; kw...)
-
-
-@inline _relsize(x::Number) = abs(x)
-@inline _relsize(x::AbstractArray) = maximum(abs, x)
-
-NORM(x) = maximum(abs, x)
 
 """
     nmax_bessel(lambda; pad=5) -> Int

@@ -56,11 +56,37 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     )[1] / d.n
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
-    X = if iszero(kz)
-        QuadGK.quadgk(v -> _coupled_perp0(v, ns, d, ω, Ω, kz, a, L, U; norm, rtol), d.perp...; rtol, norm)[1]
-    else
+    b2s = similar(ns, SVector{6, typeof(a)})
+
+    X = if !iszero(kz)
+        invkz = -1 / kz
         ζs = [(ω - n * Ω) / kz for n in ns]
-        QuadGK.quadgk(v -> _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U; norm, rtol), d.perp...; rtol, norm)[1]
+        gζs = similar(ns, SVector{5, eltype(ζs)})
+        landau_integral = PeeledQuadGK(d.para, ζs, gζs, similar(ns, Bool), similar(gζs))
+
+        # I(p⊥) for the WHOLE harmonic sum at one perp node
+        QuadGK.quadgk(d.perp...; rtol, norm) do v
+            _perp_Bessel_bilinears!(b2s, a, v)
+            Is = landau_integral(; side = Int(sign(kz)), rtol) do u
+                q, p = d.dgrad(v, u)
+                SVector(q, u * q, u^2 * q, p, u * p)
+            end
+            sum(enumerate(ns)) do (i, n)
+                _In_block(Is[i], invkz, b2s[i], v, ω, kz, n * Ω)
+            end
+        end[1]
+    else
+        # I is harmonic-independent, weight per n by 1/Δ_n = 1/(ω−nΩ)
+        QuadGK.quadgk(d.perp...; rtol, norm) do v
+            _perp_Bessel_bilinears!(b2s, a, v)
+            I = QuadGK.quadgk(d.para...; norm, rtol) do u
+                q, p = d.dgrad(v, u)
+                SVector(q, u * q, u^2 * q, p, u * p)
+            end[1]
+            sum(enumerate(ns)) do (i, n)
+                _In_block(I, 1 / (ω - n * Ω), b2s[i], v, ω, kz, n * Ω)
+            end
+        end[1]
     end
     return (s.Pi2 / ω^2) * _antisymmat(X)
 end
@@ -162,7 +188,7 @@ end
 
 # Residue r = c·W(p) of a peeled pole and its analytic across-box term
 # r·[log((hi−p)/(lo−p)) + σ·2πi if Landau-crossed]; (0, 0) when not peeled.
-# Peel when Landau-crossed (Im ω<0 dragged the pole off its σ-home side) 
+# Peel when Landau-crossed (Im ω<0 dragged the pole off its σ-home side)
 # or within _PQ_NEAR of the segment (Plemelj subtraction for quadrature health).
 #  The squaring ghost peels harmlessly (W(p)=0 ⇒ r=0); γ-artifact roots (γ(p)=0 ⇒ W=∞) are left unpeeled.
 @inline function _peel_residue(p, c, W, γof, ν, lo, hi, σ)
@@ -223,62 +249,6 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a; GLq = _GLγ, GLp = _GLp)
         total = total .+ (qhalf * qw[iq]) .* (reg .+ lg1 .+ lg2)
     end
     return total
-end
-
-# I(p⊥) for the WHOLE harmonic sum at one perp node
-function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
-    g5(u) = begin
-        q, p = d.dgrad(v, u)
-        SVector(q, u * q, u^2 * q, p, u * p)
-    end
-    invkz = -1 / kz
-    nb = length(ns)
-    gscale = maximum(ζ -> _relsize(g5(clamp(real(ζ), L, U))), ζs)
-    return @no_escape begin
-        gζs = @alloc(SVector{5, eltype(ζs)}, nb)
-        near = @alloc(Bool, nb)
-        @inbounds for i in 1:nb
-            gζs[i] = g5(ζs[i])
-            near[i] = _subtract_safe(gζs[i], gscale)
-        end
-        b2s = @alloc(SVector{6, typeof(a * v)}, nb)
-        _perp_Bessel_bilinears!(b2s, a, v)
-        reg = QuadGK.quadgk(L, U; kw...) do u
-            g = g5(u)
-            acc = zero(AType)
-            @inbounds for i in eachindex(ns)
-                c = invkz / (u - ζs[i])
-                acc += _In_block(near[i] ? g - gζs[i] : g, c, b2s[i], v, ω, kz, ns[i] * Ω)
-            end
-            acc
-        end[1]
-        # analytic pole term, constant in u
-        σ = sign(kz)
-        logacc = zero(AType)
-        @inbounds for i in eachindex(ns)
-            logacc += _In_block(_pole_corr(near[i], gζs[i], ζs[i], L, U, σ), invkz, b2s[i], v, ω, kz, ns[i] * Ω)
-        end
-        reg + logacc
-    end
-end
-
-# kz=0: the parallel kernel has no u-pole, so the u-integral of the gradient moments is
-# harmonic-independent — integrate once, weight per n by 1/Δ_n = 1/(ω−nΩ).
-function _coupled_perp0(v, ns, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
-    g5(u) = begin
-        q, p = d.dgrad(v, u)
-        SVector(q, u * q, u^2 * q, p, u * p)
-    end
-    I = QuadGK.quadgk(g5, L, U; kw...)[1]
-    return @no_escape begin
-        b2s = @alloc(SVector{6, typeof(a * v)}, length(ns))
-        _perp_Bessel_bilinears!(b2s, a, v)
-        acc = zero(AType)
-        @inbounds for (i, n) in enumerate(ns)
-            acc += _In_block(I, 1 / (ω - n * Ω), b2s[i], v, ω, kz, n * Ω)
-        end
-        acc
-    end
 end
 
 include("qin.jl")

@@ -84,7 +84,7 @@ function _kappa_H0(ζ, β2, M, σ = 1)
     else
         conj(_kappa_H0(complex(real(ζ), abs(imag(ζ))), β2, M))
     end
-    return _landau_active(ζ, -Inf, Inf, σ) ? direct + σ * 2π * im / (ζ^2 + β2)^M : direct
+    return σ * imag(ζ) < 0 ? direct + σ * 2π * im / (ζ^2 + β2)^M : direct
 end
 
 # M_F=(-1/kz)𝒞[uᵐf∥], M_T=(-1/kz)𝒞[uᵐf∥′]. f∥=C(1+u²/a)^{-(κ+1)} at exponent κ+1;
