@@ -72,7 +72,7 @@ end
 
 GyroRing(vth, vr) = GyroRing(promote(vth, vr)...)
 
-(d::GyroRing)(v) = exp(-(v^2 + d.vr^2) / d.vth^2) * besseli(0, 2v * d.vr / d.vth^2)
+(d::GyroRing)(v) = exp(-((v - d.vr) / d.vth)^2) * besselix(0, 2v * d.vr / d.vth^2)
 
 # Reuse cold-ring spectrum (`J_m(Λr)`-weights) and the Γ_k(λ) table across harmonic loop
 struct GyroRingCtx{T}
