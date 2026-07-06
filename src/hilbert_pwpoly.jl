@@ -67,27 +67,28 @@ end
 @inline _pole_in_cell(vl, vr, ζ) = real(ζ) > vl && real(ζ) <= vr
 
 """
-    cell_hilbert_landau(coeffs, vl, vr, ζ) -> Complex
+    cell_hilbert_landau(coeffs, vl, vr, ζ, σ=1) -> Complex
 
-MPDES-style Landau-causal continuation of `cell_hilbert`. For `Im ζ < 0` and
-`Re ζ` inside the cell, add `2πi p(ζ)` to continue from the upper half-plane.
+MPDES-style Landau-causal continuation of `cell_hilbert`. `σ = sign(k∥)` orients the
+contour: for `σ·Im ζ < 0` (⟺ Im ω < 0) with `Re ζ` inside the cell, add `σ·2πi p(ζ)`
+to continue from the causal half-plane.
 """
-function cell_hilbert_landau(coeffs, vl, vr, ζ)
+function cell_hilbert_landau(coeffs, vl, vr, ζ, σ = 1)
     h = cell_hilbert(coeffs, vl, vr, ζ)
-    imag(ζ) < 0 && _pole_in_cell(vl, vr, ζ) ? h + 2π * im * _polyval(coeffs, ζ) : h
+    σ * imag(ζ) < 0 && _pole_in_cell(vl, vr, ζ) ? h + σ * 2π * im * _polyval(coeffs, ζ) : h
 end
 
 """
-    hilbert_landau_pwpoly(coeffs, nodes, ζ) -> Complex
+    hilbert_landau_pwpoly(coeffs, nodes, ζ, σ=1) -> Complex
 
 Piecewise-polynomial Cauchy integral on the Landau sheet. This is the MPDES
-parallel-pole correction: direct cell integral plus `2πi` residue for lower-half
-poles whose real part lies in a cell.
+parallel-pole correction: direct cell integral plus `σ·2πi` residue for
+Landau-crossed poles whose real part lies in a cell.
 """
-function hilbert_landau_pwpoly(coeffs, nodes, ζ)
-    s = cell_hilbert_landau(coeffs[1], nodes[1], nodes[2], ζ)
+function hilbert_landau_pwpoly(coeffs, nodes, ζ, σ = 1)
+    s = cell_hilbert_landau(coeffs[1], nodes[1], nodes[2], ζ, σ)
     @inbounds for i in 2:length(coeffs)
-        s += cell_hilbert_landau(coeffs[i], nodes[i], nodes[i + 1], ζ)
+        s += cell_hilbert_landau(coeffs[i], nodes[i], nodes[i + 1], ζ, σ)
     end
     s
 end

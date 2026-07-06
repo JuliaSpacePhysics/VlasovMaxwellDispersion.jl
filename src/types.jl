@@ -17,7 +17,7 @@ struct PiecewisePoly <: Continuation end  # STUB: grid/function VDF
     Wavenumber(kperp, kz)
     Wavenumber(; kz, kperp=zero(kz))
 
-Dimensionless wavevector `k c / Omega_ref`, `(kperp, kz)`,
+Dimensionless wavevector `k c / Omega_ref`, `(kperp, kz)`.
 """
 struct Wavenumber{T}
     kperp::T

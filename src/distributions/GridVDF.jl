@@ -118,11 +118,10 @@ end
     )
 end
 
-# `cell_hilbert_landau` with the per-cell `log((vr-ζ)/(vl-ζ))` and Landau flag
-# precomputed (both depend only on the cell and ζ, not on the coeffs) — and it
-# reuses the Horner remainder `pζ=p(ζ)` for the Landau term instead of a second
-# `_polyval`. Hot-loop inner kernel for the parallel moments.
-@inline function _cellH(coeffs, vl, vr, ζ, logr, landau)
+# Hot-loop inner kernel for the parallel moments.
+# `cell_hilbert_landau` with the per-cell `log((vr-ζ)/(vl-ζ))` and Landau jump
+# (`jump = σ·2πi` when crossed, else 0) precomputed
+@inline function _cellH(coeffs, vl, vr, ζ, logr, jump)
     m = length(coeffs)
     T = complex(promote_type(eltype(coeffs), typeof(ζ)))
     pζ = convert(T, coeffs[m])
@@ -132,8 +131,7 @@ end
         poly += pζ * (vr^(d + 1) - vl^(d + 1)) / (d + 1)
         pζ = coeffs[k] + ζ * pζ
     end
-    h = poly + pζ * logr
-    return landau ? h + 2π * im * pζ : h
+    return poly + pζ * (logr + jump)
 end
 
 # Per-perp-cell t-POLYNOMIAL coefficients of the 5 parallel moments at pole ζ.
@@ -144,7 +142,7 @@ end
 # only evaluates that polynomial per node instead of re-summing `cell_hilbert` over
 # every parallel cell. Exact; −1/kz folds the resonance kz.
 # cell[A,B] is s⊥^{A-1} s∥^{B-1}: A is the perp (t) axis, B the parallel (Hilbert) axis.
-@inline function _grid_parmoment_polys(fit::TensorSplineFit, i, ζ)
+@inline function _grid_parmoment_polys(fit::TensorSplineFit, i, ζ, σ)
     kp = fit.knots_para
     c = fit.coeffs
     coeff_Type = eltype(c)
@@ -156,15 +154,15 @@ end
         vl, vr = kp[j], kp[j + 1]
         cell = c[i, j]
         logr = log((vr - ζ) / (vl - ζ))
-        landau = imag(ζ) < 0 && _pole_in_cell(vl, vr, ζ)
+        jump = σ * imag(ζ) < 0 && _pole_in_cell(vl, vr, ζ) ? σ * 2π * im : zero(σ * 2π * im)
         # ∂⊥ slice: t-power b ⇐ row b+2, weight (b+1); s∥-poly P (length NQ).
         for b in 0:(NP - 2)
             w = b + 1
             row = b + 2
             P = _shift_to_abs(SVector(ntuple(B -> w * cell[row, B], Val(NQ))), vl)
-            hF0 = _cellH(P, vl, vr, ζ, logr, landau)
-            hF1 = _cellH(vcat(SVector(zero(eltype(P))), P), vl, vr, ζ, logr, landau)
-            hF2 = _cellH(vcat(SVector(zero(eltype(P)), zero(eltype(P))), P), vl, vr, ζ, logr, landau)
+            hF0 = _cellH(P, vl, vr, ζ, logr, jump)
+            hF1 = _cellH(vcat(SVector(zero(eltype(P))), P), vl, vr, ζ, logr, jump)
+            hF2 = _cellH(vcat(SVector(zero(eltype(P)), zero(eltype(P))), P), vl, vr, ζ, logr, jump)
             MF0 = setindex(MF0, MF0[b + 1] + hF0, b + 1)
             MF1 = setindex(MF1, MF1[b + 1] + hF1, b + 1)
             MF2 = setindex(MF2, MF2[b + 1] + hF2, b + 1)
@@ -174,10 +172,51 @@ end
         for b in 0:(NP - 1)
             row = b + 1
             Q = _shift_to_abs(SVector(ntuple(m -> m * cell[row, m + 1], Val(NQ - 1))), vl)
-            hT0 = _cellH(Q, vl, vr, ζ, logr, landau)
-            hT1 = _cellH(vcat(SVector(zero(eltype(Q))), Q), vl, vr, ζ, logr, landau)
+            hT0 = _cellH(Q, vl, vr, ζ, logr, jump)
+            hT1 = _cellH(vcat(SVector(zero(eltype(Q))), Q), vl, vr, ζ, logr, jump)
             MT0 = setindex(MT0, MT0[b + 1] + hT0, b + 1)
             MT1 = setindex(MT1, MT1[b + 1] + hT1, b + 1)
+        end
+    end
+    return (MF0, MF1, MF2, MT0, MT1)
+end
+
+# kz=0 kernel: ∫p(u)du over the cell (coeffs ascending in absolute u).
+@inline function _cellM(coeffs, vl, vr)
+    acc = zero(promote_type(eltype(coeffs), typeof(vl)))
+    @inbounds for k in eachindex(coeffs)
+        acc += coeffs[k] * (vr^k - vl^k) / k
+    end
+    return acc
+end
+
+# kz=0 variant of `_grid_parmoment_polys`: the Hilbert kernel degenerates to plain
+# moments (`_cellM`, ζ-free) — the 1/Δ_n weight is applied by the caller.
+@inline function _grid_parmoment_polys0(fit::TensorSplineFit, i)
+    kp = fit.knots_para
+    c = fit.coeffs
+    coeff_Type = eltype(c)
+    T = eltype(coeff_Type)
+    NP, NQ = size(coeff_Type)
+    MF0 = MF1 = MF2 = zero(SVector{NP - 1, T})
+    MT0 = MT1 = zero(SVector{NP, T})
+    z = zero(T)
+    @inbounds for j in 1:(length(kp) - 1)
+        vl, vr = kp[j], kp[j + 1]
+        cell = c[i, j]
+        for b in 0:(NP - 2)
+            w = b + 1
+            row = b + 2
+            P = _shift_to_abs(SVector(ntuple(B -> w * cell[row, B], Val(NQ))), vl)
+            MF0 = setindex(MF0, MF0[b + 1] + _cellM(P, vl, vr), b + 1)
+            MF1 = setindex(MF1, MF1[b + 1] + _cellM(vcat(SVector(z), P), vl, vr), b + 1)
+            MF2 = setindex(MF2, MF2[b + 1] + _cellM(vcat(SVector(z, z), P), vl, vr), b + 1)
+        end
+        for b in 0:(NP - 1)
+            row = b + 1
+            Q = _shift_to_abs(SVector(ntuple(m -> m * cell[row, m + 1], Val(NQ - 1))), vl)
+            MT0 = setindex(MT0, MT0[b + 1] + _cellM(Q, vl, vr), b + 1)
+            MT1 = setindex(MT1, MT1[b + 1] + _cellM(vcat(SVector(z), Q), vl, vr), b + 1)
         end
     end
     return (MF0, MF1, MF2, MT0, MT1)
@@ -187,27 +226,34 @@ end
 # t-polynomials once per cell, then a smooth p⊥ QuadGK whose integrand only
 # evaluates those + Bessel weights.
 function _grid_harmonic(n, fit::TensorSplineFit, ω, Ω, kz, a)
-    ζ = (ω - n * Ω) / kz
+    kz0 = iszero(kz)
+    c = kz0 ? 1 / (ω - n * Ω) : -1 / kz
     kq = fit.knots_perp
     acc = zero(SVector{6, ComplexF64})
+    ζ = kz0 ? zero(ω) : (ω - n * Ω) / kz
+    σ = sign(kz)
     for i in 1:(length(kq) - 1)
         wl, wr = kq[i], kq[i + 1]
-        MF0c, MF1c, MF2c, MT0c, MT1c = _grid_parmoment_polys(fit, i, ζ)
-        integ = v -> begin
-            t = v - wl
-            M = (
-                evalpoly(t, MF0c.data), evalpoly(t, MF1c.data), evalpoly(t, MF2c.data),
-                evalpoly(t, MT0c.data), evalpoly(t, MT1c.data),
-            )
-            _In_block(M, (-1 / kz), _perp_Bessel_bilinear(n, a, v), v, ω, kz, n * Ω)
-        end
-        # The Bessel weight J_n(a v) has v-wavelength ≈ π/a; adaptive QuadGK over a
-        # cell spanning many wavelengths can't resolve it. Pre-split the cell at the
-        # oscillation scale (≥2 panels/wavelength) and let QuadGK adapt within each.
-        seg = first(_quadgk_osc(integ, wl, wr, a))
-        acc = acc .+ seg
+        # function barrier: the two poly variants have different eltypes
+        polys = kz0 ? _grid_parmoment_polys0(fit, i) : _grid_parmoment_polys(fit, i, ζ, σ)
+        acc = acc .+ _grid_cell_integral(polys, wl, wr, c, n, a, ω, kz, n * Ω)
     end
     return acc
+end
+
+function _grid_cell_integral((MF0c, MF1c, MF2c, MT0c, MT1c), wl, wr, c, n, a, ω, kz, nΩ)
+    integ = v -> begin
+        t = v - wl
+        M = (
+            evalpoly(t, MF0c.data), evalpoly(t, MF1c.data), evalpoly(t, MF2c.data),
+            evalpoly(t, MT0c.data), evalpoly(t, MT1c.data),
+        )
+        _In_block(M, c, _perp_Bessel_bilinear(n, a, v), v, ω, kz, nΩ)
+    end
+    # The Bessel weight J_n(a v) has v-wavelength ≈ π/a; adaptive QuadGK over a
+    # cell spanning many wavelengths can't resolve it. Pre-split the cell at the
+    # oscillation scale (≥2 panels/wavelength) and let QuadGK adapt within each.
+    return first(_quadgk_osc(integ, wl, wr, a))
 end
 
 # Adaptive QuadGK with oscillation-scale breakpoints for the Bessel kernel.

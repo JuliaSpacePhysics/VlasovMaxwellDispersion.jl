@@ -4,6 +4,7 @@
 
 ## Roadmap
 
+- For  `kz = 0`, relativistic paths there need `Im ω ≥ 0`; the cyclotron-maser continuation to damped ω is not implemented.
 - Optional **AAA-rational** backend for smooth analytic input (`BaryRational.jl`) with Landau-causal pole filtering.
 - Check and potentially reuse `BSplineKit.jl`/`Dierckx.jl`
 - Baalrud, S. D. (2013). The incomplete plasma dispersion function: Properties and application to waves in bounded plasmas.
