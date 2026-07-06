@@ -50,7 +50,7 @@ let g = SUITE["Nonrelativistic/coupled"]
     kw = (para = (-8.0, 8.0), perp = 6.0)
     s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))
     ω = 1.2 + 0.05im
-    for kp in (0.3, 1.0)
+    for kp in (0.3, 1.0, 3.0)
         k = Wavenumber(kp, 0.4)
         g["B_truncated/kperp=$kp"] = @benchmarkable contribution($s, $ω, $k)
         g["A_newberger/kperp=$kp"] = @benchmarkable contribution($s, $ω, $k; closure = Newberger())
