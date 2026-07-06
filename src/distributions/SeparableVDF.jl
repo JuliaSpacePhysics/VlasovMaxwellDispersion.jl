@@ -40,8 +40,12 @@ end
 @inline (p::AnalyticFactor)(v) = p.f(v)
 
 function para_moments(p::AnalyticFactor, ω, kz, nΩ)
+    if iszero(kz)
+        I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol = 1.0e-9, norm = _relsize)[1]
+        return I ./ (complex(ω) - nΩ)
+    end
     ζ = (ω - nΩ) / kz
-    return (-1 / kz) .* hilbert(ζ, p.lo, p.hi) do u
+    return (-1 / kz) .* hilbert(ζ, p.lo, p.hi; σ = sign(kz)) do u
         fp, dp = p.fdf(u)
         SVector(fp, u * fp, u^2 * fp, dp, u * dp)
     end
@@ -79,6 +83,11 @@ end
 # All parallel moments M_n in one u-quadrature: the Plemelj split per pole reuses
 # the single g(u)=[f,uf,u²f,f′,uf′] evaluation across every harmonic.
 function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol = 1.0e-8)
+    if iszero(kz)
+        # pole-free: one moment integral serves every harmonic, weighted 1/Δ_n
+        I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol, norm = _relsize)[1]
+        return [I ./ (complex(ω) - n * Ω) for n in ns]
+    end
     ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = [_gpar(p, ζ) for ζ in ζs]
     gscale = maximum(ζ -> _relsize(_gpar(p, clamp(real(ζ), p.lo, p.hi))), ζs)
@@ -88,5 +97,6 @@ function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol = 1.0e-8)
         g = _gpar(p, u)
         [(g - gsubs[i]) / (u - ζs[i]) for i in eachindex(ns)]
     end[1]
-    return [(-1 / kz) .* (reg[i] .+ _pole_corr(near[i], gζs[i], ζs[i], p.lo, p.hi)) for i in eachindex(ns)]
+    σ = sign(kz)
+    return [(-1 / kz) .* (reg[i] .+ _pole_corr(near[i], gζs[i], ζs[i], p.lo, p.hi, σ)) for i in eachindex(ns)]
 end

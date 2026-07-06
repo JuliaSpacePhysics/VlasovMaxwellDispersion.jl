@@ -8,10 +8,11 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     lo, hi = d.para
     qlo, qhi = d.perp
-    ns = _resonance_harmonics(ω, Ω, kz, lo, hi)
+    # kz=0: a=ω/Ω is u-independent — no p∥ resonance poles, nothing to peel
+    ns = iszero(kz) ? (1:0) : _resonance_harmonics(ω, Ω, kz, lo, hi)
     ζs = [(ω - n * Ω) / kz for n in ns]
     ε = max(qlo, sqrt(eps(real(ω))) * qhi)   # perp lower bound (ε edge-removes the p⊥=0 origin)
-    logfacs = [_landau_logfac(ζ, lo, hi) for ζ in ζs]       # u-integral of the analytic pole term
+    logfacs = [_landau_logfac(ζ, lo, hi, sign(kz)) for ζ in ζs]       # u-integral of the analytic pole term
     χ = QuadGK.quadgk(ε, qhi; rtol, norm) do w
         ρs = _qin_residues(d, ns, ζs, w, ω, Ω, kz, kperp)
         # smooth p∥ remainder: full resummed integrand minus the peeled poles.
@@ -39,9 +40,14 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω
     pmax = maximum(abs, d.para)
     γmax = sqrt(1 + pmax^2 + d.perp[2]^2)
     umaxmax = sqrt(γmax^2 - 1)
-    # Generous harmonic window; the per-γ in-range filter discards non-crossing n.
-    nlo = floor(Int, (real(ω) - kz * umaxmax) / Ω) - 1
-    nhi = ceil(Int, (real(ω) * γmax + kz * umaxmax) / Ω) + 1
+    # Generous harmonic window for (γ,u)∈[1,γmax]×[−umax,umax] —
+    # min/max keeps it valid for either sign of kz, Ω, or Re ω; the per-γ in-range
+    # filter discards non-crossing n.
+    rs = extrema(
+        (real(ω) * γ - kz * u) / Ω for γ in (one(γmax), γmax), u in (-umaxmax, umaxmax)
+    )
+    nlo, nhi = floor(Int, rs[1]) - 1, ceil(Int, rs[2]) + 1
+    σ = sign(kz)
     function inner(γ)
         umax = sqrt(γ^2 - 1)
         ζρ = NamedTuple[]
@@ -63,7 +69,7 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω
             w .* val
         end[1]
         for p in ζρ
-            acc = acc .+ p.ρ .* _landau_logfac(p.ζ, -umax, umax)
+            acc = acc .+ p.ρ .* _landau_logfac(p.ζ, -umax, umax, σ)
         end
         return acc
     end

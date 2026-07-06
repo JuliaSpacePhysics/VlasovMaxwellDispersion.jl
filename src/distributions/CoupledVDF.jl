@@ -56,10 +56,12 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     )[1] / d.n
     nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
     ns = (-nmax):nmax
-    ζs = [(ω - n * Ω) / kz for n in ns]
-    X = QuadGK.quadgk(d.perp...; rtol, norm) do v
-        _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U; norm, rtol)
-    end[1]
+    X = if iszero(kz)
+        QuadGK.quadgk(v -> _coupled_perp0(v, ns, d, ω, Ω, kz, a, L, U; norm, rtol), d.perp...; rtol, norm)[1]
+    else
+        ζs = [(ω - n * Ω) / kz for n in ns]
+        QuadGK.quadgk(v -> _coupled_perp(v, ns, ζs, d, ω, Ω, kz, a, L, U; norm, rtol), d.perp...; rtol, norm)[1]
+    end
     return (s.Pi2 / ω^2) * _antisymmat(X)
 end
 
@@ -159,20 +161,21 @@ end
 end
 
 # Residue r = c·W(p) of a peeled pole and its analytic across-box term
-# r·[log((hi−p)/(lo−p)) + 2πi if Landau-crossed]; (0, 0) when not peeled.
-# Peel when Landau-crossed (Im ω<0 dragged the pole below the axis inside the box —
-# the +2πi is the continuation residue) or within _PQ_NEAR of the segment (Plemelj
-# subtraction for quadrature health). The squaring ghost peels harmlessly (W(p)=0 ⇒
-# r=0); γ-artifact roots (γ(p)=0 ⇒ W=∞) are left unpeeled.
-@inline function _peel_residue(p, c, W, γof, ν, lo, hi)
+# r·[log((hi−p)/(lo−p)) + σ·2πi if Landau-crossed]; (0, 0) when not peeled.
+# Peel when Landau-crossed (Im ω<0 dragged the pole off its σ-home side) 
+# or within _PQ_NEAR of the segment (Plemelj subtraction for quadrature health).
+#  The squaring ghost peels harmlessly (W(p)=0 ⇒ r=0); γ-artifact roots (γ(p)=0 ⇒ W=∞) are left unpeeled.
+@inline function _peel_residue(p, c, W, γof, ν, lo, hi, σ)
     zz = (zero(AType), zero(AType))
     isfinite(p) || return zz
-    crossed = ν < 0 && imag(p) < 0 && lo < real(p) < hi
+    crossed = ν < 0 && σ * imag(p) < 0 && lo < real(p) < hi
     near = abs(imag(p)) < _PQ_NEAR && lo - _PQ_NEAR < real(p) < hi + _PQ_NEAR
     (crossed || near) || return zz
-    r = c .* W(p, γof(p))
+    γp = γof(p)
+    iszero(γp) && return zz   # exact γ-artifact (kz=0, n=0 degenerates both roots to γ(p)=0)
+    r = c .* W(p, γp)
     all(isfinite, r) || return zz
-    return r, r .* (log((hi - p) / (lo - p)) + (crossed ? 2π * im : 0))
+    return r, r .* (log((hi - p) / (lo - p)) + (crossed ? σ * 2π * im : 0))
 end
 
 # One harmonic of the (p⊥,p∥) box integral: outer Gauss–Legendre in p⊥; per slice
@@ -184,6 +187,7 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a; GLq = _GLγ, GLp = _GLp)
     qlo, qhi = d.perp
     nΩ = n * Ω
     ν = imag(ω)
+    σ = sign(kz)
     qn, qw = GLq
     un, uw = GLp
     qmid, qhalf = (qlo + qhi) / 2, (qhi - qlo) / 2
@@ -200,8 +204,8 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a; GLq = _GLγ, GLp = _GLp)
         end
         Wof = (u, γ) -> (σof(u, γ) * (ω * γ + kz * u + nΩ)) .* _T_n_bare(n, z, u, q)
         (p1, c1), (p2, c2) = _Dn_poles(ω, kz, nΩ, m2)
-        r1, lg1 = _peel_residue(p1, c1, Wof, γof, ν, plo, phi)
-        r2, lg2 = _peel_residue(p2, c2, Wof, γof, ν, plo, phi)
+        r1, lg1 = _peel_residue(p1, c1, Wof, γof, ν, plo, phi, σ)
+        r2, lg2 = _peel_residue(p2, c2, Wof, γof, ν, plo, phi, σ)
         reg = zero(AType)
         for iu in eachindex(un)
             u = umid + uhalf * un[iu]
@@ -249,11 +253,31 @@ function _coupled_perp(v, ns, ζs, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
             acc
         end[1]
         # analytic pole term, constant in u
+        σ = sign(kz)
         logacc = zero(AType)
         @inbounds for i in eachindex(ns)
-            logacc += _In_block(_pole_corr(near[i], gζs[i], ζs[i], L, U), invkz, b2s[i], v, ω, kz, ns[i] * Ω)
+            logacc += _In_block(_pole_corr(near[i], gζs[i], ζs[i], L, U, σ), invkz, b2s[i], v, ω, kz, ns[i] * Ω)
         end
         reg + logacc
+    end
+end
+
+# kz=0: the parallel kernel has no u-pole, so the u-integral of the gradient moments is
+# harmonic-independent — integrate once, weight per n by 1/Δ_n = 1/(ω−nΩ).
+function _coupled_perp0(v, ns, d::CoupledVDF, ω, Ω, kz, a, L, U; kw...)
+    g5(u) = begin
+        q, p = d.dgrad(v, u)
+        SVector(q, u * q, u^2 * q, p, u * p)
+    end
+    I = QuadGK.quadgk(g5, L, U; kw...)[1]
+    return @no_escape begin
+        b2s = @alloc(SVector{6, typeof(a * v)}, length(ns))
+        _perp_Bessel_bilinears!(b2s, a, v)
+        acc = zero(AType)
+        @inbounds for (i, n) in enumerate(ns)
+            acc += _In_block(I, 1 / (ω - n * Ω), b2s[i], v, ω, kz, n * Ω)
+        end
+        acc
     end
 end
 

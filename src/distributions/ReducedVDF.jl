@@ -22,7 +22,7 @@ function contribution(d::ReducedVDF, s, ω, k; kwargs...)
     iszero(perp(k)) ||
         throw(ArgumentError("ReducedVDF (1-D parallel) only supports field-aligned electrostatic kperp=0"))
     kz = para(k)
-    χzz = -(s.Pi2 / kz^2) * hilbert(d.df, ω / kz, d.para...)
+    χzz = -(s.Pi2 / kz^2) * hilbert(d.df, ω / kz, d.para...; σ = sign(kz))
     z = zero(χzz)
     return @SMatrix ComplexF64[z z z; z z z; z z χzz]
 end

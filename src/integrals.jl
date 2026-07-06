@@ -12,41 +12,41 @@ GammaTable(λ, kmax::Integer) = GammaTable([Gamma_n(k, λ) for k in 0:kmax])
 @inline Base.getindex(t::GammaTable, k::Integer) = @inbounds t.v[abs(k) + 1]
 
 """
-    hilbert(g, ζ, L, U; rtol=1e-9) -> Complex
+    hilbert(g, ζ, L, U; rtol=1e-9, σ=1)
 
 Landau-causal Cauchy integral `∫_L^U g(v)/(v − ζ) dv` for analytic `g`.
 
 Plemelj split at weakly damped/growing modes to remove singularity:
 
-    ∫_L^U g/(v−ζ) = ∫_L^U (g(v)−g(ζ))/(v−ζ) dv  +  g(ζ)·log((U−ζ)/(L−ζ))  [+ 2πi·g(ζ)]
+    ∫_L^U g/(v−ζ) = ∫_L^U (g(v)−g(ζ))/(v−ζ) dv  +  g(ζ)·log((U−ζ)/(L−ζ))  [+ σ·2πi·g(ζ)]
 
 Falls back to the direct integrand when the subtraction is ill-conditioned (see [`_subtract_safe`](@ref)).
 
-The residue `2πi·g(ζ)` is the Landau continuation onto the damped side.
+`σ = sign(k∥)` orients the contour: the causal (Im ω > 0) side is `σ·Im ζ > 0`, and the
+residue `σ·2πi·g(ζ)` is the Landau continuation onto the damped side.
 """
-function hilbert(g, ζ, L, U; rtol = 1.0e-9)
+function hilbert(g, ζ, L, U; rtol = 1.0e-9, σ = 1)
     gζ = g(ζ)
     near = _subtract_safe(gζ, abs(g(clamp(real(ζ), L, U))))
     gsub = near ? gζ : zero(gζ)
     reg = QuadGK.quadgk(v -> (g(v) - gsub) / (v - ζ), L, U; rtol)[1]
-    return reg + _pole_corr(near, gζ, ζ, L, U)
+    return reg + _pole_corr(near, gζ, ζ, L, U, σ)
 end
 
 # Subtracting g(ζ) cancels ~log₁₀(|g(ζ)|/gscale) digits against the analytic log term, and
 # g(ζ) overflows outright for strongly damped ζ
 @inline _subtract_safe(gζ, gscale) = all(isfinite, gζ) && _relsize(gζ) * sqrt(eps(one(gscale))) ≤ gscale
 
-@inline function _pole_corr(near, gζ, ζ, lo, hi)
-    near && return gζ .* _landau_logfac(ζ, lo, hi)
-    return _landau_active(ζ, lo, hi) ? gζ .* (2π * im) : zero(gζ)
+@inline function _pole_corr(near, gζ, ζ, lo, hi, σ = 1)
+    near && return gζ .* _landau_logfac(ζ, lo, hi, σ)
+    return _landau_active(ζ, lo, hi, σ) ? gζ .* (σ * 2π * im) : zero(gζ)
 end
 
-# Assumes the `kz>0` convention, so `Im ζ<0 ⟺ Im ω<0`
-@inline _landau_active(ζ, lo, hi) = imag(ζ) < 0 && lo < real(ζ) < hi
+@inline _landau_active(ζ, lo, hi, σ = 1) = σ * imag(ζ) < 0 && lo < real(ζ) < hi
 
-@inline function _landau_logfac(ζ, lo, hi)
+@inline function _landau_logfac(ζ, lo, hi, σ = 1)
     logfac = log((hi - ζ) / (lo - ζ))
-    return _landau_active(ζ, lo, hi) ? logfac + 2π * im : logfac
+    return _landau_active(ζ, lo, hi, σ) ? logfac + σ * 2π * im : logfac
 end
 
 function converge(f, nmin::Integer; rtol, nmax::Integer = 200)
