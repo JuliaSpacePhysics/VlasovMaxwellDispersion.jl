@@ -61,8 +61,7 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     X = if !iszero(kz)
         invkz = -1 / kz
         ζs = [(ω - n * Ω) / kz for n in ns]
-        gζs = similar(ns, SVector{5, eltype(ζs)})
-        landau_integral = PeeledQuadGK(d.para, ζs, gζs, similar(ns, Bool), similar(gζs))
+        landau_integral = PeeledQuadGK(d.para, ζs)
 
         # I(p⊥) for the WHOLE harmonic sum at one perp node
         QuadGK.quadgk(d.perp...; rtol, norm) do v

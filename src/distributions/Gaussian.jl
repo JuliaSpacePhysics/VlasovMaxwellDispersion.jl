@@ -18,16 +18,16 @@ Gaussian(vth) = Gaussian(vth, nothing)
 
 const Z = plasma_dispersion_function
 
-function para_moments(p::Gaussian, ω, kz, nΩ)
+function para_moments(p::Gaussian, Δ, kz)
     vthpar = p.vth
     vd = @something p.vd zero(p.vth)
     if iszero(kz)
         # M_F^m = ⟨uᵐ⟩/Δ, M_T^m = ∫uᵐf′/Δ
-        invΔ = 1 / (complex(ω) - nΩ)
+        invΔ = 1 / Δ
         return (invΔ, vd * invΔ, (vd^2 + vthpar^2 / 2) * invΔ, zero(invΔ), -invΔ)
     end
     σ⁻¹ = 1 / (kz * vthpar)
-    ζ = (ω - kz * vd - nΩ) * σ⁻¹
+    ζ = (Δ - kz * vd) * σ⁻¹
     # k∥<0 flips the Landau contour above the pole
     Z0 = kz > 0 ? Z(ζ) : -Z(-ζ)
     Z1 = 1 + ζ * Z0

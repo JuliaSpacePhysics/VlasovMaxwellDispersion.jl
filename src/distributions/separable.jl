@@ -38,7 +38,8 @@ end
 function _separable_harmonics(para, perp, β, ω, Ω, kz; rtol)
     return converge(; nmax = nmax_harm(perp, β), rtol) do n
         nΩ = n * Ω
-        M = para_moments(para, ω, kz, nΩ)
+        Δ = ω - nΩ
+        M = para_moments(para, Δ, kz)
         P∂, PF = perp_moments(perp, n, β)
         return _chi_mblock(M, P∂, PF, ω, kz, nΩ)
     end
