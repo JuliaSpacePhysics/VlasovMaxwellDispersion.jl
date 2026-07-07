@@ -41,7 +41,7 @@ end
 
 function para_moments(p::AnalyticFactor, ω, kz, nΩ)
     if iszero(kz)
-        I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol = 1.0e-9, norm = _relsize)[1]
+        I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol = 1.0e-9, norm = NORM)[1]
         return I ./ (complex(ω) - nΩ)
     end
     ζ = (ω - nΩ) / kz
@@ -85,18 +85,18 @@ end
 function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol = 1.0e-8)
     if iszero(kz)
         # pole-free: one moment integral serves every harmonic, weighted 1/Δ_n
-        I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol, norm = _relsize)[1]
+        I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol, norm = NORM)[1]
         return [I ./ (complex(ω) - n * Ω) for n in ns]
     end
     ζs = [(ω - n * Ω) / kz for n in ns]
     gζs = [_gpar(p, ζ) for ζ in ζs]
-    gscale = maximum(ζ -> _relsize(_gpar(p, clamp(real(ζ), p.lo, p.hi))), ζs)
+    gscale = maximum(ζ -> NORM(_gpar(p, clamp(real(ζ), p.lo, p.hi))), ζs)
     near = [_subtract_safe(gζ, gscale) for gζ in gζs]
     gsubs = [near[i] ? gζs[i] : zero(gζs[i]) for i in eachindex(ns)]
-    reg = QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(_relsize, x)) do u
+    reg = QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(NORM, x)) do u
         g = _gpar(p, u)
         [(g - gsubs[i]) / (u - ζs[i]) for i in eachindex(ns)]
     end[1]
     σ = sign(kz)
-    return [(-1 / kz) .* (reg[i] .+ _pole_corr(near[i], gζs[i], ζs[i], p.lo, p.hi, σ)) for i in eachindex(ns)]
+    return [(-1 / kz) .* (reg[i] .+ gζs[i] .* _lpole_term(ζs[i], p.lo, p.hi, σ, near[i])) for i in eachindex(ns)]
 end

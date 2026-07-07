@@ -5,17 +5,17 @@ Reduced 1-D parallel distribution for the field-aligned electrostatic path (`k�
 Landau damping / two-stream / bump-on-tail. `χ_zz = −(Π²/k∥²)∫ f∥′(u)/(u − ω/k∥) du`,
 with `f∥` evaluable at complex argument.
 """
-struct ReducedVDF{D, T} <: AbstractVDF
-    df::D       # normalized f∥′
+struct ReducedVDF{D, T, N} <: AbstractVDF
+    df::D
     para::T
+    n::N
 end
 
 function ReducedVDF(fpar; para, df = nothing, normalize = true)
     lo, hi = promote(float(para[1]), float(para[2]))
     n = normalize ? QuadGK.quadgk(fpar, lo, hi; rtol = 1.0e-10)[1] : one(lo)
-    fp = u -> fpar(u) / n
-    dfp = isnothing(df) ? (u -> _dwrt(fp, u)) : (u -> df(u) / n)
-    return ReducedVDF(dfp, (lo, hi))
+    dfp = @something df (u -> _dwrt(fpar, u))
+    return ReducedVDF(dfp, (lo, hi), n)
 end
 
 function contribution(d::ReducedVDF, s, ω, k; kwargs...)
@@ -23,6 +23,5 @@ function contribution(d::ReducedVDF, s, ω, k; kwargs...)
         throw(ArgumentError("ReducedVDF (1-D parallel) only supports field-aligned electrostatic kperp=0"))
     kz = para(k)
     χzz = -(s.Pi2 / kz^2) * hilbert(d.df, ω / kz, d.para...; σ = sign(kz))
-    z = zero(χzz)
-    return @SMatrix ComplexF64[z z z; z z z; z z χzz]
+    return _ee33(χzz) / d.n
 end

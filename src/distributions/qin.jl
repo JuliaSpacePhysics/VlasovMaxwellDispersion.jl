@@ -12,7 +12,7 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
     ns = iszero(kz) ? (1:0) : _resonance_harmonics(ω, Ω, kz, lo, hi)
     ζs = [(ω - n * Ω) / kz for n in ns]
     ε = max(qlo, sqrt(eps(real(ω))) * qhi)   # perp lower bound (ε edge-removes the p⊥=0 origin)
-    logfacs = [_landau_logfac(ζ, lo, hi, sign(kz)) for ζ in ζs]       # u-integral of the analytic pole term
+    lpole_terms = _lpole_term.(ζs, lo, hi, sign(kz), true)  # u-integral of the analytic pole term
     χ = QuadGK.quadgk(ε, qhi; rtol, norm) do w
         ρs = _qin_residues(d, ns, ζs, w, ω, Ω, kz, kperp)
         # smooth p∥ remainder: full resummed integrand minus the peeled poles.
@@ -24,7 +24,7 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s,
             val
         end[1]
         @inbounds for i in eachindex(ζs)
-            inner = inner .+ ρs[i] .* logfacs[i]
+            inner = inner .+ ρs[i] .* lpole_terms[i]
         end
         inner
     end[1]
@@ -69,7 +69,7 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω
             w .* val
         end[1]
         for p in ζρ
-            acc = acc .+ p.ρ .* _landau_logfac(p.ζ, -umax, umax, σ)
+            acc = acc .+ p.ρ .* _lpole_term(p.ζ, -umax, umax, σ, true)
         end
         return acc
     end
