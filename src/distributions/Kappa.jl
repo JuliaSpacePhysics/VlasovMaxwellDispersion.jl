@@ -32,36 +32,43 @@ ProductBiKappa(; vth_para, vth_perp = vth_para, kappa_para, kappa_perp = kappa_p
     Kappa(vth_perp, kappa_perp) ⊗ Kappa(vth_para, kappa_para)
 
 
-# Base integrals H_m(ζ)=∫p^m/((p²+β²)^M(p-ζ))dp, m=0,1,2. Integer M: order-M pole at p=iβ,
-# closed UHP (integrand ~p^{m-2M-1}); the 2πi·ζᵐ/(ζ²+β²)^M pole term is the uniform
-# Landau-causal continuation for σ=sign(k∥)>0. For σ<0 the causal side is Im ζ<0, where
-# the UHP closure holds only Res_{iβ}.
+# Residue-sum assembly shared by every meromorphic parallel factor with a single closed-half-
+# plane pole p₀ of order M
+# Hₘ = ∫pᵐf/(p−ζ)dp = 2πi·(Res_{p₀}[pᵐf/(p−ζ)] + [σ>0] ζᵐf(ζ)),   m=0,1,2
+# σ<0 drops the Landau (ζ-side) residue
+@inline function _residue_Hm(p₀, ζ, cM1, cM2, cM3, fζ, σ)
+    L = σ > 0 ? fζ : zero(fζ)
+    pref = 2π * im
+    H0 = pref * (cM1 + L)
+    H1 = pref * (p₀ * cM1 + cM2 + ζ * L)
+    H2 = pref * (p₀^2 * cM1 + 2p₀ * cM2 + cM3 + ζ^2 * L)
+    return H0, H1, H2
+end
+
+# Base integrals H_m(ζ)=∫p^m/((p²+β²)^M(p-ζ))dp, m=0,1,2 for integer-order M pole at p=iβ,
+# closed UHP (integrand ~p^{m-2M-1}). Valid for any M≥1.
 function _kappa_Hm(ζ, β2, M::Integer, σ = 1)
     iβ = im * sqrt(β2)
-    T = promote_type(typeof(ζ), typeof(β2))
     twoiβ, dζ = 2iβ, iβ - ζ
     # Res_{p=iβ} via c_p=[tᵖ](2iβ+t)^{-M}(dζ+t)^{-1}, t=p-iβ. The (dζ+t)^{-1} series is
     # geometric, so the Taylor convolution collapses to prefix sums of A_k=[tᵏ](2iβ+t)^{-M}
     # (ratio recurrence — no binomial overflow):  c_p = (1/dζ)(-1/dζ)ᵖ Σ_{k≤p} A_k(-dζ)ᵏ.
+    # S_p=0 for p<0 (regular part analytic ⇒ no negative Laurent powers) — the M<3 guards.
     t = twoiβ^(-M)
     S = t
-    S3 = S2 = S                              # S_{M-3}, S_{M-2}; init covers M=3 (p=0)
+    S2 = M >= 2 ? S : zero(S)                # S_{M-2}: init is S₀
+    S3 = M >= 3 ? S : zero(S)                # S_{M-3}
     for k in 1:(M - 1)
         t *= (M + k - 1) * dζ / (k * twoiβ)
         S += t
-        k == M - 3 && (S3 = S)
         k == M - 2 && (S2 = S)
+        k == M - 3 && (S3 = S)
     end
     r = -1 / dζ
     cM1 = S * r^(M - 1) / dζ
     cM2 = S2 * r^(M - 2) / dζ
     cM3 = S3 * r^(M - 3) / dζ
-    invden = σ > 0 ? 1 / (ζ^2 + β2)^M : zero(T)   # 2πi·ζᵐ·invden = Landau residue
-    pref = 2π * im
-    H0 = pref * (cM1 + invden)
-    H1 = pref * ((iβ * cM1 + cM2) + ζ * invden)
-    H2 = pref * ((2iβ * cM2 + cM3 - β2 * cM1) + ζ^2 * invden)
-    return H0, H1, H2
+    return _residue_Hm(iβ, ζ, cM1, cM2, cM3, 1 / (ζ^2 + β2)^M, σ)
 end
 
 # Non-integer M: residue fails at the branch point.
