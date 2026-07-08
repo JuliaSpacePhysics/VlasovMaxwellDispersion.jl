@@ -12,19 +12,79 @@ function _lpole_term(ζ, lo, hi, side, peeled)
     end
 end
 
-struct PeeledQuadGK{T, V}
-    lims::T
-    ζs::V
+# ---- 1-D quadrature schemes
+abstract type QuadScheme end
+
+struct GaussLegendre{NW} <: QuadScheme
+    nw::NW                       # (nodes, weights) === QuadGK.gauss(n)
+end
+GaussLegendre(n::Integer) = GaussLegendre(QuadGK.gauss(n))
+
+struct AdaptiveGK{K <: NamedTuple} <: QuadScheme
+    kw::K
+end
+AdaptiveGK(; kw...) = AdaptiveGK(NamedTuple(kw))
+
+@inline function quad(f, s::GaussLegendre, lo, hi)
+    n, w = s.nw
+    mid, half = (lo + hi) / 2, (hi - lo) / 2
+    acc = (half * w[1]) * f(mid + half * n[1])
+    @inbounds for i in 2:length(n)
+        acc = acc + (half * w[i]) * f(mid + half * n[i])
+    end
+    return acc
+end
+quad(f, s::AdaptiveGK, lo, hi) = QuadGK.quadgk(f, lo, hi; s.kw...)[1]
+
+# Two composable 1-D schemes for a 2-D box integral (outer × inner).
+struct BoxQuad{O <: QuadScheme, I <: QuadScheme}
+    outer::O
+    inner::I
 end
 
-# per pole subtract g(ζₚ) when it is finite and not too large vs the on-contour scale
-# else integrate raw (the far/overflow branch)
-function (alg::PeeledQuadGK)(g; side = 1, maxratio = 1.0e6, kw...)
-    lo, hi = alg.lims
-    ζs = alg.ζs
-    gscale = maximum(ζ -> NORM(g(clamp(real(ζ), lo, hi))), ζs)
+
+# ---- Landau-causal Cauchy integral
+# ∫ g(v)/(v−ζ) dv with the Landau prescription
+# σ = sign(k∥) orients the contour: the causal (Im ω > 0) side is `σ·Im ζ > 0`
+# residue `σ·2πi·g(ζ)` is the Landau continuation onto the damped side.
+abstract type LandauAlg end
+
+"""
+Adaptive QuadGK with per-pole subtraction, which removes the singularity for weakly damped/growing modes:
+
+    ∫_L^U g/(v−ζ) = ∫_L^U (g(v)−g(ζ))/(v−ζ) dv  +  g(ζ)·log((U−ζ)/(L−ζ))  [+ σ·2πi·g(ζ)]
+
+Falls back to the direct integrand when the subtraction is ill-conditioned, 
+as g(ζ) cancels ~log₁₀(NORM(gζ)/gscale) digits against the analytic log term.
+"""
+struct PeeledGK <: LandauAlg end
+
+# `alg` selects the numerical method — extensible.
+struct LandauPlan{A, T, V, S}
+    alg::A
+    lims::T
+    ζs::V
+    side::S
+end
+plan_landau(lims, ζs, side = 1; alg = PeeledGK()) = LandauPlan(alg, lims, ζs, side)
+
+(p::LandauPlan)(g; kw...) = _landau(p.alg, g, p.lims, p.ζs, p.side; kw...)
+
+@inline _peel(gζ, gscale) = all(isfinite, gζ) && NORM(gζ) * sqrt(eps(one(gscale))) ≤ gscale
+
+function _landau(::PeeledGK, g, lims, ζ::Number, side; kw...)
+    lo, hi = lims
+    gζ = g(ζ)
+    peel = _peel(gζ, NORM(g(clamp(real(ζ), lo, hi))))
+    gsub = peel ? gζ : zero(gζ)
+    reg = QuadGK.quadgk(v -> (g(v) - gsub) / (v - ζ), lo, hi; kw...)[1]
+    return reg + gζ .* _lpole_term(ζ, lo, hi, side, peel)
+end
+
+function _landau(::PeeledGK, g, lims, ζs::AbstractVector, side; kw...)
+    lo, hi = lims
     gζs = g.(ζs)
-    peel = @. all(isfinite, gζs) && NORM(gζs) <= maxratio * gscale
+    peel = @. _peel(gζs, NORM(g(clamp(real(ζs), lo, hi))))
     I = similar(gζs)
     f! = function (y, u)
         gu = g(u)
@@ -50,31 +110,8 @@ end
 GammaTable(λ, kmax::Integer) = GammaTable([Gamma_n(k, λ) for k in 0:kmax])
 @inline Base.getindex(t::GammaTable, k::Integer) = @inbounds t.v[abs(k) + 1]
 
-"""
-    hilbert(g, ζ, L, U; rtol=1e-9, σ=1)
-
-Landau-causal Cauchy integral `∫_L^U g(v)/(v − ζ) dv` for analytic `g`.
-
-Plemelj split at weakly damped/growing modes to remove singularity:
-
-    ∫_L^U g/(v−ζ) = ∫_L^U (g(v)−g(ζ))/(v−ζ) dv  +  g(ζ)·log((U−ζ)/(L−ζ))  [+ σ·2πi·g(ζ)]
-
-Falls back to the direct integrand when the subtraction is ill-conditioned (see [`_subtract_safe`](@ref)).
-
-`σ = sign(k∥)` orients the contour: the causal (Im ω > 0) side is `σ·Im ζ > 0`, and the
-residue `σ·2πi·g(ζ)` is the Landau continuation onto the damped side.
-"""
-function hilbert(g, ζ, L, U; rtol = 1.0e-9, σ = 1)
-    gζ = g(ζ)
-    near = _subtract_safe(gζ, abs(g(clamp(real(ζ), L, U))))
-    gsub = near ? gζ : zero(gζ)
-    reg = QuadGK.quadgk(v -> (g(v) - gsub) / (v - ζ), L, U; rtol)[1]
-    return reg + gζ .* _lpole_term(ζ, L, U, σ, near)
-end
-
-# Subtracting g(ζ) cancels ~log₁₀(|g(ζ)|/gscale) digits against the analytic log term, and
-# g(ζ) overflows outright for strongly damped ζ
-@inline _subtract_safe(gζ, gscale) = all(isfinite, gζ) && NORM(gζ) * sqrt(eps(one(gscale))) ≤ gscale
+"""Sugar for `plan_landau((L,U), ζ; σ)(g; rtol)`"""
+landau(g, ζ, L, U; side = 1, kw...) = plan_landau((L, U), ζ, side)(g; kw...)
 
 function converge(f, nmin::Integer; rtol, nmax::Integer = 200)
     total = f(0)

@@ -52,16 +52,14 @@ function _separable_harmonics(para::AnalyticFactor, perp::AnalyticFactor, β, ω
             z = β * v
             fq, dfq = perp.fdf(v)
             vfq = v * fq
-            acc = zero(AType)
             besselj_ladder!(Jv, M, z)        # J_0..J_{nmax+1} in one recurrence, signed-indexed
-            @inbounds for (i, n) in enumerate(ns)
+            sum(enumerate(ns)) do (i, n)
                 Jm, Jn, Jp = _jladder(Jv, n - 1), _jladder(Jv, n), _jladder(Jv, n + 1)
                 # bvec=(v⊥Rn, v⊥Jn′, Jn), Rn=½(J_{n−1}+J_{n+1}); K=bvec⊗bvec shared by ∂F/F slices
                 b1, b2, b3 = v * (Jm + Jp) / 2, v * (Jm - Jp) / 2, Jn
                 K = _symmat(b1^2, b1 * b2, b1 * b3, b2^2, b2 * b3, b3^2)
-                acc += _chi_mblock(Ms[i], (2π * dfq) .* K, (2π * vfq) .* K, ω, kz, n * Ω)
+                _chi_mblock(Ms[i], (2π * dfq) .* K, (2π * vfq) .* K, ω, kz, n * Ω)
             end
-            acc
         end[1]
     end
 end
@@ -80,6 +78,6 @@ function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol = 1.0e-8)
         return [I ./ (ω - n * Ω) for n in ns]
     end
     ζs = [(ω - n * Ω) / kz for n in ns]
-    Is = PeeledQuadGK((p.lo, p.hi), ζs)(u -> _gpar(p, u); side = Int(sign(kz)), rtol)
+    Is = plan_landau((p.lo, p.hi), ζs, sign(kz))(u -> _gpar(p, u); rtol)
     return (-1 / kz) .* Is
 end
