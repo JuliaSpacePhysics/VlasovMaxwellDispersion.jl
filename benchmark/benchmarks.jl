@@ -99,3 +99,10 @@ let g = SUITE["branch_solve"]
     prob = DispersionProblem(s, 0.6, ks)
     g["arc_length/64"] = @benchmarkable solve($prob)
 end
+
+
+let g = SUITE["global_solve"]
+    s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para = 0.9, vth_perp = 1.2))
+    prob = GlobalDispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), Wavenumber(0.01, 0.5))
+    g["Default/fixed_k"] = @benchmarkable solve($prob)
+end
