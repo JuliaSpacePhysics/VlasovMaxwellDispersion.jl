@@ -16,7 +16,7 @@ function solve(prob::LocalDispersionProblem, alg::Roots.AbstractUnivariateZeroMe
         ComplexF64(NaN, NaN)
     end
     ok = isfinite(ω)
-    return DispersionSolution(ω, nothing, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
+    return DispersionSolution(ω, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
 end
 
 end

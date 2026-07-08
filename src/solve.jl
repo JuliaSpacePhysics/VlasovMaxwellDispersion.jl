@@ -29,8 +29,8 @@ function residual(plasma, ω, k; closure = HarmonicSum())
     D = dispersion_tensor(plasma, ω, k; closure)
     return abs(det(D)) / _hadamard(D)
 end
-residual(prob, ω) =
-    residual(prob.plasma, ω, prob.k; closure = prob.closure)
+residual(prob::AbstractDispersionProblem, ω, k = prob.k) =
+    residual(prob.plasma, ω, k; closure = prob.closure)
 
 function _scaled_dispersion_function(prob::LocalDispersionProblem)
     f = dispersion_function(prob)
@@ -39,6 +39,8 @@ function _scaled_dispersion_function(prob::LocalDispersionProblem)
 end
 
 include("solver/muller.jl")
+include("solver/GRPF.jl")
+include("solver/ArcLength.jl")
 
 """
     solve(prob::LocalDispersionProblem, alg = Muller()) -> DispersionSolution
@@ -62,17 +64,35 @@ function wave_dispersion_tensor(plasma, ω, k; kwargs...)
 end
 
 """
-    solve(prob::GlobalDispersionProblem, alg=GRPF()) -> DispersionSolution
+    solve(prob::GlobalDispersionProblem; refine=Muller()) -> SurveySolution
 
-All roots and poles in `prob.region` via the argument principle.
+[`SurveySolution`](@ref) contains a list of [`DispersionBranch`](@ref)es (root and pole).
+
+At fixed `k` (`m=0`) each root/pole is a single-point branch.
+
+Global survey (e.g. GRPF) locates roots only to mesh accuracy. 
+`refine` method (default: `Muller()`) polishes each root to convergence.
+Pass `refine=nothing` to keep the raw mesh roots.
 """
-function CommonSolve.solve(prob::GlobalDispersionProblem, alg = GRPF())
-    roots, poles = _grpf_roots(prob.f, prob.region; alg.tol, alg.params)
-    # Drop roots the mesh cannot separate,
-    # The artifact sits at |ω| ≲ tol (mesh accuracy); 2·tol gives a one-cell margin.
-    _in_box(prob.region) && filter!(ω -> abs(ω) > 2alg.tol, roots)
-    res = [residual(prob, ω) for ω in roots]
-    return DispersionSolution(roots, poles, res, isempty(roots) ? :Failure : :Success, prob, alg)
+CommonSolve.solve(prob::GlobalDispersionProblem; kwargs...) =
+    CommonSolve.solve(prob, GRPF(); kwargs...)
+# Fixed-k roots/poles as SurveySolution
+function _fixedk_survey(prob, alg, k, roots, poles, nevals, retcode; refine = Muller())
+    isnothing(refine) || (roots = _refine_roots(prob, k, roots, refine))
+    roots = [DispersionBranch(ω, k, residual(prob, ω, k)) for ω in roots]
+    poles = [DispersionBranch(ω, k, nothing) for ω in poles]
+    return SurveySolution(roots, poles, nevals, retcode, prob, alg)
+end
+
+# Keep mesh value on divergence and drop polished duplicates
+function _refine_roots(prob, k, roots, alg)
+    polished = eltype(roots)[]
+    for ω0 in roots
+        ω = solve(LocalDispersionProblem(prob.plasma, k, ω0; closure = prob.closure), alg).omega
+        isfinite(ω) || (ω = ω0)
+        all(abs(ω - z) > sqrt(alg.atol) for z in polished) && push!(polished, ω)
+    end
+    return polished
 end
 
 function _in_box(region, point = 0)
@@ -80,22 +100,9 @@ function _in_box(region, point = 0)
     return real(ll) ≤ real(point) ≤ real(ur) && imag(ll) ≤ imag(point) ≤ imag(ur)
 end
 
-# Low-level GRPF over a complex box; returns (roots, poles).
-function _grpf_roots(f, region; tol = 1.0e-3, params = nothing)
-    lowerleft, upperright = ComplexF64(region[1]), ComplexF64(region[2])
-    origcoords = rectangulardomain(lowerleft, upperright, tol)
-    p = @something params GRPFParams(5000, tol, false)
-    roots, poles = grpf(f, origcoords, p)
-    return ComplexF64.(roots), ComplexF64.(poles)
-end
-
 """
     solve(prob::BranchProblem, alg=ArcLength()) -> DispersionSolution
 
 Track one branch across `prob.ks`. `retcode` is `:Partial` if any `k` failed.
 """
-function CommonSolve.solve(prob::BranchProblem, alg = ArcLength())
-    ωs = _track(prob.plasma, prob.ks, prob.omega0, prob.closure; alg.atol, alg.maxiter, alg.fallback)
-    res = [residual(prob.plasma, ω, k; closure = prob.closure) for (k, ω) in zip(prob.ks, ωs)]
-    return DispersionSolution(ωs, nothing, res, all(isfinite, ωs) ? :Success : :Partial, prob, alg)
-end
+CommonSolve.solve(prob::BranchProblem; kw...) = solve(prob, ArcLength(); kw...)

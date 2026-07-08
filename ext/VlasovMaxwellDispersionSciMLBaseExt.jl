@@ -13,7 +13,7 @@ function solve(prob::LocalDispersionProblem, alg::SciMLBase.AbstractNonlinearAlg
     sol = solve(np, alg; kwargs...)
     ω = sol.u
     ok = SciMLBase.successful_retcode(sol)
-    return DispersionSolution(ω, nothing, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
+    return DispersionSolution(ω, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
 end
 
 end

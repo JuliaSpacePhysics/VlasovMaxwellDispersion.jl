@@ -4,7 +4,7 @@
 
 ## Roadmap
 
-- For  `kz = 0`, relativistic paths there need `Im ω ≥ 0`; the cyclotron-maser continuation to damped ω is not implemented.
+- For `kz = 0`, relativistic paths there need `Im ω ≥ 0`; the cyclotron-maser continuation to damped ω is not implemented.
 - Optional **AAA-rational** backend for smooth analytic input (`BaryRational.jl`) with Landau-causal pole filtering.
 - Check and potentially reuse `BSplineKit.jl`/`Dierckx.jl`
 - Baalrud, S. D. (2013). The incomplete plasma dispersion function: Properties and application to waves in bounded plasmas.
@@ -32,12 +32,3 @@
 
   cands = find_candidates(plasma, k, region; mesh_step, tolerance)
   roots = polish_candidates(plasma, k, cands; atol=1e-10)
-
- 7. Use Scaled Determinant In Global Search
-  GRPF sees f(z) only by phase quadrant, but numerical overflow/underflow still hurts. Use:
-
-  f(ω) = det(D(ω,k)) / prod(row_norms(D))
-
-  or log-safe normalized determinant where possible.
-
-  This makes phase behavior less dominated by huge curl-curl/cold terms and low-frequency scaling.

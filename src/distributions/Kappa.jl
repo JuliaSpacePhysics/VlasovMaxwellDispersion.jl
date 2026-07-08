@@ -133,6 +133,7 @@ _kappa_Hm_scaled(ζ, a, b, M, σ = 1) = a^M .* _kappa_Hm(ζ, a * b, M, σ)
 # Im ζ<0 is its Schwarz reflection (real kernel). The causal side is σ·Im ζ>0; on the
 # Landau-crossed side continue with the jump σ·2πi·g(ζ), g = (ζ²+β²)^{-M}.
 function _kappa_H0(ζ, β2, M, σ = 1)
+    isfinite(ζ) || return _complex_nan(β2)
     direct = if imag(ζ) >= 0 && !(σ < 0 && imag(ζ) == 0)   # at real ζ take the σ-home limit
         im * sqrt(oftype(β2, π)) * gamma(M + 0.5) / gamma(M + 1) * β2^(-M) *
             _₂F₁(M, 0.5, M + 1, 1 + ζ^2 / β2)

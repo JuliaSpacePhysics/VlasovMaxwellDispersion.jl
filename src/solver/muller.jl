@@ -17,7 +17,7 @@ function CommonSolve.solve(prob::LocalDispersionProblem, alg::Muller)
     h = _seed_offset(prob.omega0)
     ω = muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im; alg.atol, alg.maxiter)
     ok = isfinite(ω)
-    return DispersionSolution(ω, nothing, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
+    return DispersionSolution(ω, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
 end
 
 

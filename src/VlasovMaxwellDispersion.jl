@@ -8,7 +8,6 @@ using .PlasmaBase: AbstractVDF, AbstractPlasma, Particle, Species, Plasma,
 using LinearAlgebra
 using StaticArrays
 using Bumper: @no_escape, @alloc
-using RootsAndPoles
 using SpecialFunctions
 using SpecialFunctions: erfcx, gamma
 using HypergeometricFunctions: _₂F₁
@@ -31,7 +30,6 @@ include("distributions/distributions.jl")
 include("builders.jl")         # particle-identity + physical-unit Species adapters
 include("susceptibility.jl")
 include("solve.jl")
-include("track.jl")
 
 export Regime, NonRelativistic, Relativistic
 export Wavenumber, para, perp
@@ -45,7 +43,9 @@ export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual
 export LocalDispersionProblem, GlobalDispersionProblem, BranchProblem
-export DispersionAlgorithm, Muller, GRPF, ArcLength, DispersionSolution
+export DispersionAlgorithm, Muller, GRPF, ArcLength, JumpFallback, DispersionSolution
+export AngleSweep, CartesianSweep
+export SurveySolution, DispersionBranch, dispersion_diagram
 export GridFitMethod, NonnegBSpline, BicubicHermite, fit_grid
 
 function dispersion_diagram end

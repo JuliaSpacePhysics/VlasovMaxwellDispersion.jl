@@ -18,8 +18,8 @@ alg = Muller()
 sol = solve(LocalDispersionProblem(pl, k, 1.2 - 0.1im), alg)        # local root (Langmuir+Landau)
 ω   = sol.omega
 
-gsol = solve(GlobalDispersionProblem(pl, k, (0.5 - 0.6im, 2.5 + 0.1im)))  # all roots+poles in a box
-roots, poles = gsol.omega, gsol.poles
+gsol = solve(GlobalDispersionProblem(pl, (0.5 - 0.6im, 2.5 + 0.1im), k))  # all roots+poles in a box
+roots, poles = gsol.roots, gsol.poles
 
 ks   = [Wavenumber(0.0, kz) for kz in 0.3:0.05:1.0]
 ωs   = solve(BranchProblem(pl, ks, 1.2 - 0.1im)).omega             # track k branch
@@ -94,7 +94,7 @@ Specialized VDFs include: Cold fluid `ColdVDF`, (bi-)Maxwellian, drifting, ring 
 Solvers follow the `CommonSolve.solve(problem, algorithm)` interface: a
 `Local`/`Global`/`BranchProblem` (seed / search box / k-sequence) solved by
 `Muller` (default) / `GRPF` (`RootsAndPoles.jl`) / `ArcLength`. `solve` returns a
-`DispersionSolution` (`.omega`, `.poles`, `.retcode`).
+`DispersionSolution` (`.omega`, `.retcode`).
 
 Two closures for the orbit integral are available (`derivation.md` §3), passed as
 the `closure=` keyword of `solve`:

@@ -1,6 +1,4 @@
 @testitem "arc-length track follows vacuum light branch" begin
-    using VlasovMaxwellDispersion
-
     plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
     ks = [Wavenumber(0.0, kz) for kz in range(0.5, 1.0; length=6)]
     roots = solve(BranchProblem(plasma, ks, 0.5 + 0im), ArcLength()).omega
@@ -43,10 +41,10 @@ end
     # since muller contracts overflowing trial steps it instead wanders to a distant root
     # (the electron plasma branch). Either failure mode is what the jump fallback must catch.
     baseline = solve(BranchProblem(plasma, ks, 0.08im),
-                     ArcLength(; fallback=false, atol=1.0e-10, maxiter=300)).omega
+                     ArcLength(; fallback=nothing)).omega
     @test !isapprox(baseline[end], 0.009597 + 0im; rtol=5.0e-3, atol=5.0e-5)
 
-    roots = solve(BranchProblem(plasma, ks, 0.08im), ArcLength(; atol=1.0e-10, maxiter=300)).omega
+    roots = solve(BranchProblem(plasma, ks, 0.08im), ArcLength()).omega
 
     @test all(isfinite, roots)
     @test roots[58] ≈ 0.015838 + 0.000212im rtol=5.0e-3 atol=5.0e-5 # ka=0.043
