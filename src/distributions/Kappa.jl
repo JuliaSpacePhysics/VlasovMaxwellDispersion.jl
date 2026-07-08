@@ -89,14 +89,14 @@ end
 
 # M_F=(-1/kz)𝒞[uᵐf∥], M_T=(-1/kz)𝒞[uᵐf∥′]. f∥=C(1+u²/a)^{-(κ+1)} at exponent κ+1;
 # f∥′=-2C(κ+1)u/a·(…)^{-(κ+2)} raises it to κ+2
-function para_moments(p::Kappa, ω, kz, nΩ)
+function para_moments(p::Kappa, Δ, kz)
     κ, a = p.kappa, p.a
     if iszero(kz)
         # no u-pole: (1, 0, ⟨u²⟩=a/(2κ−1), 0, ∫uf′=−1)/Δ
-        invΔ = 1 / (complex(ω) - nΩ)
+        invΔ = 1 / Δ
         return (invΔ, zero(invΔ), a / (2κ - 1) * invΔ, zero(invΔ), -invΔ)
     end
-    ζ = (ω - nΩ) / kz
+    ζ = Δ / kz
     σ = sign(kz)
     H0, H1, H2 = _kappa_Hm(ζ, a, κ + 1, σ)
     _, G1, G2 = _kappa_Hm(ζ, a, κ + 2, σ)

@@ -16,6 +16,15 @@
         @test χs ≈ χm rtol = 1.0e-8
     end
 
+    @testset "Parallel propagation" begin
+        k = Wavenumber(0.0, 0.4)
+        χs = contribution(NormalizedSpecies(-1.0, 0.5, sep), 1.3 - 0.05im, k)
+        χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
+        @test all(isfinite, χs)
+        @test χs ≈ χm
+        @test abs(χs[1, 3]) < 1.0e-12 && abs(χs[2, 3]) < 1.0e-12  # transverse/parallel decouple
+    end
+
     @testset "At strongly damped ω (far-branch)" begin
         # ζ_n reaches ~5i·vth⁻¹ ⇒ g(ζ)~1e13: exercises the direct/far conditioning branch
         k = Wavenumber(0.3, 0.4)
@@ -38,22 +47,10 @@ end
     @test ωs ≈ ωm
 end
 
-@testitem "SeparableVDF supports parallel propagation" begin
-    vthp, vthq = 0.9, 1.2
-    mx = Maxwellian(vth_para = vthp, vth_perp = vthq)
-    sep = SeparableVDF(mx; para = (-14vthp, 14vthp), perp = 14vthq)
-    k = Wavenumber(0.0, 0.4)
-    χs = contribution(NormalizedSpecies(-1.0, 0.5, sep), 1.3 - 0.05im, k)
-    χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
-    @test all(isfinite, χs)
-    @test χs ≈ χm
-    @test abs(χs[1, 3]) < 1.0e-12 && abs(χs[2, 3]) < 1.0e-12  # transverse/parallel decouple
-end
-
 @testitem "dispersion_tensor degrades to NaN, no throw, at overflow-damped ω" begin
-    # ζ = (ω−nΩ)/kz has Im ζ ≈ −30: the Landau residue exp(−ζ²) overflows, the
-    # parallel moments go Inf, and QuadGK's perp integrand hits NaN ⇒ DomainError.
-    # Root-finders probe such ω; they must get a NaN tensor back, not a crash.
+    # ζ = (ω−nΩ)/kz so Landau residue exp(−ζ²) can overflow ⇒
+    # parallel moments go Inf ⇒ QuadGK's perp integrand hits NaN ⇒ DomainError.
+    # Root-finders probe such ω, need NaN tensor back without crash.
     sep = SeparableVDF(v -> exp(-v^2), u -> exp(-u^2); para = (-6.0, 6.0), perp = 6.0)
     s = NormalizedSpecies(1.0, 1.0, sep)
     k = Wavenumber(0.1, 0.5)
@@ -71,7 +68,7 @@ end
 end
 
 @testitem "SeparableVDF accepts a non-Gaussian f (finite χ)" begin
-    # Generalized-Lorentzian (kappa-like) parallel × Gaussian perp — no closed form.
+    # Generalized-Lorentzian parallel × Gaussian perp
     fpar(u) = (1 + u^2 / 3)^(-2)
     sep = SeparableVDF(
         v -> exp(-v^2) / pi, fpar;

@@ -39,18 +39,6 @@ struct AnalyticFactor{F, FD, T}
 end
 @inline (p::AnalyticFactor)(v) = p.f(v)
 
-function para_moments(p::AnalyticFactor, ω, kz, nΩ)
-    if iszero(kz)
-        I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol = 1.0e-9, norm = NORM)[1]
-        return I ./ (complex(ω) - nΩ)
-    end
-    ζ = (ω - nΩ) / kz
-    return (-1 / kz) .* hilbert(ζ, p.lo, p.hi; σ = sign(kz)) do u
-        fp, dp = p.fdf(u)
-        SVector(fp, u * fp, u^2 * fp, dp, u * dp)
-    end
-end
-
 # Fused harmonic loop for two analytic factors. f/f′ are harmonic-independent — only
 # the resonance pole ζ_n and the Bessel factor change with n.
 function _separable_harmonics(para::AnalyticFactor, perp::AnalyticFactor, β, ω, Ω, kz; rtol, norm = NORM)
@@ -78,25 +66,20 @@ function _separable_harmonics(para::AnalyticFactor, perp::AnalyticFactor, β, ω
     end
 end
 
-@inline _gpar(p, u) = (fp = p.fdf(u); SVector(fp[1], u * fp[1], u^2 * fp[1], fp[2], u * fp[2]))
+@inline function _gpar(p, u)
+    fp, dp = p.fdf(u)
+    ufp = u * fp
+    return SVector(fp, ufp, ufp * u, dp, u * dp)
+end
 
-# All parallel moments M_n in one u-quadrature: the Plemelj split per pole reuses
-# the single g(u)=[f,uf,u²f,f′,uf′] evaluation across every harmonic.
+# All parallel moments M_n in one u-quadrature.
 function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol = 1.0e-8)
     if iszero(kz)
         # pole-free: one moment integral serves every harmonic, weighted 1/Δ_n
         I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol, norm = NORM)[1]
-        return [I ./ (complex(ω) - n * Ω) for n in ns]
+        return [I ./ (ω - n * Ω) for n in ns]
     end
     ζs = [(ω - n * Ω) / kz for n in ns]
-    gζs = [_gpar(p, ζ) for ζ in ζs]
-    gscale = maximum(ζ -> NORM(_gpar(p, clamp(real(ζ), p.lo, p.hi))), ζs)
-    near = [_subtract_safe(gζ, gscale) for gζ in gζs]
-    gsubs = [near[i] ? gζs[i] : zero(gζs[i]) for i in eachindex(ns)]
-    reg = QuadGK.quadgk(p.lo, p.hi; rtol, norm = x -> maximum(NORM, x)) do u
-        g = _gpar(p, u)
-        [(g - gsubs[i]) / (u - ζs[i]) for i in eachindex(ns)]
-    end[1]
-    σ = sign(kz)
-    return [(-1 / kz) .* (reg[i] .+ gζs[i] .* _lpole_term(ζs[i], p.lo, p.hi, σ, near[i])) for i in eachindex(ns)]
+    Is = PeeledQuadGK((p.lo, p.hi), ζs)(u -> _gpar(p, u); side = Int(sign(kz)), rtol)
+    return (-1 / kz) .* Is
 end

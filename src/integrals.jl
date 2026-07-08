@@ -12,29 +12,27 @@ function _lpole_term(ζ, lo, hi, side, peeled)
     end
 end
 
-struct PeeledQuadGK{T, V, G, P, I}
+struct PeeledQuadGK{T, V}
     lims::T
     ζs::V
-    gζs::G
-    peel::P
-    _I::I
 end
 
+# per pole subtract g(ζₚ) when it is finite and not too large vs the on-contour scale
+# else integrate raw (the far/overflow branch)
 function (alg::PeeledQuadGK)(g; side = 1, maxratio = 1.0e6, kw...)
     lo, hi = alg.lims
-    ζs, gζs, peel = alg.ζs, alg.gζs, alg.peel
+    ζs = alg.ζs
     gscale = maximum(ζ -> NORM(g(clamp(real(ζ), lo, hi))), ζs)
-    @. gζs = g(ζs)
-    @. peel = all(isfinite, gζs) && NORM(gζs) <= maxratio * gscale
-    pts = (lo, hi)
+    gζs = g.(ζs)
+    peel = @. all(isfinite, gζs) && NORM(gζs) <= maxratio * gscale
+    I = similar(gζs)
     f! = function (y, u)
         gu = g(u)
         return @inbounds for i in eachindex(gζs)
             y[i] = ifelse(peel[i], gu - gζs[i], gu) * inv(u - ζs[i])
         end
     end
-    I = alg._I
-    QuadGK.quadgk!(f!, I, pts...; norm = v -> maximum(NORM, v), kw...)
+    QuadGK.quadgk!(f!, I, lo, hi; norm = v -> maximum(NORM, v), kw...)
     @. I = I + gζs * _lpole_term(ζs, lo, hi, side, peel)
     return I
 end
