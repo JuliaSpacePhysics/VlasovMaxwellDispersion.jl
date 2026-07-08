@@ -13,6 +13,7 @@ ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NonNegLeastSquares = "b7351bd1-99d9-5c5d-8786-f205a815c4d7"
+RationalFunctionApproximation = "c92886a3-cb30-4e18-b84f-372dde475ecc"
 # PlasmaBase = "08180eed-d86e-466d-af9d-ca90f527ad29"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 RootsAndPoles = "a0859a10-ccb4-11e8-145d-674b3750773a"
@@ -24,7 +25,7 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 
-# [sources]
+[sources]
 # PlasmaBase = {path = "lib/PlasmaBase"}
 
 [extensions]
@@ -41,6 +42,7 @@ LinearAlgebra = "1"
 Makie = "0.23, 0.24"
 NonNegLeastSquares = "0.4"
 QuadGK = "2.11"
+RationalFunctionApproximation = "0.3"
 Roots = "3.0.0"
 RootsAndPoles = "2"
 SciMLBase = "2, 3"

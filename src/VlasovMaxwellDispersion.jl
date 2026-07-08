@@ -43,9 +43,9 @@ export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
 export DispersionProblem, GlobalDispersionProblem
-export DispersionAlgorithm, Muller, GRPF, ArcLength, JumpFallback, DispersionSolution
+export DispersionAlgorithm, Muller, GRPF, ArcLength, AAA, JumpFallback, DispersionSolution
 export AngleSweep, CartesianSweep
-export SurveySolution, DispersionBranch, dispersion_diagram
+export SurveySolution, DispersionBranch, SolveStats, dispersion_diagram
 export GridFitMethod, NonnegBSpline, BicubicHermite, fit_grid
 
 function dispersion_diagram end

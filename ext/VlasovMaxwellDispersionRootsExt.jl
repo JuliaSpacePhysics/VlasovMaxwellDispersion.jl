@@ -1,12 +1,13 @@
 module VlasovMaxwellDispersionRootsExt
 
-using VlasovMaxwellDispersion: DispersionProblem, DispersionSolution, Wavenumber, residual, _seed_offset
+using VlasovMaxwellDispersion: DispersionProblem, DispersionSolution, SolveStats, Wavenumber, residual, _seed_offset
 import CommonSolve: solve
 import Roots
 
 # find_zero terminates on step size, so it both throws on the iteration cap AND can return a finite step-converged non-root.
 # Guard with an explicit residual check so a finite ω genuinely means |f(ω)|≈0 (track.jl's fallback relies on)
 function solve(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Roots.AbstractUnivariateZeroMethod; atol=1.0e-10, maxevals=100, kw...)
+    t0 = time_ns()
     nevals = Ref(0)
     rawf = prob.f
     f = ω -> (nevals[] += 1; rawf(ω))
@@ -18,7 +19,8 @@ function solve(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Roots.Abstract
         ComplexF64(NaN, NaN)
     end
     ok = isfinite(ω)
-    return DispersionSolution(ω, residual(prob, ω), nevals[], ok ? :Success : :Failure, prob, alg)
+    stats = SolveStats(nevals[], (time_ns() - t0) / 1.0e9)
+    return DispersionSolution(ω, residual(prob, ω), stats, ok ? :Success : :Failure, prob, alg)
 end
 
 end

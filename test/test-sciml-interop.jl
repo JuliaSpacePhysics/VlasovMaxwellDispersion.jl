@@ -33,4 +33,4 @@ sh = solve(np, SNS.SimpleHalley())
 sd = solve(prob, SNS.SimpleHalley())
 @test sd.retcode == :Success
 @test sd.omega ≈ ref rtol=1e-6
-@test sd.nevals > 0
+@test sd.stats.nevals > 0

@@ -25,7 +25,7 @@ end
     @test length(iter.omega) == 1
     sol = solve!(iter)
     @test sol.omega ≈ [k.kz for k in ks] atol = 1.0e-6
-    @test sol.nevals ≥ 4length(ks)
+    @test sol.stats.nevals ≥ 4length(ks)
 end
 
 

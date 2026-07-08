@@ -21,7 +21,7 @@ DispersionProblem(plasma, omega0, geometry; closure = HarmonicSum()) =
 """
     GlobalDispersionProblem(plasma, region, geometry; closure=HarmonicSum())
 
-Find *all* branches (roots and poles) of `det(𝒟)` in the complex ω box
+Find *all* root branches of `det(𝒟)` in the complex ω box
 `region=(lowerleft, upperright)` as the k-space `geometry` sweeps its parameters. 
 A branch is an `m`-manifold `ω*(p)` where `m` is the geometry's swept dimension: 
 a point (`m=0`), curve (`m=1`), surface (`m=2`), ….
@@ -39,11 +39,14 @@ end
 GlobalDispersionProblem(plasma, region, geometry; closure = HarmonicSum()) =
     GlobalDispersionProblem(plasma, region, geometry, closure)
 
-n_swparams(p::GlobalDispersionProblem) = n_swparams(p.geometry)
-wavefun(p::GlobalDispersionProblem) = wavefun(p.geometry)
-parambox(p::GlobalDispersionProblem) = parambox(p.geometry)
 _realtype(p::GlobalDispersionProblem) =
     promote_type(_realtype(p.region), _realtype(p.geometry))
+
+
+struct SolveStats{T}
+    nevals::Int # number of evaluations
+    time::T # solving time in seconds
+end
 
 """
     DispersionSolution
@@ -53,12 +56,11 @@ of roots for continuation. `retcode` is
 `:Success`, `:Failure`, or `:Partial` (branch with some non-converged `k`).
 `resid` is the scale-invariant [`residual`](@ref) `|det 𝒟| / ∏ᵢ‖𝒟ᵢ,:‖` at the
 root(s), mirroring the shape of `omega` (`NaN` for non-converged entries).
-`nevals` counts dispersion-function evaluations.
 """
-struct DispersionSolution{T, R, Pr, A}
+struct DispersionSolution{T, R, S, Pr, A}
     omega::T
     resid::R
-    nevals::Int
+    stats::S
     retcode::Symbol
     prob::Pr
     alg::A
@@ -81,26 +83,34 @@ Base.getindex(b::DispersionBranch, args...) = getindex(b.omega, args...)
 """
     SurveySolution
 
-A collection of discovered [`DispersionBranch`](@ref)es. 
-`retcode` is `:Success`, `:Failure` (no root branch found), 
+A collection of discovered [`DispersionBranch`](@ref)es.
+`retcode` is `:Success`, `:Failure` (no root branch found),
 or `:Partial` (a fit saturated — structure may exceed one rational fit).
-`nevals` counts `det` evaluations.
 """
-struct SurveySolution{BR, BP, Pr, A}
+struct SurveySolution{BR, Pr, A}
     roots::Vector{BR}
-    poles::Vector{BP}
-    nevals::Int
+    stats::SolveStats
     retcode::Symbol
     prob::Pr
     alg::A
 end
 
-Base.show(io::IO, s::SurveySolution) =
-    print(
-    io, "SurveySolution(retcode=:", s.retcode, ", ", length(s.roots), " roots, ",
-    length(s.poles), " poles, ", s.nevals, " evals)"
+# Prune branches post hoc, e.g. filter(b -> length(b.omega) ≥ 5, sol)
+Base.filter(pred, s::SurveySolution) = SurveySolution(
+    filter(pred, s.roots), s.stats, s.retcode, s.prob, s.alg
 )
 
-Base.show(io::IO, sol::DispersionSolution) =
-    print(io, "DispersionSolution(retcode=:", sol.retcode, ", omega=", sol.omega,
-          ", ", sol.nevals, " evals)")
+_show_stats(io, st::SolveStats) =
+    print(io, st.nevals, " evals, ", round(st.time; sigdigits = 3), " s")
+
+function Base.show(io::IO, s::SurveySolution)
+    print(io, "SurveySolution(retcode=:", s.retcode, ", ", length(s.roots), " roots, ")
+    _show_stats(io, s.stats)
+    return print(io, ")")
+end
+
+function Base.show(io::IO, sol::DispersionSolution)
+    print(io, "DispersionSolution(retcode=:", sol.retcode, ", omega=", sol.omega, ", ")
+    _show_stats(io, sol.stats)
+    return print(io, ")")
+end

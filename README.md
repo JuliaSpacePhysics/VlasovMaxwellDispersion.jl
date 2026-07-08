@@ -18,8 +18,8 @@ alg = Muller()
 sol = solve(DispersionProblem(pl, 1.2 - 0.1im, k), alg)             # seeded root (Langmuir+Landau)
 ω   = sol.omega
 
-gsol = solve(GlobalDispersionProblem(pl, (0.5 - 0.6im, 2.5 + 0.1im), k))  # all roots+poles in a box
-roots, poles = gsol.roots, gsol.poles
+gsol = solve(GlobalDispersionProblem(pl, (0.5 - 0.6im, 2.5 + 0.1im), k))  # all roots in a box
+roots = gsol.roots
 
 ks   = [Wavenumber(0.0, kz) for kz in 0.3:0.05:1.0]
 ωs   = solve(DispersionProblem(pl, 1.2 - 0.1im, ks)).omega          # track k branch
