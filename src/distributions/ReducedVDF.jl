@@ -18,10 +18,10 @@ function ReducedVDF(fpar; para, df = nothing, normalize = true)
     return ReducedVDF(dfp, (lo, hi), n)
 end
 
-function contribution(d::ReducedVDF, s, ω, k; kwargs...)
+function contribution(d::ReducedVDF, s, ω, k; rtol = 1.0e-9, closure = HarmonicSum(), kw...)
     iszero(perp(k)) ||
         throw(ArgumentError("ReducedVDF (1-D parallel) only supports field-aligned electrostatic kperp=0"))
     kz = para(k)
-    χzz = -(s.Pi2 / kz^2) * hilbert(d.df, ω / kz, d.para...; σ = sign(kz))
+    χzz = -(s.Pi2 / kz^2) * plan_landau(d.para, ω / kz, sign(kz))(d.df; rtol, kw...)
     return _ee33(χzz) / d.n
 end

@@ -42,8 +42,8 @@ function CoupledVDF(
     return CoupledVDF(f0, dg, (plo, phi), (qlo, qhi), oftype(phi, n), regime)
 end
 
-function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum())
-    return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k) / d.n
+function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum(), kw...)
+    return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k; kw...) / d.n
 end
 
 function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = NORM, rtol = 1.0e-6)
@@ -61,12 +61,12 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     X = if !iszero(kz)
         invkz = -1 / kz
         ζs = [(ω - n * Ω) / kz for n in ns]
-        landau_integral = PeeledQuadGK(d.para, ζs)
+        landau_integral = plan_landau(d.para, ζs, sign(kz))
 
         # I(p⊥) for the WHOLE harmonic sum at one perp node
         QuadGK.quadgk(d.perp...; rtol, norm) do v
             _perp_Bessel_bilinears!(b2s, a, v)
-            Is = landau_integral(; side = Int(sign(kz)), rtol) do u
+            Is = landau_integral(; rtol) do u
                 q, p = d.dgrad(v, u)
                 SVector(q, u * q, u^2 * q, p, u * p)
             end
@@ -90,6 +90,9 @@ function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, 
     return (s.Pi2 / ω^2) * _antisymmat(X)
 end
 
+const _GL24 = GaussLegendre(24)
+const _GL32 = GaussLegendre(32)
+
 # Relativistic path, sliced in (p⊥,p∥) — docs/relativistic.md.
 # Resonance D(p∥) = ωγ − k∥p∥ − nΩ₀ with γ=√(1+p⊥²+p∥²) rationalizes,
 #   D·D̃ = A(p∥−p₊)(p∥−p₋),  D̃ = ωγ + k∥p∥ + nΩ₀,  A = ω²−k∥²,
@@ -98,7 +101,7 @@ end
 # Endpoints |p∥|=P sit where f₀≈0, so no endpoint (rim-type) corrections arise.
 # f₀ must be evaluable at complex p∥ (poles sit off-axis for complex ω).
 # Validated vs Maxwell–Jüttner (Swanson) to ~1e-5 down to Im ω = −0.15 at μ=2.
-function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-6)
+function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, ω, k; quad = BoxQuad(_GL24, _GL32), rtol = 1.0e-6)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     if imag(ω) < 0 && real(ω)^2 > kz^2
         @warn "damped superluminal ω (|Re ω| > |k∥|): the (p⊥,p∥) integral is not the analytic continuation there (apex branch cut, docs/relativistic.md); evaluate at Im ω ≥ 0 and continue externally" maxlog = 1
@@ -108,41 +111,31 @@ function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, 
     qhi = d.perp[2]
     γmax = sqrt(1 + max(phi^2, plo^2) + qhi^2)
     nmax = nmax_bessel(a^2 * qhi^2 / 2)
-    f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a)
+    f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a, quad)
     X_T = 2π * converge(f; nmax, rtol)
-    X = _antisymmat(X_T) .+ _ee33(_bernstein_rel(d, γmax))
+    X = _antisymmat(X_T) .+ _ee33(_bernstein_rel(d, γmax, quad))
     return (s.Pi2 / ω^2) * X
 end
 
 # Relativistic non-resonant e∥e∥ term without prefactor
-function _bernstein_rel(d, γmax; GLγ = _GLγ, GLp = _GLp)
-    gn, gw = GLγ
-    pn, pw = GLp
-    acc = zero(ComplexF64)
-    for ig in eachindex(gn)
-        q = (gn[ig] + 1) / 2
+# Edge-mapped: γ→q² concentrates nodes near γ=1, p∥→θ half-angle over the resonance ellipse
+function _bernstein_rel(d, γmax, qs = BoxQuad(_GL24, _GL32))
+    acc = quad(qs.outer, 0, 1) do q
         γ = 1 + (γmax - 1) * q^2
-        wγ = gw[ig] * (γmax - 1) * q
+        wγ = 2 * (γmax - 1) * q
         umax = sqrt(γ^2 - 1)
-        inner = zero(ComplexF64)
-        for ip in eachindex(pn)
-            θ = pn[ip] * (π / 2)
+        inner = quad(qs.inner, -1, 1) do t
+            θ = t * (π / 2)
             u, w = umax .* sincos(θ)
             dpe, dpa = d.dgrad(w, u)
-            inner += pw[ip] * (π / 2) * ComplexF64(w * u * dpa - u^2 * dpe)
+            (π / 2) * ComplexF64(w * u * dpa - u^2 * dpe)
         end
-        acc += wγ * inner
+        wγ * inner
     end
     return 2π * acc
 end
 
 @inline _ee33(x) = @SMatrix ComplexF64[0 0 0; 0 0 0; 0 0 x]
-
-
-# Fixed Gauss–Legendre orders for the edge-mapped relativistic path (outer γ→q, inner p∥→θ).
-# Very sharp/multi-scale f₀ may need higher orders — bump these.
-const _GLγ = QuadGK.gauss(24)
-const _GLp = QuadGK.gauss(32)
 
 # Covariant momentum numerator 𝒰 = ω∂_γf+k∥∂_uf at (γ,p∥) with w=p⊥, rewritten via
 # ∂_γ|_u=(γ/w)∂_⊥, ∂_u|_γ=∂_∥−(u/w)∂_⊥ ⇒ 𝒰 = k∥∂_∥f + (ωγ−k∥u)/w · ∂_⊥f.
@@ -207,19 +200,13 @@ end
 #   ∫ σ𝓣_n/D_n du = ∫ Σᵢ cᵢ·W/(u−pᵢ) du,  W = σ·D̃_n·𝓣_n,  σ = 𝒰·p⊥/γ,
 # with peeled poles kept as single fractions (c·W(u)−r)/(u−p) — the split form
 # σ𝓣/D − r/(u−p) carries 1/(u−p)² rounding noise near the pole.
-function _coupled_harmonic_rel(n, d, ω, Ω, kz, a; GLq = _GLγ, GLp = _GLp)
+function _coupled_harmonic_rel(n, d, ω, Ω, kz, a, qs::BoxQuad)
     plo, phi = d.para
     qlo, qhi = d.perp
     nΩ = n * Ω
     ν = imag(ω)
     σ = sign(kz)
-    qn, qw = GLq
-    un, uw = GLp
-    qmid, qhalf = (qlo + qhi) / 2, (qhi - qlo) / 2
-    umid, uhalf = (plo + phi) / 2, (phi - plo) / 2
-    total = zero(AType)
-    for iq in eachindex(qn)
-        q = qmid + qhalf * qn[iq]
+    return quad(qs.outer, qlo, qhi) do q
         m2 = 1 + q^2
         z = a * q
         γof(u) = sqrt(complex(m2 + u^2))
@@ -231,23 +218,20 @@ function _coupled_harmonic_rel(n, d, ω, Ω, kz, a; GLq = _GLγ, GLp = _GLp)
         (p1, c1), (p2, c2) = _Dn_poles(ω, kz, nΩ, m2)
         r1, lg1 = _peel_residue(p1, c1, Wof, γof, ν, plo, phi, σ)
         r2, lg2 = _peel_residue(p2, c2, Wof, γof, ν, plo, phi, σ)
-        reg = zero(AType)
-        for iu in eachindex(un)
-            u = umid + uhalf * un[iu]
+        reg = quad(qs.inner, plo, phi) do u
             γ = γof(u)
-            acc = zero(AType)
             if isfinite(p1) || isfinite(p2)
                 Wu = Wof(u, γ)
+                acc = zero(Wu)
                 isfinite(p1) && (acc = acc .+ (c1 .* Wu .- r1) ./ (u - p1))
                 isfinite(p2) && (acc = acc .+ (c2 .* Wu .- r2) ./ (u - p2))
+                acc
             else                       # A=B=0 (ω=±k∥, n=0): quadratic degenerate, no poles
-                acc = (σof(u, γ) .* _T_n_bare(n, z, u, q)) ./ (ω * γ - kz * u - nΩ)
+                (σof(u, γ) .* _T_n_bare(n, z, u, q)) ./ (ω * γ - kz * u - nΩ)
             end
-            reg = reg .+ (uhalf * uw[iu]) .* acc
         end
-        total = total .+ (qhalf * qw[iq]) .* (reg .+ lg1 .+ lg2)
+        reg .+ lg1 .+ lg2
     end
-    return total
 end
 
 include("qin.jl")

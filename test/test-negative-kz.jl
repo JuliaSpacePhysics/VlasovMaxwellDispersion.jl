@@ -4,20 +4,6 @@
 # residue; growing ω exercises the causal-side branch choice (which was also wrong
 # for k∥<0: Im ω>0 puts ζ in the lower half-plane).
 
-@testitem "hilbert σ orientation: reflection + Schwarz identities" begin
-    using VlasovMaxwellDispersion: hilbert
-
-    g = v -> exp(-v^2) * (1 + v / 3)
-    gr = t -> g(-t)
-    L, U = -3.0, 3.0
-    for ζ in (0.4 + 0.3im, 0.4 - 0.25im, -0.7 + 0.02im, 0.9 - 0.01im)
-        # substitution v→−v maps orientation σ=−1 to the standard σ=+1 integral
-        @test hilbert(g, ζ, L, U; σ = -1) ≈ -hilbert(gr, -ζ, -U, -L) rtol = 1.0e-8
-        # Schwarz reflection (real-analytic g): H₋(ζ) = conj(H₊(conj ζ))
-        @test hilbert(g, ζ, L, U; σ = -1) ≈ conj(hilbert(g, conj(ζ), L, U)) rtol = 1.0e-8
-    end
-end
-
 @testitem "hilbert_landau_pwpoly σ orientation: Schwarz identity" begin
     using VlasovMaxwellDispersion: hilbert_landau_pwpoly
 
