@@ -50,7 +50,7 @@ end
     @test abs(relA - oracle) / abs(oracle) < 0.02
 end
 
-@testitem "CoupledVDF Newberger (A) handles damped modes (residue extraction)" tags = [:slow] begin
+@testitem "CoupledVDF Newberger (A) handles damped modes (residue extraction)" begin
     g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))
     kw = (para = (-8.0, 8.0), perp = 6.0)
     s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))

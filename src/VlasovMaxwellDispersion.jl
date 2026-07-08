@@ -48,4 +48,6 @@ export LocalDispersionProblem, GlobalDispersionProblem, BranchProblem
 export DispersionAlgorithm, Muller, GRPF, ArcLength, DispersionSolution
 export GridFitMethod, NonnegBSpline, BicubicHermite, fit_grid
 
+function dispersion_diagram end
+
 end

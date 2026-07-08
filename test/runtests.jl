@@ -2,7 +2,6 @@ using VlasovMaxwellDispersion
 using TestItemRunner
 
 @run_package_tests verbose=true
-# @run_package_tests verbose=true filter=ti -> !(:slow in ti.tags)
 
 @testitem "besselj_ladder vs SpecialFunctions" begin
     include("test-bessel-ladder.jl")
