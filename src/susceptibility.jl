@@ -9,29 +9,33 @@ function contribution(vdf::AbstractVDF, ω, k; kw...)
     return contribution(NormalizedSpecies(1.0, 1.0, vdf), ω, k; kw...)
 end
 
+# ω̃²·χ_s
+@inline scaled_contribution(s, ω, k; kwargs...) =
+    scaled_contribution(s.vdf, s, ω, k; kwargs...)
+scaled_contribution(vdf, s, ω, k; kwargs...) =
+    complex(ω)^2 * contribution(vdf, s, ω, k; kwargs...)
+
+
+# Quadrature-based χ paths raise QuadGK's DomainError when overflow.
+# Return NaN so root-finders and ω-scans reject point instead of crashing.
+@inline function _guarded_sum(f, plasma)
+    _nan_tensor() = SMatrix{3, 3, ComplexF64}(ntuple(_ -> complex(NaN, NaN), 9))
+    return try
+        mapreduce(f, +, NormalizedPlasma(plasma))
+    catch err
+        err isa DomainError && isdefined(err, :msg) &&
+            startswith(err.msg, "integrand produced") || rethrow()
+        _nan_tensor()
+    end
+end
 
 """
-    dielectric(plasma, ω, k; closure=HarmonicSum())
+    dielectric(plasma, ω, k)
 
 Dielectric tensor `ε = I + Σ_s χ_s(ω,k)`.
 """
-function dielectric(plasma, ω, k; kwargs...)
-    _nan_tensor() = SMatrix{3, 3, ComplexF64}(ntuple(_ -> complex(NaN, NaN), 9))
-    _is_quadgk_nonfinite_error(err) =
-        err isa DomainError && isdefined(err, :msg) && startswith(err.msg, "integrand produced")
-
-    # Quadrature-based χ paths raise QuadGK's DomainError when the Landau-residue
-    # continuation overflows at strongly-damped ω. Return NaN — matching the analytic
-    # Maxwellian path, which goes non-finite without throwing there — so root-finders
-    # and ω-scans reject the point instead of crashing. Any other error stays loud.
-    χ = try
-        mapreduce(s -> contribution(s, ω, k; kwargs...), +, NormalizedPlasma(plasma))
-    catch err
-        _is_quadgk_nonfinite_error(err) || rethrow()
-        return _nan_tensor()
-    end
-    return χ + I
-end
+dielectric(plasma, ω, k; kwargs...) =
+    _guarded_sum(s -> contribution(s, ω, k; kwargs...), plasma) + I
 
 # Curl-curl operator k̃k̃ᵀ - k̃²I . From the wave eq
 # n×(n×E)+εE=0 with n=k̃/ω̃: n×(n×E) = (nnᵀ-n²I)E ⇒ D = ε + curlcurl/ω̃²
