@@ -40,7 +40,6 @@ end
 # at fixed p⊥ the parallel slice is a 1-D kappa,
 #     f(·,p⊥) ∝ (b + p∥²/a∥)^{-(κ+1)},  b = 1 + p⊥²/a⊥,
 # whose Cauchy moments close (β²=a∥b in H_m).
-# invk is folded into z, so `_In_block`'s c=1 supplies only the ∫d³p 2π factor.
 function _harmonic_sum_perp(d::BiKappa, v, ns, C, ω, Ω, kz, a)
     κ, a_para, a_perp = d.kappa, d.a_para, d.a_perp
     b = 1 + v^2 / a_perp
@@ -48,27 +47,25 @@ function _harmonic_sum_perp(d::BiKappa, v, ns, C, ω, Ω, kz, a)
     # ∂⊥f = cFr·D^{-M},  ∂∥f = cTr·u·D^{-M},  M=κ+2, D=b+u²/a∥
     cFr = -2 * C * (κ + 1) * v / a_perp
     cTr = -2 * C * (κ + 1) / a_para
-    invk = -1 / kz
     return @no_escape begin
         b2s = @alloc(SVector{6, typeof(a * v)}, length(ns))
         _perp_Bessel_bilinears!(b2s, a, v)
-        acc = zero(AType)
         if iszero(kz)
             S0, S2 = _kappa_Gm0(a_para, b, κ)
-            @inbounds for (i, n) in enumerate(ns)
+            sum(zip(b2s, ns)) do (b2, n)
                 invΔ = 1 / (ω - n * Ω)
                 z = (cFr * S0, zero(invΔ), cFr * S2, zero(invΔ), cTr * S2) .* invΔ
-                acc += _In_block(z, 1, b2s[i], v, ω, kz, n * Ω)
+                _In_block(z, 1, b2, v, ω, kz, n * Ω)
             end
         else
-            @inbounds for (i, n) in enumerate(ns)
+            invk = -1 / kz
+            sum(zip(b2s, ns)) do (b2, n)
                 ζ = (ω - n * Ω) / kz
                 G0, G1, G2 = _kappa_Gm(ζ, a_para, b, κ, σ)
                 # F slice ← ∂⊥f (moments G0..G2), T slice ← ∂∥f (uᵐ·∂∥f → G_{m+1})
                 z = invk .* (cFr * G0, cFr * G1, cFr * G2, cTr * G1, cTr * G2)
-                acc += _In_block(z, 1, b2s[i], v, ω, kz, n * Ω)
+                _In_block(z, 1, b2, v, ω, kz, n * Ω)
             end
         end
-        acc
     end
 end
