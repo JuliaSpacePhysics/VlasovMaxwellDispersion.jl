@@ -1,6 +1,6 @@
 module VlasovMaxwellDispersionRootsExt
 
-using VlasovMaxwellDispersion: LocalDispersionProblem, DispersionSolution, residual
+using VlasovMaxwellDispersion: LocalDispersionProblem, DispersionSolution, residual, _seed_offset
 import CommonSolve: solve
 import Roots
 
@@ -8,7 +8,7 @@ import Roots
 # Guard with an explicit residual check so a finite ω genuinely means |f(ω)|≈0 (track.jl's fallback relies on)
 function solve(prob::LocalDispersionProblem, alg::Roots.AbstractUnivariateZeroMethod; atol=1.0e-10, maxevals=100, kw...)
     f = prob.f
-    h = 1.0e-3 * max(abs(prob.omega0), 1.0)
+    h = _seed_offset(prob.omega0)
     ω = try
         z = ComplexF64(Roots.find_zero(f, prob.omega0 + h * im, alg; atol, maxevals, kw...))
         abs(f(z)) <= sqrt(atol) * max(abs(f(prob.omega0)), 1) ? z : ComplexF64(NaN, NaN)

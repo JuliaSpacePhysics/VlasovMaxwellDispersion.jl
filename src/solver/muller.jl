@@ -8,10 +8,13 @@ Base.@kwdef struct Muller
     maxiter::Int = 100
 end
 
-# Three seeds are clustered around `omega0` (small relative+absolute perturbation).
+# Absolute-floored relative step capped at 0.1|ω0|.
+# ω0===0 has no scale ⇒ small absolute step.
+_seed_offset(ω0) = iszero(ω0) ? 1.0e-3 : min(1.0e-3 * max(abs(ω0), 1.0), 0.1 * abs(ω0))
+
 function CommonSolve.solve(prob::LocalDispersionProblem, alg::Muller)
     f = prob.f
-    h = 1.0e-3 * max(abs(prob.omega0), 1.0)
+    h = _seed_offset(prob.omega0)
     ω = muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im; alg.atol, alg.maxiter)
     ok = isfinite(ω)
     return DispersionSolution(ω, nothing, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
