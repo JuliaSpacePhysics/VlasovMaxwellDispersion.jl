@@ -3,18 +3,19 @@
 abstract type AbstractDispersionProblem end
 
 """
-    LocalDispersionProblem(plasma, k, omega0; closure=HarmonicSum())
+    DispersionProblem(plasma, omega0, geometry; closure=HarmonicSum())
 
-Refine the single mode of `det(𝒟(plasma,ω,k))=0` near seed `omega0`.
+Refine a seeded mode of `det(𝒟(plasma,ω,k))=0`. A [`Wavenumber`](@ref) `geometry`
+selects point refinement; an ordered wavenumber collection selects continuation.
 """
-struct LocalDispersionProblem{P, K, T, C} <: AbstractDispersionProblem
+struct DispersionProblem{P, K, T, C} <: AbstractDispersionProblem
     plasma::P
-    k::K
     omega0::T
+    k::K
     closure::C
 end
-LocalDispersionProblem(plasma, k, omega0; closure = HarmonicSum()) =
-    LocalDispersionProblem(plasma, k, complex(float(omega0)), closure)
+DispersionProblem(plasma, omega0, geometry; closure = HarmonicSum()) =
+    DispersionProblem(plasma, omega0, geometry, closure)
 
 
 """
@@ -45,25 +46,10 @@ _realtype(p::GlobalDispersionProblem) =
     promote_type(_realtype(p.region), _realtype(p.geometry))
 
 """
-    BranchProblem(plasma, ks, omega0; closure=HarmonicSum())
-
-Track one dispersion branch across the wavenumber sequence `ks`, seeded at
-`omega0`.`
-"""
-struct BranchProblem{P, K, T, C} <: AbstractDispersionProblem
-    plasma::P
-    ks::K
-    omega0::T
-    closure::C
-end
-BranchProblem(plasma, ks, omega0; closure = HarmonicSum()) =
-    BranchProblem(plasma, ks, omega0, closure)
-
-"""
     DispersionSolution
 
-Result of `solve(::Local/BranchDispersionProblem, alg)`. `omega` is the root
-(`Local`) or the vector of roots along the sweep (`Branch`). `retcode` is
+Result of a seeded `solve`. `omega` is a root for point refinement or a vector
+of roots for continuation. `retcode` is
 `:Success`, `:Failure`, or `:Partial` (branch with some non-converged `k`).
 `resid` is the scale-invariant [`residual`](@ref) `|det 𝒟| / ∏ᵢ‖𝒟ᵢ,:‖` at the
 root(s), mirroring the shape of `omega` (`NaN` for non-converged entries).

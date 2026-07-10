@@ -11,7 +11,7 @@
     ks = [Wavenumber(row[1] / vA, row[2] / vA) for row in eachrow(data)]
     reference = complex.(data[:, 3], data[:, 4])
 
-    roots = solve(BranchProblem(plasma, ks, reference[1])).omega
+    roots = solve(DispersionProblem(plasma, reference[1], ks)).omega
 
     @test all(isfinite, roots)
     @test maximum(abs.(real.(roots) .- real.(reference)) ./ abs.(real.(reference))) < 1.0e-2
@@ -59,7 +59,7 @@ end
         k = Wavenumber(row[1], row[2])
         ωref = complex(row[3], row[4])
         for p in (plasma,)
-            sol = solve(LocalDispersionProblem(p, k, ωref))
+            sol = solve(DispersionProblem(p, ωref, k))
             ω = sol.omega
             @test sol.resid < 1.0e-6
             # Exact analytic Maxwell-Jüttner vs ALPS's coarse 60×30 gridded+order-30

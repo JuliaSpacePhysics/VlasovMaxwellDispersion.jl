@@ -15,14 +15,14 @@ pl = NormalizedSpecies(-1.0, 1.0, Maxwellian(1.0))   # Ω̃, Π̃², VDF
 k  = Wavenumber(0.0, 0.7)                           # k̃ = (k⊥, k∥)·c/Ω_ref
 
 alg = Muller()
-sol = solve(LocalDispersionProblem(pl, k, 1.2 - 0.1im), alg)        # local root (Langmuir+Landau)
+sol = solve(DispersionProblem(pl, 1.2 - 0.1im, k), alg)             # seeded root (Langmuir+Landau)
 ω   = sol.omega
 
 gsol = solve(GlobalDispersionProblem(pl, (0.5 - 0.6im, 2.5 + 0.1im), k))  # all roots+poles in a box
 roots, poles = gsol.roots, gsol.poles
 
 ks   = [Wavenumber(0.0, kz) for kz in 0.3:0.05:1.0]
-ωs   = solve(BranchProblem(pl, ks, 1.2 - 0.1im)).omega             # track k branch
+ωs   = solve(DispersionProblem(pl, 1.2 - 0.1im, ks)).omega          # track k branch
 ```
 
 ## Distributions
@@ -37,7 +37,7 @@ mp_me = 1836.15
 
 # bi-Maxwellian: temperature anisotropy + parallel drift (whistler / firehose)
 pl = NormalizedSpecies(-1.0, 4.0, Maxwellian(vth_para=0.02, vth_perp=0.04, vd=0.0))
-ω  = solve(LocalDispersionProblem(pl, Wavenumber(0.0, 0.5), 0.9 - 0.05im)).omega
+ω  = solve(DispersionProblem(pl, 0.9 - 0.05im, Wavenumber(0.0, 0.5))).omega
 
 # Ring / shell: perp ring speed vr — I₀ gyro-ring, or a literal shifted Gaussian
 ring  = Maxwellian(vth_para=0.1, vth_perp=0.1, vr=0.3)
@@ -46,7 +46,7 @@ shell = GaussianRing(vth_para=0.1, vth_perp=0.1, vr=0.3)
 # Field-aligned electrostatic (k⊥=0): bump-on-tail / two-stream / Landau
 f(u) = 0.94exp(-u^2)/√π + 0.06exp(-((u-4)/0.5)^2)/(0.5√π)
 pl = NormalizedSpecies(-1.0, 1.0, ReducedVDF(f; para=(-12.0, 14.0)))
-ω  = solve(LocalDispersionProblem(pl, Wavenumber(0.0, 0.25), 1.0 + 0.05im)).omega  # Im ω>0 ⇒ growth
+ω  = solve(DispersionProblem(pl, 1.0 + 0.05im, Wavenumber(0.0, 0.25))).omega  # Im ω>0 ⇒ growth
 
 # Arbitrary f₀(p⊥,p∥)
 g(q, u) = exp(-(u^2 + q^2 + 0.6u*q))
@@ -92,7 +92,7 @@ plasma = (NormalizedSpecies(e, B0, Proton()), NormalizedSpecies(p, B0, Proton())
 Specialized VDFs include: Cold fluid `ColdVDF`, (bi-)Maxwellian, drifting, ring `Maxwellian` / `GaussianRing`, Maxwell–Jüttner (relativistic) `MaxwellJuttner`.
 
 Solvers follow the `CommonSolve.solve(problem, algorithm)` interface: a
-`Local`/`Global`/`BranchProblem` (seed / search box / k-sequence) solved by
+`DispersionProblem`/`GlobalDispersionProblem` (seeded / seedless survey) solved by
 `Muller` (default) / `GRPF` (`RootsAndPoles.jl`) / `ArcLength`. `solve` returns a
 `DispersionSolution` (`.omega`, `.retcode`).
 

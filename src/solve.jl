@@ -6,7 +6,7 @@ dispersion_function(prob::AbstractDispersionProblem) =
 deflated_dispersion_function(prob::AbstractDispersionProblem) =
     ω -> det(wave_dispersion_tensor(prob.plasma, ω, prob.k; closure = prob.closure))
 
-@inline Base.getproperty(prob::LocalDispersionProblem, s::Symbol) =
+@inline Base.getproperty(prob::DispersionProblem, s::Symbol) =
     s === :f ? _scaled_dispersion_function(prob) : getfield(prob, s)
 @inline Base.getproperty(prob::GlobalDispersionProblem, s::Symbol) =
     s === :f ? deflated_dispersion_function(prob) : getfield(prob, s)
@@ -32,7 +32,7 @@ end
 residual(prob::AbstractDispersionProblem, ω, k = prob.k) =
     residual(prob.plasma, ω, k; closure = prob.closure)
 
-function _scaled_dispersion_function(prob::LocalDispersionProblem)
+function _scaled_dispersion_function(prob::DispersionProblem)
     f = dispersion_function(prob)
     s = _hadamard(dispersion_tensor(prob.plasma, prob.omega0, prob.k; closure = prob.closure))
     return isfinite(s) && s > 0 ? (ω -> f(ω) / s) : f
@@ -43,9 +43,11 @@ include("solver/GRPF.jl")
 include("solver/ArcLength.jl")
 
 """
-    solve(prob::LocalDispersionProblem, alg = Muller()) -> DispersionSolution
+    solve(prob::DispersionProblem, alg = Muller()) -> DispersionSolution
 """
-CommonSolve.solve(prob::LocalDispersionProblem) = CommonSolve.solve(prob, Muller())
+CommonSolve.solve(prob::DispersionProblem{<:Any, <:Wavenumber}) = CommonSolve.solve(prob, Muller())
+CommonSolve.solve(prob::DispersionProblem) = CommonSolve.solve(prob, ArcLength())
+CommonSolve.solve(prob::DispersionProblem, alg) = CommonSolve.solve(prob, ArcLength(base = alg))
 
 
 """
@@ -88,7 +90,7 @@ end
 function _refine_roots(prob, k, roots, alg)
     polished = eltype(roots)[]
     for ω0 in roots
-        ω = solve(LocalDispersionProblem(prob.plasma, k, ω0; closure = prob.closure), alg).omega
+        ω = solve(DispersionProblem(prob.plasma, ω0, k; closure = prob.closure), alg).omega
         isfinite(ω) || (ω = ω0)
         all(abs(ω - z) > sqrt(alg.atol) for z in polished) && push!(polished, ω)
     end
@@ -101,8 +103,7 @@ function _in_box(region, point = 0)
 end
 
 """
-    solve(prob::BranchProblem, alg=ArcLength()) -> DispersionSolution
+    solve(prob::DispersionProblem, alg=ArcLength()) -> DispersionSolution
 
-Track one branch across `prob.ks`. `retcode` is `:Partial` if any `k` failed.
+Track one branch across `prob.k`. `retcode` is `:Partial` if any `k` failed.
 """
-CommonSolve.solve(prob::BranchProblem; kw...) = solve(prob, ArcLength(); kw...)

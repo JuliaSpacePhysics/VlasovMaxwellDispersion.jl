@@ -42,8 +42,8 @@ end
     sep = SeparableVDF(mx; para = (-14vthp, 14vthp), perp = 14vthq)
     k = Wavenumber(0.2, 0.3)
     ions = NormalizedSpecies(1.0, 1 / 1836, ColdVDF())
-    ωs = solve(LocalDispersionProblem((NormalizedSpecies(-1.0, 1.0, sep), ions), k, 1.0 - 1.0e-3im)).omega
-    ωm = solve(LocalDispersionProblem((NormalizedSpecies(-1.0, 1.0, mx), ions), k, 1.0 - 1.0e-3im)).omega
+    ωs = solve(DispersionProblem((NormalizedSpecies(-1.0, 1.0, sep), ions), 1.0 - 1.0e-3im, k)).omega
+    ωm = solve(DispersionProblem((NormalizedSpecies(-1.0, 1.0, mx), ions), 1.0 - 1.0e-3im, k)).omega
     @test ωs ≈ ωm
 end
 
@@ -58,7 +58,7 @@ end
     D = dispersion_tensor(s, ω, k)
     @test all(x -> isnan(real(x)), D)
     @test isnan(real(electrostatic_det(s, ω, k)))  # guard sits in dielectric: covers this too
-    sol = solve(LocalDispersionProblem(s, k, ω))  # seeded in the overflow region
+    sol = solve(DispersionProblem(s, ω, k))  # seeded in the overflow region
     @test sol.retcode === :Failure && isnan(sol.resid)
 
     # Same overflow, coupled quadrature path

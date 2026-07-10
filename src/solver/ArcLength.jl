@@ -26,9 +26,9 @@ Base.@kwdef struct ArcLength{B, F}
     fallback::F = JumpFallback()
 end
 
-function CommonSolve.solve(prob::BranchProblem, alg::ArcLength)
-    ωs = _track(prob.plasma, prob.ks, prob.omega0, prob.closure, alg)
-    res = [residual(prob.plasma, ω, k; closure = prob.closure) for (k, ω) in zip(prob.ks, ωs)]
+function CommonSolve.solve(prob::DispersionProblem, alg::ArcLength)
+    ωs = _track(prob.plasma, prob.k, prob.omega0, prob.closure, alg)
+    res = [residual(prob.plasma, ω, k; closure = prob.closure) for (k, ω) in zip(prob.k, ωs)]
     return DispersionSolution(ωs, res, all(isfinite, ωs) ? :Success : :Partial, prob, alg)
 end
 
@@ -43,7 +43,7 @@ function _track(plasma, ks, omega0, closure, alg)
     for k in ks
         # Predictor: linear extrapolation once two finite roots exist.
         guess = isfinite(prev2) && isfinite(prev) ? 2prev - prev2 : prev
-        ω = solve(LocalDispersionProblem(plasma, k, guess; closure), alg.base).omega
+        ω = solve(DispersionProblem(plasma, guess, k; closure), alg.base).omega
         if _needs_fallback(alg.fallback, ω, guess, prev, prev2)
             radius = _fallback_radius(alg.fallback, guess, prev, prev2)
             region = (guess - radius * (1 + im), guess + radius * (1 + im))

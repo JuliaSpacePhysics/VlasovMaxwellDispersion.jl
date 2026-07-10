@@ -44,7 +44,7 @@ end
     # never pinned the location). Polishing to the actual root is far stronger: it
     # lands a genuine zero (residual→1e-14) AND recovers BOTH ALPS numbers — frequency
     # to 1e-3 and, unusually for a near-marginal mode, the damping rate to ~1%.
-    sol = solve(LocalDispersionProblem(plasma, k, ωref))
+    sol = solve(DispersionProblem(plasma, ωref, k))
     ω = sol.omega
     @test sol.resid < 1e-9                # genuine isolated root (scale-invariant)
     @test real(ω) ≈ real(ωref) rtol = 2e-3

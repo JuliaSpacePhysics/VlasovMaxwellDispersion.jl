@@ -12,8 +12,8 @@ end
     vth, Pi2, kz = 1.0, 1.0, 0.7
     k = Wavenumber(0.0, kz)
     f = ReducedVDF(u -> exp(-(u / vth)^2) / (sqrt(pi) * vth); para = (-12.0, 12.0))
-    ωf = solve(LocalDispersionProblem(NormalizedSpecies(-1.0, Pi2, f), k, 1.2 - 0.1im)).omega
-    ωm = solve(LocalDispersionProblem(NormalizedSpecies(-1.0, Pi2, Maxwellian(vth)), k, 1.2 - 0.1im)).omega
+    ωf = solve(DispersionProblem(NormalizedSpecies(-1.0, Pi2, f), 1.2 - 0.1im, k)).omega
+    ωm = solve(DispersionProblem(NormalizedSpecies(-1.0, Pi2, Maxwellian(vth)), 1.2 - 0.1im, k)).omega
     @test abs(ωf - ωm) < 1.0e-8
 end
 
@@ -24,7 +24,7 @@ end
         nb * exp(-((u - vb) / wb)^2) / (sqrt(pi) * wb)
     p = NormalizedSpecies(-1.0, 1.0, ReducedVDF(fbump; para = (-12.0, 14.0)))
     for kz in (0.2, 0.25, 0.3)                        # phase speed on the bump front
-        ω = solve(LocalDispersionProblem(p, Wavenumber(0.0, kz), kz * vb + 0.05im)).omega
+        ω = solve(DispersionProblem(p, kz * vb + 0.05im, Wavenumber(0.0, kz))).omega
         @test imag(ω) > 0
     end
 end

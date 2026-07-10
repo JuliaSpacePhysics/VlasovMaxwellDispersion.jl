@@ -12,7 +12,7 @@
         NormalizedSpecies(-1 / me, 1 / (me * vA^2), Maxwellian(vA / sqrt(me))),
     )
     k = Wavenumber(0.01 / vA, 0.01 / vA)
-    prob = LocalDispersionProblem(plasma, k, 9.9881e-3 - 2.3132e-7im)  # ALPS fast-wave root
+    prob = DispersionProblem(plasma, 9.9881e-3 - 2.3132e-7im, k)  # ALPS fast-wave root
 
     for alg in (Muller(), Order1())
         sol = solve(prob, alg)
@@ -38,7 +38,7 @@ end
     # GRPF roots are mesh-accurate (~tol), not polished, hence the loose bound.
     @test all(x -> 0 <= x.resid < 1.0e-2, groots)
 
-    bsol = solve(BranchProblem(plasma, [k], ωref))
+    bsol = solve(DispersionProblem(plasma, ωref, [k]))
     @test bsol.retcode == :Success
     @test only(bsol.resid) < 1.0e-10
 end

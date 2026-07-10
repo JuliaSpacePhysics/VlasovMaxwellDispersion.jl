@@ -42,7 +42,7 @@ export Separable, ⊗, Gaussian, GyroRing
 export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual
-export LocalDispersionProblem, GlobalDispersionProblem, BranchProblem
+export DispersionProblem, GlobalDispersionProblem
 export DispersionAlgorithm, Muller, GRPF, ArcLength, JumpFallback, DispersionSolution
 export AngleSweep, CartesianSweep
 export SurveySolution, DispersionBranch, dispersion_diagram

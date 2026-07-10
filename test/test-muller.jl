@@ -21,7 +21,7 @@ end
         NormalizedSpecies(1 / mp_me, 100.0 / mp_me, ColdVDF()),
     )
     k = Wavenumber(0.0, 0.04)
-    sol = solve(LocalDispersionProblem(plasma, k, 8.5e-5 + 0.0im))
+    sol = solve(DispersionProblem(plasma, 8.5e-5 + 0.0im, k))
     @test sol.retcode == :Success
     @test abs(sol.omega - 8.5e-5) < 1.0e-5   # stayed on low-ω branch
     @test sol.resid < 1.0e-8                 # polished to genuine root

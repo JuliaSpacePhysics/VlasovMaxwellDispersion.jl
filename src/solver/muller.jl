@@ -1,7 +1,7 @@
 """
     Muller(; atol=1e-10, maxiter=100)
 
-Derivative-free complex root polish for [`LocalDispersionProblem`](@ref).
+Derivative-free complex root polish.
 """
 Base.@kwdef struct Muller
     atol::Float64 = 1.0e-10
@@ -12,7 +12,7 @@ end
 # ω0===0 has no scale ⇒ small absolute step.
 _seed_offset(ω0) = iszero(ω0) ? 1.0e-3 : min(1.0e-3 * max(abs(ω0), 1.0), 0.1 * abs(ω0))
 
-function CommonSolve.solve(prob::LocalDispersionProblem, alg::Muller)
+function CommonSolve.solve(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller)
     f = prob.f
     h = _seed_offset(prob.omega0)
     ω = muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im; alg.atol, alg.maxiter)

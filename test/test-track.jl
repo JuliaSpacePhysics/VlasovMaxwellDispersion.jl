@@ -1,7 +1,7 @@
 @testitem "arc-length track follows vacuum light branch" begin
     plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
     ks = [Wavenumber(0.0, kz) for kz in range(0.5, 1.0; length=6)]
-    roots = solve(BranchProblem(plasma, ks, 0.5 + 0im), ArcLength()).omega
+    roots = solve(DispersionProblem(plasma, 0.5 + 0im, ks), ArcLength()).omega
 
     @test all(isfinite, roots)
     @test maximum(abs.(roots .- [k.kz for k in ks])) < 1e-5
@@ -10,7 +10,7 @@ end
 @testitem "arc-length track accepts unsized iterables" begin
     plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
     ks = (Wavenumber(0.0, kz) for kz in (0.5, 0.6, 0.7))
-    roots = solve(BranchProblem(plasma, ks, 0.5 + 0im), ArcLength()).omega
+    roots = solve(DispersionProblem(plasma, 0.5 + 0im, ks), ArcLength()).omega
 
     @test length(roots) == 3
     @test all(isfinite, roots)
@@ -40,11 +40,11 @@ end
     # Without fallback the tracker loses the branch at the transition — historically as NaN;
     # since muller contracts overflowing trial steps it instead wanders to a distant root
     # (the electron plasma branch). Either failure mode is what the jump fallback must catch.
-    baseline = solve(BranchProblem(plasma, ks, 0.08im),
+    baseline = solve(DispersionProblem(plasma, 0.08im, ks),
                      ArcLength(; fallback=nothing)).omega
     @test !isapprox(baseline[end], 0.009597 + 0im; rtol=5.0e-3, atol=5.0e-5)
 
-    roots = solve(BranchProblem(plasma, ks, 0.08im), ArcLength()).omega
+    roots = solve(DispersionProblem(plasma, 0.08im, ks), ArcLength()).omega
 
     @test all(isfinite, roots)
     @test roots[58] ≈ 0.015838 + 0.000212im rtol=5.0e-3 atol=5.0e-5 # ka=0.043

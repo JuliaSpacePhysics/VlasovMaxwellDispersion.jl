@@ -11,7 +11,7 @@ import BracketingNonlinearSolve as BNS
 
 p = NormalizedSpecies(Omega=1.0, Pi2=1.0, vdf=Maxwellian(1.0))
 k = Wavenumber(kperp=0.01, kz=0.5)
-prob = LocalDispersionProblem(p, k, 0.6)
+prob = DispersionProblem(p, 0.6, k)
 f = prob.f
 ref = solve(prob).omega
 @test abs(f(ref)) < 1e-8
@@ -29,7 +29,7 @@ np = SNS.NonlinearProblem((ω, _) -> f(ω), prob.omega0)
 sh = solve(np, SNS.SimpleHalley())
 @test sh.u ≈ ref rtol=1e-6
 
-# SciMLBaseExt: a SciML alg drives LocalDispersionProblem directly
+# SciMLBaseExt with SciML alg
 sd = solve(prob, SNS.SimpleHalley())
 @test sd.retcode == :Success
 @test sd.omega ≈ ref rtol=1e-6
