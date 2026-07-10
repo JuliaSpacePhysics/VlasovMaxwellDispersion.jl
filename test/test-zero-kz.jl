@@ -56,10 +56,10 @@ end
     sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
     k0 = Wavenumber(0.7, 0.0)
     for κ in (2, 2.5)   # integer-residue and ₂F₁ branches share the kz=0 moment formula
-        a = (κ - 1.5) * 0.4^2
+        aperp, apara = (κ - 1) * 0.4^2, (κ - 0.5) * 0.4^2
         pbk = ProductBiKappa(vth_para = 0.4, kappa_para = κ)
         sep = SeparableVDF(
-            v -> (1 + v^2 / a)^(-(κ + 1)), u -> (1 + u^2 / a)^(-(κ + 1));
+            v -> (1 + v^2 / aperp)^(-(κ + 1)), u -> (1 + u^2 / apara)^(-(κ + 1));
             para = (-8.0, 8.0), perp = (0.0, 8.0)
         )
         bk = BiKappa(vth_para = 0.4, vth_perp = 0.5, kappa = κ)
