@@ -16,18 +16,32 @@ Base.@kwdef struct GRPF{P}
     params::P = nothing
 end
 
-function CommonSolve.solve(prob::GlobalDispersionProblem, alg::GRPF; refine = Muller())
+struct GRPFCache{P, A, K, F, R}
+    prob::P
+    alg::A
+    k::K
+    f::F
+    nevals::Base.RefValue{Int}
+    refine::R
+end
+
+function CommonSolve.init(prob::GlobalDispersionProblem, alg::GRPF; refine = Muller())
     iszero(n_swparams(prob)) ||
         throw(ArgumentError("GRPF solves only the fixed-k (m=0) problem; use DualAAA for parameter sweeps"))
     k_fixed = wavefun(prob)()
     nev = Ref(0)
     f = ω -> (nev[] += 1; det(wave_dispersion_tensor(prob.plasma, ω, k_fixed; closure = prob.closure)))
+    return GRPFCache(prob, alg, k_fixed, f, nev, refine)
+end
+
+function CommonSolve.solve!(cache::GRPFCache)
+    (; prob, alg, f, refine) = cache
     roots, poles = _grpf_roots(f, prob.region; alg.tol, alg.meshtol, alg.params)
     # Drop the deflated det's spurious ω=0 zero (perp k): it sits at |ω| ≲ tol
     # (mesh accuracy); 2·tol gives a one-cell margin.
     _in_box(prob.region) && filter!(ω -> abs(ω) > 2alg.tol, roots)
     retcode = isempty(roots) ? :Failure : :Success
-    return _fixedk_survey(prob, alg, k_fixed, roots, poles, nev[], retcode; refine)
+    return _fixedk_survey(prob, alg, cache.k, roots, poles, cache.nevals[], retcode; refine)
 end
 
 # ComplexF64 throughout: RootsAndPoles' Delaunay geometry (IndexablePoint2D) is hard Float64

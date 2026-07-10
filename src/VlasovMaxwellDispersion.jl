@@ -14,7 +14,7 @@ using HypergeometricFunctions: _₂F₁
 using QuadGK
 using NonNegLeastSquares: nonneg_lsq
 using CommonSolve
-import CommonSolve: solve
+import CommonSolve: solve, init, solve!, step!
 
 function contribution end
 
@@ -41,7 +41,7 @@ export BiKappa, ProductBiKappa, Kappa
 export Separable, ⊗, Gaussian, GyroRing
 export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger
-export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, residual
+export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
 export DispersionProblem, GlobalDispersionProblem
 export DispersionAlgorithm, Muller, GRPF, ArcLength, JumpFallback, DispersionSolution
 export AngleSweep, CartesianSweep

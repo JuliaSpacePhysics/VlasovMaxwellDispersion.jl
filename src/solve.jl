@@ -47,7 +47,8 @@ include("solver/ArcLength.jl")
 """
 CommonSolve.solve(prob::DispersionProblem{<:Any, <:Wavenumber}) = CommonSolve.solve(prob, Muller())
 CommonSolve.solve(prob::DispersionProblem) = CommonSolve.solve(prob, ArcLength())
-CommonSolve.solve(prob::DispersionProblem, alg) = CommonSolve.solve(prob, ArcLength(base = alg))
+CommonSolve.init(prob::DispersionProblem, alg; kwargs...) =
+    CommonSolve.init(prob, ArcLength(base = alg); kwargs...)
 
 
 """

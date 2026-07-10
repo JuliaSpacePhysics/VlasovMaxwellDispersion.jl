@@ -80,7 +80,7 @@ end
 let g = SUITE["local_solve"]
     s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para = 0.9, vth_perp = 1.2))
     k = Wavenumber(0.01, 0.5)
-    prob = LocalDispersionProblem(s, k, 0.6)
+    prob = DispersionProblem(s, 0.6, k)
     h = 1.0e-3
     g["muller_native"] = @benchmarkable solve($prob)
     # Only complex-capable solvers qualify
@@ -90,4 +90,12 @@ let g = SUITE["local_solve"]
         alg = BNS.Muller($prob.omega0 + $h * im)
     )
     g["halley_sciml"] = @benchmarkable solve($prob, SNS.SimpleHalley())
+end
+
+
+let g = SUITE["branch_solve"]
+    s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para = 0.9, vth_perp = 1.2))
+    ks = [Wavenumber(0.01, kz) for kz in range(0.3, 0.8; length = 64)]
+    prob = DispersionProblem(s, 0.6, ks)
+    g["arc_length/64"] = @benchmarkable solve($prob)
 end

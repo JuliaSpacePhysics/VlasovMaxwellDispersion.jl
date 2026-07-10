@@ -26,40 +26,52 @@ Base.@kwdef struct ArcLength{B, F}
     fallback::F = JumpFallback()
 end
 
-function CommonSolve.solve(prob::DispersionProblem, alg::ArcLength)
-    ωs = _track(prob.plasma, prob.k, prob.omega0, prob.closure, alg)
-    res = [residual(prob.plasma, ω, k; closure = prob.closure) for (k, ω) in zip(prob.k, ωs)]
-    return DispersionSolution(ωs, res, all(isfinite, ωs) ? :Success : :Partial, prob, alg)
+mutable struct ArcLengthCache{P, A, K, W}
+    prob::P
+    alg::A
+    ks::K
+    omega::Vector{W}
+    prev::W
+    prev2::W
 end
 
-# Predictor falls back to the last finite root so one bad step does not poison the curve.
-# Failed or implausibly large jumps trigger `alg.fallback`, a search around the predictor.
-function _track(plasma, ks, omega0, closure, alg)
-    CT = complex(float(typeof(omega0)))
-    ωs = CT[]
-    Base.IteratorSize(typeof(ks)) isa Base.HasLength && sizehint!(ωs, length(ks))
-    prev = CT(omega0)   # last finite root (continuation anchor)
-    prev2 = _complex_nan(prev)
-    for k in ks
-        # Predictor: linear extrapolation once two finite roots exist.
-        guess = isfinite(prev2) && isfinite(prev) ? 2prev - prev2 : prev
-        ω = solve(DispersionProblem(plasma, guess, k; closure), alg.base).omega
-        if _needs_fallback(alg.fallback, ω, guess, prev, prev2)
-            radius = _fallback_radius(alg.fallback, guess, prev, prev2)
-            region = (guess - radius * (1 + im), guess + radius * (1 + im))
-            survey = solve(GlobalDispersionProblem(plasma, region, k; closure); refine = alg.base)
-            roots = [b.omega for b in survey.roots]
-            ωfb = isempty(roots) ? complex(NaN) : roots[argmin(abs.(roots .- guess))]
-            isfinite(ωfb) && (ω = ωfb)
-        end
-        push!(ωs, ω)
-        if isfinite(ω)
-            prev2 = prev
-            prev = ω
-        end
-        # Diverged step keeps prev/prev2 (last good anchor) so we retry from it.
+function CommonSolve.init(prob::DispersionProblem, alg::ArcLength)
+    ks = collect(prob.k)
+    CT = complex(float(typeof(prob.omega0)))
+    prev = CT(prob.omega0)
+    return ArcLengthCache(prob, alg, ks, CT[], prev, _complex_nan(prev))
+end
+
+function CommonSolve.step!(cache::ArcLengthCache)
+    i = length(cache.omega) + 1
+    i > length(cache.ks) && return cache
+    (; prob, alg, prev, prev2) = cache
+    k = cache.ks[i]
+    guess = isfinite(prev2) && isfinite(prev) ? 2prev - prev2 : prev
+    ω = solve(DispersionProblem(prob.plasma, guess, k; closure = prob.closure), alg.base).omega
+    if _needs_fallback(alg.fallback, ω, guess, prev, prev2)
+        radius = _fallback_radius(alg.fallback, guess, prev, prev2)
+        region = (guess - radius * (1 + im), guess + radius * (1 + im))
+        survey = solve(GlobalDispersionProblem(prob.plasma, region, k; closure = prob.closure); refine = alg.base)
+        roots = [b.omega for b in survey.roots]
+        ωfb = isempty(roots) ? complex(NaN) : roots[argmin(abs.(roots .- guess))]
+        isfinite(ωfb) && (ω = ωfb)
     end
-    return ωs
+    push!(cache.omega, ω)
+    if isfinite(ω)
+        cache.prev2 = prev
+        cache.prev = ω
+    end
+    return cache
+end
+
+function CommonSolve.solve!(cache::ArcLengthCache)
+    while length(cache.omega) < length(cache.ks)
+        step!(cache)
+    end
+    (; prob, alg, omega) = cache
+    res = [residual(prob.plasma, ω, k; closure = prob.closure) for (k, ω) in zip(cache.ks, omega)]
+    return DispersionSolution(omega, res, all(isfinite, omega) ? :Success : :Partial, prob, alg)
 end
 
 _needs_fallback(::Nothing, ω, guess, prev, prev2) = false

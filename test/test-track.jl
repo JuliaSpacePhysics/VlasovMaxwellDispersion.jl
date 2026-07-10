@@ -16,6 +16,17 @@ end
     @test all(isfinite, roots)
 end
 
+@testitem "CommonSolve iterator steps branch" begin
+    plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
+    ks = [Wavenumber(0.0, kz) for kz in (0.5, 0.6, 0.7)]
+    iter = init(DispersionProblem(plasma, 0.5, ks), Muller())
+
+    step!(iter)
+    @test length(iter.omega) == 1
+    sol = solve!(iter)
+    @test sol.omega ≈ [k.kz for k in ks] atol = 1.0e-6
+end
+
 
 @testitem "track fallback crosses Gary84 v0=10 branch transition" begin
     mp_me = 1836.15267343

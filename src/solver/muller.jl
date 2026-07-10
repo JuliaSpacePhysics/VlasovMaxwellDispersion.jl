@@ -12,8 +12,17 @@ end
 # ω0===0 has no scale ⇒ small absolute step.
 _seed_offset(ω0) = iszero(ω0) ? 1.0e-3 : min(1.0e-3 * max(abs(ω0), 1.0), 0.1 * abs(ω0))
 
-function CommonSolve.solve(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller)
-    f = prob.f
+struct MullerCache{P, A, F}
+    prob::P
+    alg::A
+    f::F
+end
+
+CommonSolve.init(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller) =
+    MullerCache(prob, alg, prob.f)
+
+function CommonSolve.solve!(cache::MullerCache)
+    (; prob, alg, f) = cache
     h = _seed_offset(prob.omega0)
     ω = muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im; alg.atol, alg.maxiter)
     ok = isfinite(ω)
