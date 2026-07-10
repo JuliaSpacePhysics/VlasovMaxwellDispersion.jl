@@ -53,10 +53,12 @@ of roots for continuation. `retcode` is
 `:Success`, `:Failure`, or `:Partial` (branch with some non-converged `k`).
 `resid` is the scale-invariant [`residual`](@ref) `|det 𝒟| / ∏ᵢ‖𝒟ᵢ,:‖` at the
 root(s), mirroring the shape of `omega` (`NaN` for non-converged entries).
+`nevals` counts dispersion-function evaluations.
 """
 struct DispersionSolution{T, R, Pr, A}
     omega::T
     resid::R
+    nevals::Int
     retcode::Symbol
     prob::Pr
     alg::A
@@ -100,4 +102,5 @@ Base.show(io::IO, s::SurveySolution) =
 )
 
 Base.show(io::IO, sol::DispersionSolution) =
-    print(io, "DispersionSolution(retcode=:", sol.retcode, ", omega=", sol.omega, ")")
+    print(io, "DispersionSolution(retcode=:", sol.retcode, ", omega=", sol.omega,
+          ", ", sol.nevals, " evals)")

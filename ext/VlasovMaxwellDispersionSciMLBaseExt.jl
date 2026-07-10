@@ -9,11 +9,12 @@ import CommonSolve: solve
 import SciMLBase
 
 function solve(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::SciMLBase.AbstractNonlinearAlgorithm; kwargs...)
-    np = SciMLBase.NonlinearProblem((ω, _) -> prob.f(ω), prob.omega0)
+    nevals = Ref(0)
+    np = SciMLBase.NonlinearProblem((ω, _) -> (nevals[] += 1; prob.f(ω)), complex(prob.omega0))
     sol = solve(np, alg; kwargs...)
     ω = sol.u
     ok = SciMLBase.successful_retcode(sol)
-    return DispersionSolution(ω, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
+    return DispersionSolution(ω, residual(prob, ω), nevals[], ok ? :Success : :Failure, prob, alg)
 end
 
 end

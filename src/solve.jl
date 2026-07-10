@@ -81,7 +81,10 @@ CommonSolve.solve(prob::GlobalDispersionProblem; kwargs...) =
     CommonSolve.solve(prob, GRPF(); kwargs...)
 # Fixed-k roots/poles as SurveySolution
 function _fixedk_survey(prob, alg, k, roots, poles, nevals, retcode; refine = Muller())
-    isnothing(refine) || (roots = _refine_roots(prob, k, roots, refine))
+    if !isnothing(refine)
+        roots, refine_nevals = _refine_roots(prob, k, roots, refine)
+        nevals += refine_nevals
+    end
     roots = [DispersionBranch(ω, k, residual(prob, ω, k)) for ω in roots]
     poles = [DispersionBranch(ω, k, nothing) for ω in poles]
     return SurveySolution(roots, poles, nevals, retcode, prob, alg)
@@ -90,12 +93,15 @@ end
 # Keep mesh value on divergence and drop polished duplicates
 function _refine_roots(prob, k, roots, alg)
     polished = eltype(roots)[]
+    nevals = 0
     for ω0 in roots
-        ω = solve(DispersionProblem(prob.plasma, ω0, k; closure = prob.closure), alg).omega
+        sol = solve(DispersionProblem(prob.plasma, ω0, k; closure = prob.closure), alg)
+        nevals += sol.nevals
+        ω = sol.omega
         isfinite(ω) || (ω = ω0)
         all(abs(ω - z) > sqrt(alg.atol) for z in polished) && push!(polished, ω)
     end
-    return polished
+    return polished, nevals
 end
 
 function _in_box(region, point = 0)

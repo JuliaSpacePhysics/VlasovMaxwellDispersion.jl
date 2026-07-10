@@ -25,7 +25,7 @@ sm = solve(ip, BNS.Muller(prob.omega0 + h * im))
 @test sm.u ≈ ref rtol=1e-6
 
 # Initial-guess path
-np = SNS.NonlinearProblem((ω, _) -> f(ω), prob.omega0)
+np = SNS.NonlinearProblem((ω, _) -> f(ω), complex(prob.omega0))
 sh = solve(np, SNS.SimpleHalley())
 @test sh.u ≈ ref rtol=1e-6
 
@@ -33,3 +33,4 @@ sh = solve(np, SNS.SimpleHalley())
 sd = solve(prob, SNS.SimpleHalley())
 @test sd.retcode == :Success
 @test sd.omega ≈ ref rtol=1e-6
+@test sd.nevals > 0

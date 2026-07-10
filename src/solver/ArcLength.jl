@@ -33,13 +33,14 @@ mutable struct ArcLengthCache{P, A, K, W}
     omega::Vector{W}
     prev::W
     prev2::W
+    nevals::Int
 end
 
 function CommonSolve.init(prob::DispersionProblem, alg::ArcLength)
     ks = collect(prob.k)
     CT = complex(float(typeof(prob.omega0)))
     prev = CT(prob.omega0)
-    return ArcLengthCache(prob, alg, ks, CT[], prev, _complex_nan(prev))
+    return ArcLengthCache(prob, alg, ks, CT[], prev, _complex_nan(prev), 0)
 end
 
 function CommonSolve.step!(cache::ArcLengthCache)
@@ -48,11 +49,14 @@ function CommonSolve.step!(cache::ArcLengthCache)
     (; prob, alg, prev, prev2) = cache
     k = cache.ks[i]
     guess = isfinite(prev2) && isfinite(prev) ? 2prev - prev2 : prev
-    ω = solve(DispersionProblem(prob.plasma, guess, k; closure = prob.closure), alg.base).omega
+    local_sol = solve(DispersionProblem(prob.plasma, guess, k; closure = prob.closure), alg.base)
+    cache.nevals += local_sol.nevals
+    ω = local_sol.omega
     if _needs_fallback(alg.fallback, ω, guess, prev, prev2)
         radius = _fallback_radius(alg.fallback, guess, prev, prev2)
         region = (guess - radius * (1 + im), guess + radius * (1 + im))
         survey = solve(GlobalDispersionProblem(prob.plasma, region, k; closure = prob.closure); refine = alg.base)
+        cache.nevals += survey.nevals
         roots = [b.omega for b in survey.roots]
         ωfb = isempty(roots) ? complex(NaN) : roots[argmin(abs.(roots .- guess))]
         isfinite(ωfb) && (ω = ωfb)
@@ -71,7 +75,10 @@ function CommonSolve.solve!(cache::ArcLengthCache)
     end
     (; prob, alg, omega) = cache
     res = [residual(prob.plasma, ω, k; closure = prob.closure) for (k, ω) in zip(cache.ks, omega)]
-    return DispersionSolution(omega, res, all(isfinite, omega) ? :Success : :Partial, prob, alg)
+    return DispersionSolution(
+        omega, res, cache.nevals,
+        all(isfinite, omega) ? :Success : :Partial, prob, alg
+    )
 end
 
 _needs_fallback(::Nothing, ω, guess, prev, prev2) = false

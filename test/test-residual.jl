@@ -18,6 +18,7 @@
         sol = solve(prob, alg)
         @test sol.retcode == :Success
         @test sol.resid < 1.0e-10
+        @test sol.nevals > 0
     end
 end
 

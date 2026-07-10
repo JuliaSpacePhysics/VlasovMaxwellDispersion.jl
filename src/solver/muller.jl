@@ -24,9 +24,10 @@ CommonSolve.init(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller) =
 function CommonSolve.solve!(cache::MullerCache)
     (; prob, alg, f) = cache
     h = _seed_offset(prob.omega0)
-    ω = muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im; alg.atol, alg.maxiter)
+    ω, nevals = _muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im;
+                       alg.atol, alg.maxiter)
     ok = isfinite(ω)
-    return DispersionSolution(ω, residual(prob, ω), ok ? :Success : :Failure, prob, alg)
+    return DispersionSolution(ω, residual(prob, ω), nevals, ok ? :Success : :Failure, prob, alg)
 end
 
 
@@ -40,15 +41,19 @@ maximizes `|denom|` for numerical stability.
 Returns `NaN+NaN*im` if `maxiter` is exhausted without reaching `atol` on the step size or `|f|`.
 """
 function muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
+    return first(_muller(f, x0, x1, x2; atol, maxiter))
+end
+
+function _muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
     x0, x1, x2 = promote(complex(float(x0)), complex(float(x1)), complex(float(x2)))
     nan = typeof(x2)(NaN, NaN)
     f0, f1, f2 = f(x0), f(x1), f(x2)
+    nevals = 3
+    bestx, bestf = x2, abs(f2)
     for _ in 1:maxiter
         h1 = x1 - x0
         h2 = x2 - x1
-        if h1 == 0 || h2 == 0
-            return nan
-        end
+        (h1 == 0 || h2 == 0 || h1 + h2 == 0) && return nan, nevals
         delta1 = (f1 - f0) / h1
         delta2 = (f2 - f1) / h2
         a = (delta2 - delta1) / (h2 + h1)
@@ -59,13 +64,12 @@ function muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
         denom_plus = b + disc
         denom_minus = b - disc
         denom = abs(denom_plus) > abs(denom_minus) ? denom_plus : denom_minus
-        if denom == 0
-            return nan
-        end
+        denom == 0 && return nan, nevals
 
         dx = -2c / denom
         x3 = x2 + dx
         f3 = f(x3)
+        nevals += 1
         # Contract trials that hit the determinant's overflow back toward finite f(x2)
         flimit = 1.0e6 * max(abs(f0), abs(f1), abs(f2))
         for _ in 1:12
@@ -73,17 +77,21 @@ function muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
             dx /= 2
             x3 = x2 + dx
             f3 = f(x3)
+            nevals += 1
         end
-        isfinite(f3) || return nan # whole neighborhood is bad — bail
+        isfinite(f3) || return nan, nevals
+        if abs(f3) < bestf
+            bestx, bestf = x3, abs(f3)
+        end
         fscale = max(abs(f0), abs(f1), abs(f2), 1)
 
         if abs(f3) <= atol * fscale ||
                 (abs(dx) <= atol * max(abs(x3), 1) && abs(f3) <= sqrt(atol) * fscale)
-            return x3
+            return x3, nevals
         end
 
         x0, x1, x2 = x1, x2, x3
         f0, f1, f2 = f1, f2, f3
     end
-    return abs(f2) <= atol ? x2 : nan
+    return bestf <= atol ? (bestx, nevals) : (nan, nevals)
 end
