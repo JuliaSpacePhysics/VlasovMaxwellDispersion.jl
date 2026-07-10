@@ -58,7 +58,7 @@ end
 const 𝒟 = dispersion_tensor
 
 """
-    electrostatic_det(plasma, ω, k::Wavenumber) -> ComplexF64
+    electrostatic_det(plasma, ω, k::Wavenumber)
 
 Cheap longitudinal path `k̃ · ε · k̃`; its zeros are the electrostatic modes.
 """

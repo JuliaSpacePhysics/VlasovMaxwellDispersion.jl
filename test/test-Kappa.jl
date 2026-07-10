@@ -39,3 +39,12 @@ end
     # κ∥ > 1/2 (finite T∥) and κ⊥ > 1 (finite T⊥)
     @test contribution(NormalizedSpecies(-1.0, 0.7, ProductBiKappa(vth_para = 1.0, kappa_para = 1, kappa_perp = 8)), ω, k) isa AbstractMatrix
 end
+
+@testitem "kappa: NaN ζ terminates (no reflection recursion)" begin
+    # A root finder probing a wild trial ω can overflow ζ = Δ/kz into NaN
+    # non-integer-κ ₂F₁ reflection branch must not recurse on abs(NaN).
+    using VlasovMaxwellDispersion: _kappa_H0
+    H = _kappa_H0(complex(NaN, NaN), 1.0, 5.5)
+    @test isnan(real(H)) && isnan(imag(H))
+    @test isnan(real(_kappa_H0(complex(Inf, NaN), 1.0, 5.5, -1)))
+end

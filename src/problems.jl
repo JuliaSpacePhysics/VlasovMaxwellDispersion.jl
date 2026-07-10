@@ -7,29 +7,42 @@ abstract type AbstractDispersionProblem end
 
 Refine the single mode of `det(𝒟(plasma,ω,k))=0` near seed `omega0`.
 """
-struct LocalDispersionProblem{P,K,T,C} <: AbstractDispersionProblem
+struct LocalDispersionProblem{P, K, T, C} <: AbstractDispersionProblem
     plasma::P
     k::K
     omega0::T
     closure::C
 end
-LocalDispersionProblem(plasma, k, omega0; closure=HarmonicSum()) =
+LocalDispersionProblem(plasma, k, omega0; closure = HarmonicSum()) =
     LocalDispersionProblem(plasma, k, complex(float(omega0)), closure)
 
-"""
-    GlobalDispersionProblem(plasma, k, region; closure=HarmonicSum())
 
-Find *all* roots and poles of `det(𝒟(plasma,ω,k))` in the complex box
-`region=(lowerleft, upperright)`.
 """
-struct GlobalDispersionProblem{P,K,R,C} <: AbstractDispersionProblem
+    GlobalDispersionProblem(plasma, region, geometry; closure=HarmonicSum())
+
+Find *all* branches (roots and poles) of `det(𝒟)` in the complex ω box
+`region=(lowerleft, upperright)` as the k-space `geometry` sweeps its parameters. 
+A branch is an `m`-manifold `ω*(p)` where `m` is the geometry's swept dimension: 
+a point (`m=0`), curve (`m=1`), surface (`m=2`), ….
+
+`geometry` can be:
+- a [`Wavenumber`](@ref) — fixed k, `m=0`;
+- an [`AngleSweep`](@ref) `(|k|, θ)` or [`CartesianSweep`](@ref) `(k⊥, k∥)`
+"""
+struct GlobalDispersionProblem{P, B, G, C} <: AbstractDispersionProblem
     plasma::P
-    k::K
-    region::R
+    region::B
+    geometry::G
     closure::C
 end
-GlobalDispersionProblem(plasma, k, region; closure=HarmonicSum()) =
-    GlobalDispersionProblem(plasma, k, region, closure)
+GlobalDispersionProblem(plasma, region, geometry; closure = HarmonicSum()) =
+    GlobalDispersionProblem(plasma, region, geometry, closure)
+
+n_swparams(p::GlobalDispersionProblem) = n_swparams(p.geometry)
+wavefun(p::GlobalDispersionProblem) = wavefun(p.geometry)
+parambox(p::GlobalDispersionProblem) = parambox(p.geometry)
+_realtype(p::GlobalDispersionProblem) =
+    promote_type(_realtype(p.region), _realtype(p.geometry))
 
 """
     BranchProblem(plasma, ks, omega0; closure=HarmonicSum())
@@ -37,68 +50,68 @@ GlobalDispersionProblem(plasma, k, region; closure=HarmonicSum()) =
 Track one dispersion branch across the wavenumber sequence `ks`, seeded at
 `omega0`.`
 """
-struct BranchProblem{P,K,T,C} <: AbstractDispersionProblem
+struct BranchProblem{P, K, T, C} <: AbstractDispersionProblem
     plasma::P
     ks::K
     omega0::T
     closure::C
 end
-BranchProblem(plasma, ks, omega0; closure=HarmonicSum()) =
-    BranchProblem(plasma, ks, complex(float(omega0)), closure)
-
-
-abstract type DispersionAlgorithm end
-
-
-"""
-    GRPF(; tol=1e-3, params=nothing)
-
-Global Roots-and-Poles Finder (argument principle) for
-[`GlobalDispersionProblem`](@ref). `params::GRPFParams` overrides the defaults.
-"""
-Base.@kwdef struct GRPF <: DispersionAlgorithm
-    tol::Float64 = 1.0e-3
-    params::Union{Nothing, GRPFParams} = nothing
-end
-
-"""
-    ArcLength(; atol=1e-10, maxiter=100, fallback=true)
-
-Arc-length branch continuation for [`BranchProblem`](@ref): predictor-seeded
-Muller per `k`, with optional local-GRPF fallback on failed/large jumps. See
-[`track`](@ref) for the `fallback` NamedTuple knobs.
-"""
-Base.@kwdef struct ArcLength <: DispersionAlgorithm
-    atol::Float64 = 1.0e-10
-    maxiter::Int = 100
-    fallback = true
-end
+BranchProblem(plasma, ks, omega0; closure = HarmonicSum()) =
+    BranchProblem(plasma, ks, omega0, closure)
 
 """
     DispersionSolution
 
-Result of `solve(::AbstractDispersionProblem, alg)`. `omega` is the root
-(`Local`), the vector of roots (`Branch`), or all roots (`Global`); `poles` is
-non-`nothing` only for `Global`. `retcode` is `:Success`, `:Failure`, or
-`:Partial` (branch with some non-converged `k`). `resid` is the
-scale-invariant [`residual`](@ref) `|det 𝒟| / ∏ᵢ‖𝒟ᵢ,:‖` at the root(s),
-mirroring the shape of `omega` (`NaN` for non-converged entries). 
-
-Polished roots (`Local`/`Branch`) reach ~machine epsilon; 
-`Global` roots are only mesh-accurate so theirs sit near `alg.tol`.
+Result of `solve(::Local/BranchDispersionProblem, alg)`. `omega` is the root
+(`Local`) or the vector of roots along the sweep (`Branch`). `retcode` is
+`:Success`, `:Failure`, or `:Partial` (branch with some non-converged `k`).
+`resid` is the scale-invariant [`residual`](@ref) `|det 𝒟| / ∏ᵢ‖𝒟ᵢ,:‖` at the
+root(s), mirroring the shape of `omega` (`NaN` for non-converged entries).
 """
-struct DispersionSolution{T, Po, R, Pr, A}
+struct DispersionSolution{T, R, Pr, A}
     omega::T
-    poles::Po
     resid::R
     retcode::Symbol
     prob::Pr
     alg::A
 end
 
-function Base.show(io::IO, sol::DispersionSolution)
-    print(io, "DispersionSolution(retcode=:", sol.retcode, ", omega=", sol.omega)
-    isnothing(sol.poles) || print(io, ", ", length(sol.poles), " poles")
-    print(io, ")")
-    return
+
+"""
+    DispersionBranch
+
+One surveyed branch: mode `omega` at wavevector `k` with residual `resid`.
+"""
+struct DispersionBranch{W, K, R}
+    omega::W
+    k::K
+    resid::R
 end
+
+Base.getindex(b::DispersionBranch, args...) = getindex(b.omega, args...)
+
+"""
+    SurveySolution
+
+A collection of discovered [`DispersionBranch`](@ref)es. 
+`retcode` is `:Success`, `:Failure` (no root branch found), 
+or `:Partial` (a fit saturated — structure may exceed one rational fit).
+`nevals` counts `det` evaluations.
+"""
+struct SurveySolution{BR, BP, Pr, A}
+    roots::Vector{BR}
+    poles::Vector{BP}
+    nevals::Int
+    retcode::Symbol
+    prob::Pr
+    alg::A
+end
+
+Base.show(io::IO, s::SurveySolution) =
+    print(
+    io, "SurveySolution(retcode=:", s.retcode, ", ", length(s.roots), " roots, ",
+    length(s.poles), " poles, ", s.nevals, " evals)"
+)
+
+Base.show(io::IO, sol::DispersionSolution) =
+    print(io, "DispersionSolution(retcode=:", sol.retcode, ", omega=", sol.omega, ")")

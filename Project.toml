@@ -20,6 +20,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [weakdeps]
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 
@@ -27,6 +28,7 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 # PlasmaBase = {path = "lib/PlasmaBase"}
 
 [extensions]
+VlasovMaxwellDispersionMakieExt = "Makie"
 VlasovMaxwellDispersionRootsExt = "Roots"
 VlasovMaxwellDispersionSciMLBaseExt = "SciMLBase"
 
@@ -36,6 +38,7 @@ CommonSolve = "0.2"
 ForwardDiff = "1"
 HypergeometricFunctions = "0.3"
 LinearAlgebra = "1"
+Makie = "0.23, 0.24"
 NonNegLeastSquares = "0.4"
 QuadGK = "2.11"
 Roots = "3.0.0"

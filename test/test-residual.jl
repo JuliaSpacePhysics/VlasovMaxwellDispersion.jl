@@ -31,11 +31,12 @@ end
     k = Wavenumber(0.01 / vA, 0.01 / vA)
     ωref = 9.9881e-3 - 2.3132e-7im
 
-    gsol = solve(GlobalDispersionProblem(plasma, k, (0.008 - 0.001im, 0.012 + 0.001im)), GRPF(; tol=1.0e-4))
+    gsol = solve(GlobalDispersionProblem(plasma, (0.008 - 0.001im, 0.012 + 0.001im), k), GRPF(; tol = 1.0e-4))
     @test gsol.retcode == :Success
-    @test length(gsol.resid) == length(gsol.omega)
+    groots = gsol.roots
+    @test !isempty(groots)
     # GRPF roots are mesh-accurate (~tol), not polished, hence the loose bound.
-    @test all(0 .<= gsol.resid .< 1.0e-2)
+    @test all(x -> 0 <= x.resid < 1.0e-2, groots)
 
     bsol = solve(BranchProblem(plasma, [k], ωref))
     @test bsol.retcode == :Success

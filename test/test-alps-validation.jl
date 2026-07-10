@@ -11,7 +11,7 @@
     ks = [Wavenumber(row[1] / vA, row[2] / vA) for row in eachrow(data)]
     reference = complex.(data[:, 3], data[:, 4])
 
-    roots = solve(BranchProblem(plasma, ks, reference[1]), ArcLength(; atol = 1.0e-9, maxiter = 100)).omega
+    roots = solve(BranchProblem(plasma, ks, reference[1])).omega
 
     @test all(isfinite, roots)
     @test maximum(abs.(real.(roots) .- real.(reference)) ./ abs.(real.(reference))) < 1.0e-2
