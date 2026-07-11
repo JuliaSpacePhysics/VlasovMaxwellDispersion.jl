@@ -25,7 +25,7 @@ const KB_SI = 1.380649e-23       # J/K
     Particle(q, m)
 
 A charged species' identity: signed charge `q` [C] and mass `m` [kg]. Prefer
-[`Electron`](@ref), [`Proton`](@ref), [`Ion`](@ref) over raw SI numbers.
+[`Electron`](@ref) and [`Proton`](@ref) over raw SI numbers.
 """
 struct Particle{Q,M}
     q::Q   # signed charge [C]

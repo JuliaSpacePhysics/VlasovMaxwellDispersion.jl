@@ -1,4 +1,5 @@
 [deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BracketingNonlinearSolve = "70df07ce-3d50-431d-a3e7-ca6ddb60ac1e"
 Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"

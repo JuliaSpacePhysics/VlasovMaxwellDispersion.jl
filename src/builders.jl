@@ -14,7 +14,7 @@ Normalize one physical `Species` against the reference `ref` and field `B0`:
 `ref` is a [`Particle`](@ref) (Ω_ref = its gyrofrequency, Omega is B-free) or any
 reference frequency.
 """
-function NormalizedSpecies(s::Species, B0, ref=particle(s))
+function NormalizedSpecies(s::Species, B0::Number, ref=particle(s))
     p = particle(s)
     Ω = _normalized_omega(p, ref, B0)
     wpwc = plasma_gyro_ratio(number_density(s), mass(p), B0)
