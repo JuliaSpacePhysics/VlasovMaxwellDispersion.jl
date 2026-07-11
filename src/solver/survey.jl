@@ -11,18 +11,18 @@ end
 
 
 function CommonSolve.init(
-        prob::GlobalDispersionProblem, alg;
+        prob::DispersionProblem{<:Region}, alg;
         refine = Muller(), linking = (;)
     )
-    linking = (; gate = _boxdiag(prob.region) / 8, linking...)
+    linking = (; gate = _boxdiag(prob.target) / 8, linking...)
     return SurveyCache(prepare(prob), alg, refine, linking)
 end
 
 function CommonSolve.solve!(cache::SurveyCache)
     t0 = time_ns()
     (; prob, alg, refine) = cache
-    grids = paramgrids(prob.geometry)
-    kf = wavefun(prob.geometry)
+    grids = paramgrids(prob.k)
+    kf = wavefun(prob.k)
     ks = map(c -> kf(map(getindex, grids, Tuple(c))...), CartesianIndices(map(length, grids)))
     zv = similar(ks, Vector{ComplexF64})
     nev = similar(ks, Int)
@@ -37,7 +37,7 @@ end
 
 # All det(𝒟) zeros at one wavevector: discover → trust gate → polish → filter→ dedupe.
 function _pointroots(prob, alg, refine, k)
-    region = prob.region
+    region = prob.target
     diag = _boxdiag(region)
     gate0 = _in_box(region) ? _origin_gate(alg, diag) : 0.0
     f0 = DispersionFunction(prob.plasma, k; closure = prob.closure, mode = prob.mode)
@@ -61,7 +61,7 @@ _scalarize(x) = x
 function build_solution(cache::SurveyCache, ks, values, stats, converged = true)
     (; prob, alg) = cache
     sheets = link(values; cache.linking...)
-    filter!(sh -> any(_in_box.(Ref(prob.region), sh)), sheets)
+    filter!(sh -> any(_in_box.(Ref(prob.target), sh)), sheets)
     roots = _branches(prob, sheets, _scalarize(ks), _realtype(prob))
     return SurveySolution(roots, stats, _retcode(roots, converged), prob, alg)
 end

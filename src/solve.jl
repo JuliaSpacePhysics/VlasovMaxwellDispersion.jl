@@ -14,13 +14,13 @@ A [`Wavenumber`](@ref) refines a single seeded root. Any other `k` — an ordere
 wavenumber list, or a geometry with one swept axis — continues the branch with
 [`Continuation`](@ref), reporting a root at each `k` given.
 """
-CommonSolve.solve(prob::DispersionProblem{<:Any, <:Wavenumber}) = CommonSolve.solve(prob, Muller())
-CommonSolve.solve(prob::DispersionProblem) = CommonSolve.solve(prob, Continuation())
-CommonSolve.init(prob::DispersionProblem, alg; kwargs...) =
+CommonSolve.solve(prob::DispersionProblem{<:Seed, <:Wavenumber}) = CommonSolve.solve(prob, Muller())
+CommonSolve.solve(prob::DispersionProblem{<:Seed}) = CommonSolve.solve(prob, Continuation())
+CommonSolve.init(prob::DispersionProblem{<:Seed}, alg; kwargs...) =
     CommonSolve.init(prob, Continuation(base = alg); kwargs...)
 
 """
-    solve(prob::GlobalDispersionProblem, alg=AAA(); refine=Muller(), kw...)::SurveySolution
+    solve(prob::DispersionProblem{<:Region}, alg=AAA(); refine=Muller(), kw...)::SurveySolution
 
 Find all root [`DispersionBranch`](@ref)es of the deflated `det(ω̃²𝒟)`: `alg`
 ([`AAA`](@ref) or [`GRPF`](@ref)) runs at each point of the geometry's
@@ -32,7 +32,7 @@ Fixed `k` gives single-point branches.
 `refine` (default [`Muller`](@ref); `nothing` keeps raw fit/mesh roots)
 polishes each root and filters out candidates with no nearby zero of the det.
 """
-CommonSolve.solve(prob::GlobalDispersionProblem; kwargs...) =
+CommonSolve.solve(prob::DispersionProblem{<:Region}; kwargs...) =
     CommonSolve.solve(prob, AAA(); kwargs...)
 
 function _in_box(region, point = 0)

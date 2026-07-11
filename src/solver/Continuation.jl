@@ -37,12 +37,34 @@ function _saveat(g::ParameterGeometry)
     return map(wavefun(g), only(grids))
 end
 
-function CommonSolve.init(prob::DispersionProblem, alg::Continuation)
+# Seed anchored mid-path (`at`): track outward both ways and stitch to path order.
+function CommonSolve.solve(prob::DispersionProblem{<:Seed}, alg::Continuation)
+    isnothing(prob.target.at) && return CommonSolve.solve!(CommonSolve.init(prob, alg))
+    ks = _saveat(prob.k)
+    j = argmin(i -> _dist(prob.target.at, ks[i]), eachindex(ks))
+    fwd = CommonSolve.solve!(CommonSolve.init(_reseed(prob, ks[j:end]), alg))
+    bwd = CommonSolve.solve!(CommonSolve.init(_reseed(prob, reverse(ks[1:j])), alg))
+    return _splice(bwd, fwd, prob, alg)
+end
+_reseed(prob, ks) =
+    DispersionProblem(prob.plasma, Seed(prob.target.omega0), ks, prob.closure, prob.mode)
+
+# bwd runs anchor→start over the reversed path; drop its anchor node (fwd owns it).
+function _splice(bwd, fwd, prob, alg)
+    omega = vcat(reverse(bwd.omega)[1:end-1], fwd.omega)
+    resid = vcat(reverse(bwd.resid)[1:end-1], fwd.resid)
+    stats = bwd.stats + fwd.stats
+    code = successful_retcode(fwd) && successful_retcode(bwd) ? ReturnCode.Success : ReturnCode.Partial
+    return DispersionSolution(omega, resid, stats, code, prob, alg)
+end
+
+function CommonSolve.init(prob::DispersionProblem{<:Seed}, alg::Continuation)
     p = prepare(prob)
     ks = _saveat(p.k)
-    CT = complex(float(typeof(p.omega0)))
+    ω0 = p.target.omega0
+    CT = complex(float(typeof(ω0)))
     RT = real(CT)
-    return ContinuationCache(p, alg, ks, CT[], RT[], CT(p.omega0), similar(ks, 0), CT[], 0)
+    return ContinuationCache(p, alg, ks, CT[], RT[], CT(ω0), similar(ks, 0), CT[], 0)
 end
 
 function CommonSolve.step!(cache::ContinuationCache)
@@ -109,9 +131,7 @@ end
 # Arclength of the retained nodes along the path travelled, and of `kt` beyond them.
 # The origin is arbitrary (here, the oldest retained node): polynomial extrapolation
 # is invariant under an affine shift of the abscissa, so only differences matter and
-# no coordinate has to be carried across the track. Arclength — rather than a
-# projection onto the direction of travel — is what keeps the nodes strictly ordered
-# even on a path that curves (a swept `theta` is a circular arc) or doubles back.
+# no coordinate has to be carried across the track.
 _dist(a::Wavenumber, b::Wavenumber) = hypot(a.kperp - b.kperp, a.kz - b.kz)
 function _arclengths!(s, khist)
     s[1] = zero(eltype(s))
@@ -122,8 +142,6 @@ function _arclengths!(s, khist)
 end
 
 # Newton divided differences through the retained nodes; degree grows with history.
-# Scratch is bump-allocated: against a kinetic VDF this is noise, but on a cheap one
-# (ColdVDF: a 72 ns det) it would otherwise be the only heap traffic in the loop.
 function _predict(cache, kt)
     (; khist, whist) = cache
     isempty(whist) && return cache.seed

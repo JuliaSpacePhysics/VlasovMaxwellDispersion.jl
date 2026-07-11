@@ -60,7 +60,7 @@ plasma = (
 kunit = c0 / vA                               # k·λ_p → k c/ωcp
 region = (0.05 - 0.06im, 7.8 + 0.12im)
 geom = AngleSweep(k = range(0.3, 12.5, 128) .* kunit, theta = deg2rad(89.5))
-sol = solve(GlobalDispersionProblem(plasma, region, geom))
+sol = solve(DispersionProblem(plasma, region, geom))
 
 # ## Dispersion diagram
 

@@ -19,13 +19,13 @@ ref = solve(prob).omega
 h = 1e-3
 # IntervalNonlinearProblem/Muller; seed the imaginary middle so
 # it tracks the complex root (default middle (l+r)/2 is real).
-ip = SNS.IntervalNonlinearProblem((ω, _) -> f(ω), (prob.omega0 - h, prob.omega0 + h))
-sm = solve(ip, BNS.Muller(prob.omega0 + h * im))
+ip = SNS.IntervalNonlinearProblem((ω, _) -> f(ω), (prob.target[] - h, prob.target[] + h))
+sm = solve(ip, BNS.Muller(prob.target[] + h * im))
 @test sm.retcode == SNS.ReturnCode.Success
 @test sm.u ≈ ref rtol=1e-6
 
 # Initial-guess path
-np = SNS.NonlinearProblem((ω, _) -> f(ω), complex(prob.omega0))
+np = SNS.NonlinearProblem((ω, _) -> f(ω), complex(prob.target[]))
 sh = solve(np, SNS.SimpleHalley())
 @test sh.u ≈ ref rtol=1e-6
 

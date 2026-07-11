@@ -10,3 +10,4 @@ docs/src/case-studies/*.md
 .claude/
 external/
 *.bib
+experiments/lopez-anomalous-zone/figdata_*.csv
