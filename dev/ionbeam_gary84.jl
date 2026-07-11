@@ -43,7 +43,7 @@ end
 region = (0.0 - 0.1im, 0.45 + 0.2im)
 geom = CartesianSweep(kz = (0.01, 0.2) ./ vm)
 v0s = (0.0, 10.0, 20.0, 30.0)
-sols = [solve(GlobalDispersionProblem(gary_plasma(v0), region, geom), AAA()) for v0 in v0s]
+sols = [solve(GlobalDispersionProblem(gary_plasma(v0), region, geom)) for v0 in v0s]
 
 # ## Verification against PlasmaBO
 #
@@ -104,3 +104,8 @@ Legend(
     ["Re ω / ωcp", "Im ω / ωcp"]; orientation = :horizontal, framevisible = false
 )
 fig
+
+#
+# The short segments crowding the lower-left corner are *real* roots:
+# a ladder of strongly damped (`|γ| ~ ω`) proton-cyclotron/Landau modes
+# at small `k`. Branch linking fragments the fast-moving ladder.
