@@ -69,7 +69,7 @@ end
 Δmax
 
 # The curves agree to a few `10⁻³ ωcp` — the truncation level of the reference's
-# `N = 2`, `J = 24` Hermite–Hermite expansion of a *sampled* distribution, while
+# Hermite–Hermite expansion of a *sampled* distribution, while
 # VMD evaluates the analytic bi-kappa susceptibility (residuals `~10⁻¹²`).
 
 # ## Dispersion diagram

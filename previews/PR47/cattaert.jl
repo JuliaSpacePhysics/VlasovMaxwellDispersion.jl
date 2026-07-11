@@ -1,12 +1,10 @@
-# # Cattaert 2007 benchmark
+# # Kappa-Maxwellian Plasma — Cattaert 2007
 #
-# Verification against the [PlasmaBO.jl `rlp_Cattaert07`
-# case](https://github.com/JuliaSpacePhysics/PlasmaBO.jl/blob/main/docs/src/rlp_Cattaert07.md):
-# a single electron population, strongly non-Maxwellian along the field
+# A single electron population with strongly non-Maxwellian along the field
 # (`κ∥ = 1`) and nearly Maxwellian across it (`κ⟂ = 200`), oblique at `θ = 30°`.
-# The tabulated BOPBK roots (`cattaert07_ref.tsv`) serve as the reference, twice:
-# first VMD tracks each of the four electromagnetic branches from a single seed,
+# We first track four known electromagnetic branches from a single seed,
 # then the seedless global solver rediscovers them all at once.
+# Verified against [PlasmaBO.jl `rlp_Cattaert07` case](https://juliaspacephysics.github.io/PlasmaBO.jl/dev/rlp_Cattaert07/).
 
 using VlasovMaxwellDispersion
 using DelimitedFiles, Printf
@@ -29,8 +27,8 @@ plasma = (NormalizedSpecies(-1.0, Pi2, vdf),)
 
 # ## Reference roots and wavevectors
 #
-# The reference `kρ = k·vtp/ωce` uses the perpendicular thermal gyroradius; invert
-# it to VMD's `k` (normalized to `ωce/c`) at the fixed propagation angle.
+# The tabulated BOPBK roots (`cattaert07_ref.tsv`) use reference `kρ = k·vtp/ωce`;
+# we invert this to VMD's `k` (normalized to `ωce/c`) at the fixed propagation angle.
 
 vtp = sqrt(1 - 1 / 200) * vth
 ref = readdlm(joinpath(@__DIR__, "cattaert07_ref.tsv"); comments = true)
@@ -46,8 +44,7 @@ i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 # reference points. Branch 4's `kρ = 10⁻⁴` endpoint is excluded: there its
 # `ω ≈ −3×10⁻⁶` has merged into the `ω = 0` light-term pole of `det 𝒟` (the
 # reference value is itself numerically zero) — below that separation no root
-# tracker can hold a branch identity, which is the practical lower-`k` limit of
-# seeded continuation.
+# tracker can hold a branch identity.
 
 kρd = sort!(unique(vcat([collect(range(kρs[i], kρs[i + 1]; length = 3)) for i in 1:(length(kρs) - 1)]...)))
 iref = [findfirst(==(kρ), kρd) for kρ in kρs]
@@ -73,8 +70,7 @@ ttrack = @elapsed ωs = map(1:4) do ib
 end
 @printf("seeded tracking: %.1f s for 4 branches × %d k-points\n", ttrack, length(kρd))
 
-# `maxΔRe`/`maxΔIm` stay at the `10⁻⁵`–`10⁻³` level: VMD reproduces the reference
-# roots, including the weak damping.
+# VMD reproduces the reference roots, including the weak damping.
 #
 # Solid lines: VMD tracks. Open markers: BOPBK reference.
 
@@ -99,14 +95,12 @@ fig
 # The same branches, discovered *without* initial points: a
 # `GlobalDispersionProblem` over an `ω` box and a `kρ` scan finds all roots of
 # `det 𝒟 = 0` at once. `region` is the `ω` search box (in units of `ωce`);
-# `geom` sweeps `k` at fixed `θ`, spanning `kρ ∈ [0.005, 0.3]`. `AAA` runs an
-# independent rational fit at every sweep point and links the results
-# into branches — one solve returns every branch in the box.
+# `geom` sweeps `k` at fixed `θ`, spanning `kρ ∈ [0.005, 0.3]`.
 
 region = (0.005 - 0.16im, 3.05 + 0.02im)
 geom = AngleSweep(k = (0.05 / vtp * 0.1, 0.3 / vtp), theta = θ)
 prob = GlobalDispersionProblem(plasma, region, geom)
-sol = solve(prob, AAA())
+sol = solve(prob)
 
 # `dispersion_diagram` plots the surveyed branches: `Re ω(kρ)` and `Im ω(kρ)`,
 # one colour per discovered branch. The four tabulated branches appear as
