@@ -34,7 +34,7 @@ include("solve.jl")
 export Regime, NonRelativistic, Relativistic
 export Wavenumber, para, perp
 # re-exported physical vocabulary from PlasmaBase
-export AbstractVDF, Particle, Electron, Proton, Ion, Species, Plasma
+export AbstractVDF, Particle, Electron, Proton, Species, Plasma
 export NormalizedSpecies
 export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, CoupledVDF, GaussianRing
 export BiKappa, ProductBiKappa, Kappa
@@ -43,7 +43,7 @@ export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
 export DispersionProblem, GlobalDispersionProblem
-export DispersionAlgorithm, Muller, GRPF, ArcLength, AAA, JumpFallback, DispersionSolution
+export Muller, GRPF, ArcLength, AAA, JumpFallback, DispersionSolution
 export AngleSweep, CartesianSweep
 export SurveySolution, DispersionBranch, SolveStats, dispersion_diagram
 export GridFitMethod, NonnegBSpline, BicubicHermite, fit_grid
