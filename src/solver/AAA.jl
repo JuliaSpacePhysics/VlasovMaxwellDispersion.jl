@@ -1,4 +1,4 @@
-using RationalFunctionApproximation: aaa, poles as aaa_poles, degree as aaa_degree
+using RationalFunctionApproximation: approximate, poles as aaa_poles, degree as aaa_degree
 
 """
     AAA(; n=(20, 16), tol=1e-13, max_degree=150)
@@ -25,8 +25,25 @@ function _slice_zeros(alg::AAA, f, region)
             for y in range(imag(ll), imag(ur); length = alg.n[2])
     ]
     F = map(f, Z)
-    ok = map(v -> isfinite(v) && !iszero(v), F)   # 1/f samples need finite f ≠ 0
-    fit = aaa(inv.(F[ok]), Z[ok]; alg.max_degree, alg.tol)
+    nvalid = 0
+    @inbounds for v in F
+        nvalid += isfinite(v) && !iszero(v)
+    end
+    if nvalid == length(F)
+        map!(inv, F, F)
+    else
+        z = similar(Z, nvalid)
+        y = similar(F, nvalid)
+        i = 0
+        @inbounds for j in eachindex(F, Z)
+            v = F[j]
+            (isfinite(v) && !iszero(v)) || continue
+            i += 1
+            z[i], y[i] = Z[j], inv(v)
+        end
+        Z, F = z, y
+    end
+    fit = approximate(F, Z; max_iter = alg.max_degree + 1, tol = alg.tol, stagnation = 10)
     zs = filter(z -> _in_box(region, z), aaa_poles(fit))
     return zs, aaa_degree(fit) >= alg.max_degree
 end

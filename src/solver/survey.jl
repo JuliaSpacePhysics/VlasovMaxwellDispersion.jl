@@ -69,7 +69,12 @@ CommonSolve.init(
     refine = Muller(), pad = 0.15, gate = nothing, maxgap = 1
 ) = SurveyCache(prob, alg, refine, pad, gate, maxgap)
 
-_tmap(f, xs) = map(fetch, [Threads.@spawn(f(x)) for x in xs])
+function _tforeach(f, xs)
+    Threads.@threads :dynamic for x in xs
+        f(x)
+    end
+    return nothing
+end
 
 function CommonSolve.solve!(cache::SurveyCache)
     t0 = time_ns()
@@ -87,7 +92,7 @@ function CommonSolve.solve!(cache::SurveyCache)
     zv = Array{Vector{ComplexF64}}(undef, dims)
     nev = zeros(Int, dims)
     sat = fill(false, dims)
-    _tmap(CartesianIndices(dims)) do c
+    _tforeach(CartesianIndices(dims)) do c
         p = ntuple(j -> grids[j][c[j]], m)
         k = kf(p...)
         n = Ref(0)
@@ -116,12 +121,13 @@ function CommonSolve.solve!(cache::SurveyCache)
     sheets = link_sheets(grids, zv; gate = @something(cache.gate, diag / 8), maxgap)
     filter!(sh -> any(_in_box(prob.region, ω) for (_, ω) in sh), sheets)
     T = _realtype(prob)
-    roots = _tmap(sheets) do sh
+    makebranch(sh) = begin
         ωs = [Complex{T}(ω) for (_, ω) in sh]
         ks = [kf(p...) for (p, _) in sh]
         res = [residual(prob.plasma, ω, k; closure = prob.closure) for (ω, k) in zip(ωs, ks)]
         DispersionBranch(ωs, ks, res)
     end
+    roots = map(makebranch, sheets)
     return SurveySolution(roots, stats(), _retcode(roots, any(sat)), prob, alg)
 end
 
