@@ -81,6 +81,9 @@ function _landau(::PeeledGK, g, lims, ζ::Number, side; kw...)
     return reg + gζ .* _lpole_term(ζ, lo, hi, side, peel)
 end
 
+# conj/abs2 over Base's overflow-safe inv(::ComplexF64)
+safe_inv(x) = conj(x) / abs2(x)
+
 function _landau(::PeeledGK, g, lims, ζs::AbstractVector, side; kw...)
     lo, hi = lims
     gζs = g.(ζs)
@@ -89,7 +92,7 @@ function _landau(::PeeledGK, g, lims, ζs::AbstractVector, side; kw...)
     f! = function (y, u)
         gu = g(u)
         return @inbounds for i in eachindex(gζs)
-            y[i] = ifelse(peel[i], gu - gζs[i], gu) * inv(u - ζs[i])
+            y[i] = ifelse(peel[i], gu - gζs[i], gu) * safe_inv(u - ζs[i])
         end
     end
     QuadGK.quadgk!(f!, I, lo, hi; norm = v -> maximum(NORM, v), kw...)
