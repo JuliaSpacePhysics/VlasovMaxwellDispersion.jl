@@ -47,7 +47,7 @@ end
     @test minimum(abs(b.omega - rb.omega[i]) for b in sg.roots) < 1.0e-6
 end
 
-@testitem "AAA and GRPF swept surveys agree" begin
+@testitem "AAA and padded GRPF swept surveys agree" begin
     using VlasovMaxwellDispersion: NormalizedSpecies, ColdVDF, CartesianSweep,
         GlobalDispersionProblem, AAA, GRPF, solve, para
 
@@ -61,16 +61,20 @@ end
     region = (0.05 - 0.05im, 4.5 + 0.05im)
     prob = GlobalDispersionProblem(cold, region, CartesianSweep(; kz = range(0.3, 3.0, length = 9)))
     sa = solve(prob, AAA())
-    sg = solve(prob, GRPF())
-    @test sa.retcode == :Success && sg.retcode == :Success
-    @test length(sa.roots) == length(sg.roots) == 4
-
+    sg_exact = solve(prob, GRPF())
     ll, ur = region
+    margin = 0.15 * (ur - ll)
+    padded = (ll - margin, ur + margin)
+    sg_padded = solve(GlobalDispersionProblem(cold, padded, prob.geometry), GRPF())
+    @test sa.retcode == sg_exact.retcode == sg_padded.retcode == :Success
+    @test length(sa.roots) == 4
+
     inbox(ω) = real(ll) ≤ real(ω) ≤ real(ur) && imag(ll) ≤ imag(ω) ≤ imag(ur)
     samples(sol) = [(para(k), ω) for b in sol.roots for (k, ω) in zip(b.k, b.omega) if inbox(ω)]
-    sA, sG = samples(sa), samples(sg)
-    @test !isempty(sA) && length(sA) == length(sG)
-    # Same in-box (k, ω) sample set to polish accuracy, both directions.
+    sA, sG_exact, sG = samples(sa), samples(sg_exact), samples(sg_padded)
+    # GRPF misses two roots near boundaries
+    @test length(sG_exact) < length(sA) == length(sG)
+
     dist(x, S) = minimum(hypot(x[1] - y[1], abs(x[2] - y[2])) for y in S)
     @test maximum(dist(x, sG) for x in sA) < 1.0e-8
     @test maximum(dist(x, sA) for x in sG) < 1.0e-8

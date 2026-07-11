@@ -1,7 +1,12 @@
 """
     Muller(; atol=1e-10, maxiter=100)
 
-Derivative-free complex root polish.
+Complex-valued Muller's method for derivative-free root polishing. 
+Fits a quadratic through `(x0,f0),(x1,f1),(x2,f2)` and advances to 
+the root closer to `x2`, picking the denominator branch that
+maximizes `|denom|` for numerical stability.
+
+Returns `NaN+NaN*im` if `maxiter` is exhausted without reaching `atol` on the step size or `|f|`.
 """
 Base.@kwdef struct Muller
     atol::Float64 = 1.0e-10
@@ -24,30 +29,30 @@ CommonSolve.init(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller) =
 function CommonSolve.solve!(cache::MullerCache)
     t0 = time_ns()
     (; prob, alg, f) = cache
-    h = _seed_offset(prob.omega0)
-    ω, nevals = _muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im;
-                       alg.atol, alg.maxiter)
+    ω, nevals = _muller(f, prob.omega0; alg.atol, alg.maxiter)
     ok = isfinite(ω)
     stats = SolveStats(nevals, (time_ns() - t0) / 1.0e9)
     return DispersionSolution(ω, residual(prob, ω), stats, ok ? :Success : :Failure, prob, alg)
 end
 
+function polish!(f, ωs, alg::Muller = Muller())
+    n = 0
+    for i in eachindex(ωs)
+        ωs[i], ni = _muller(f, ωs[i]; alg.atol, alg.maxiter)
+        n += ni
+    end
+    return ωs, n
+end
 
-"""
-    muller(f, x0, x1, x2; atol=1e-10, maxiter=100)
+muller(args...; kw...) = first(_muller(args...; kw...))
 
-Complex-valued Muller's method. Fits a quadratic through `(x0,f0),(x1,f1),(x2,f2)`
-and advances to the root closer to `x2`, picking the denominator branch that
-maximizes `|denom|` for numerical stability. 
-    
-Returns `NaN+NaN*im` if `maxiter` is exhausted without reaching `atol` on the step size or `|f|`.
-"""
-function muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
-    return first(_muller(f, x0, x1, x2; atol, maxiter))
+function _muller(f, x0; kw...)
+    h = _seed_offset(x0)
+    return _muller(f, x0 - h, x0 + h, x0 + h * im; kw...)
 end
 
 function _muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
-    x0, x1, x2 = promote(complex(float(x0)), complex(float(x1)), complex(float(x2)))
+    x0, x1, x2 = promote(complex(x0), complex(x1), complex(x2))
     nan = typeof(x2)(NaN, NaN)
     f0, f1, f2 = f(x0), f(x1), f(x2)
     nevals = 3

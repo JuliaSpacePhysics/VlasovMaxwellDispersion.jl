@@ -104,9 +104,3 @@ function _in_box(region, point = 0)
     ll, ur = region
     return real(ll) ≤ real(point) ≤ real(ur) && imag(ll) ≤ imag(point) ≤ imag(ur)
 end
-
-"""
-    solve(prob::DispersionProblem, alg=ArcLength()) -> DispersionSolution
-
-Track one branch across `prob.k`. `retcode` is `:Partial` if any `k` failed.
-"""

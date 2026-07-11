@@ -93,15 +93,15 @@ end
 end
 
 @testitem "Langmuir root at k∥<0 mirrors the k∥>0 root" begin
-    using VlasovMaxwellDispersion: VlasovMaxwellDispersion as VM
+    using VlasovMaxwellDispersion: muller
 
     Omega_e, Pi2, vth, kz = -1836.0, 1.0, 0.5, 0.7
     pl = NormalizedSpecies(Omega_e, Pi2, Maxwellian(vth))
     root(kzv) = begin
         k = Wavenumber(0.0, kzv)
-        f = omega -> electrostatic_det(pl, omega, k) / VM.abs2(k)
+        f = omega -> electrostatic_det(pl, omega, k) / abs2(k)
         seed = sqrt(Complex(Pi2 + 3 * kzv^2 * vth^2 / 2)) - 0.01im
-        VM.muller(f, seed - 1.0e-3, seed + 1.0e-3, seed + 1.0e-3im)
+        muller(f, seed)
     end
     rp, rm = root(kz), root(-kz)
     @test !isnan(rp) && imag(rp) < 0
