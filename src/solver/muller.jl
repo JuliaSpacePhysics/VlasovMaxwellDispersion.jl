@@ -22,12 +22,14 @@ CommonSolve.init(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller) =
     MullerCache(prob, alg, prob.f)
 
 function CommonSolve.solve!(cache::MullerCache)
+    t0 = time_ns()
     (; prob, alg, f) = cache
     h = _seed_offset(prob.omega0)
     ω, nevals = _muller(f, prob.omega0 - h, prob.omega0 + h, prob.omega0 + h * im;
                        alg.atol, alg.maxiter)
     ok = isfinite(ω)
-    return DispersionSolution(ω, residual(prob, ω), nevals, ok ? :Success : :Failure, prob, alg)
+    stats = SolveStats(nevals, (time_ns() - t0) / 1.0e9)
+    return DispersionSolution(ω, residual(prob, ω), stats, ok ? :Success : :Failure, prob, alg)
 end
 
 

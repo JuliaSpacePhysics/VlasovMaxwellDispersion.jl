@@ -10,7 +10,6 @@ struct NonRelativistic <: Regime end
 struct Relativistic <: Regime end
 
 # ── Swept manifold in k-space
-# Each coordinate axis is either fixed or swept (a `(lo,hi)` interval)
 abstract type ParameterGeometry end
 
 """
@@ -39,6 +38,7 @@ Base.convert(::Type{Wavenumber{T}}, k::Wavenumber) where {T} = Wavenumber{T}(k.k
     AngleSweep(k, theta)   /   AngleSweep(; k, theta)
 
 Polar k-space geometry: `|k|` and the angle `θ` to `B₀` so that `𝐤 = (k sinθ, k cosθ)`.
+Each axis is a fixed scalar or swept — a vector of sample values, or a `(lo, hi)` tuple.
 """
 struct AngleSweep{K, T} <: ParameterGeometry
     k::K
@@ -56,14 +56,14 @@ CartesianSweep(; kx = false, kz) = CartesianSweep(kx, kz)
 
 _as_tuple(x::T) where {T} = Tuple{fieldtypes(T)...}(getfield(x, i) for i in 1:fieldcount(T))
 
-_isswept(x) = x isa Tuple
+_isswept(x) = x isa Union{Tuple, AbstractVector}
 _wavenumber(::AngleSweep, k, θ) = Wavenumber(k .* sincos(θ)...)
 _wavenumber(::CartesianSweep, kx, kz) = Wavenumber(kx, kz)
 _wavenumber(::Wavenumber, kperp, kz) = Wavenumber(kperp, kz)
 
 # fixed axis emits its scalar; swept axis takes the next param, returning the rest.
-_pick(axis, ps) = (axis, ps)
-_pick(axis::Tuple, ps) = (first(ps), Base.tail(ps))
+_pick(axis::Number, ps) = (axis, ps)
+_pick(axis, ps) = (first(ps), Base.tail(ps))
 
 function wavefun(g)
     a, b = _as_tuple(g)
@@ -74,11 +74,9 @@ function wavefun(g)
     end
 end
 
-function parambox(g)
-    params = filter(_isswept, _as_tuple(g))
-    return map(first, params), map(last, params)
-end
-n_swparams(g) = count(_isswept, _as_tuple(g))
+_paramgrid(axis::AbstractVector) = axis
+_paramgrid(axis::Tuple) = range(axis...; length = 61)
+paramgrids(g) = map(_paramgrid, filter(_isswept, _as_tuple(g)))
 
 # Real float type carried by a value/type — the element-type anchor so user
 # number types (Float32, BigFloat, …) flow into solution containers.

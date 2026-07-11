@@ -3,12 +3,11 @@ using RootsAndPoles
 """
     GRPF(; tol=1e-3, meshtol=nothing, params=nothing)
 
-Global Roots-and-Poles Finder (argument principle) for [`GlobalDispersionProblem`](@ref).
-`tol` is the refinement accuracy; `meshtol` is the *initial* mesh spacing GRPF refines from
-(`nothing` ⇒ a coarse fraction of the box). `params::GRPFParams` overrides the defaults.
-
-Works on the deflated `det(ω̃²𝒟)`, so genuine roots within `2tol` of `ω=0` are
-dropped together with the deflation's origin artifact.
+Global Roots-and-Poles Finder (argument principle) solver. `tol` is the
+refinement accuracy; `meshtol` the *initial* mesh spacing (`nothing` ⇒ a coarse
+fraction of the box); `params::GRPFParams` overrides the defaults. Searches the
+deflated pole-free `det(ω̃²𝒟)` and drops roots within `2tol` of `ω=0` together
+with the deflation's origin artifact.
 """
 Base.@kwdef struct GRPF{P}
     tol::Float64 = 1.0e-3
@@ -16,33 +15,12 @@ Base.@kwdef struct GRPF{P}
     params::P = nothing
 end
 
-struct GRPFCache{P, A, K, F, R}
-    prob::P
-    alg::A
-    k::K
-    f::F
-    nevals::Base.RefValue{Int}
-    refine::R
-end
+_slice_zeros(alg::GRPF, f, region) =
+    (first(_grpf_roots(f, region; alg.tol, alg.meshtol, alg.params)), false)
 
-function CommonSolve.init(prob::GlobalDispersionProblem, alg::GRPF; refine = Muller())
-    iszero(n_swparams(prob)) ||
-        throw(ArgumentError("GRPF solves only the fixed-k (m=0) problem; use DualAAA for parameter sweeps"))
-    k_fixed = wavefun(prob)()
-    nev = Ref(0)
-    f = ω -> (nev[] += 1; det(wave_dispersion_tensor(prob.plasma, ω, k_fixed; closure = prob.closure)))
-    return GRPFCache(prob, alg, k_fixed, f, nev, refine)
-end
-
-function CommonSolve.solve!(cache::GRPFCache)
-    (; prob, alg, f, refine) = cache
-    roots, poles = _grpf_roots(f, prob.region; alg.tol, alg.meshtol, alg.params)
-    # Drop the deflated det's spurious ω=0 zero (perp k): it sits at |ω| ≲ tol
-    # (mesh accuracy); 2·tol gives a one-cell margin.
-    _in_box(prob.region) && filter!(ω -> abs(ω) > 2alg.tol, roots)
-    retcode = isempty(roots) ? :Failure : :Success
-    return _fixedk_survey(prob, alg, cache.k, roots, poles, cache.nevals[], retcode; refine)
-end
+# GRPF locates the origin artifact only to mesh accuracy (|ω| ≲ tol even before
+# polish); 2tol gives a one-cell margin — genuine roots inside it are dropped too.
+_origin_gate(alg::GRPF, diag) = 2 * alg.tol
 
 # ComplexF64 throughout: RootsAndPoles' Delaunay geometry (IndexablePoint2D) is hard Float64
 function _grpf_roots(f, region; tol = 1.0e-3, meshtol = nothing, params = nothing)

@@ -15,7 +15,7 @@ Two stacked axes: `Re ω(|k|)` and `Im ω(|k|)`. Root branches are drawn as line
 """
 function VlasovMaxwellDispersion.dispersion_diagram(
         sol::SurveySolution;
-        figure = (;), title = "dispersion survey"
+        figure = (;), title = "dispersion survey", kw...
     )
     fig = Makie.Figure(; figure...)
     axr = Makie.Axis(fig[1, 1]; ylabel = "Re ω", title)
@@ -27,13 +27,9 @@ function VlasovMaxwellDispersion.dispersion_diagram(
         k = _kmag.(root.k)
         p = sortperm(k)
         k, ωr, ωi = k[p], real.(root.omega)[p], imag.(root.omega)[p]
-        Makie.scatterlines!(axr, k, ωr; color = col, linewidth = 2)
-        Makie.scatterlines!(axi, k, ωi; color = col, linewidth = 2)
+        Makie.scatterlines!(axr, k, ωr; color = col, linewidth = 2, markersize = 4, kw...)
+        Makie.scatterlines!(axi, k, ωi; color = col, linewidth = 2, markersize = 4, kw...)
     end
-    Makie.Label(
-        fig[0, 1], "$(length(sol.roots)) roots, $(sol.nevals) evaluations";
-        fontsize = 12, tellwidth = false
-    )
     return fig
 end
 

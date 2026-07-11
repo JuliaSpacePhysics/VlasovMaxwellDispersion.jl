@@ -1,7 +1,6 @@
 # Scale-invariant residual
 # Fixture: ALPS test_kpar_fast plasma (vA=1e-4) where ‖𝒟‖~1e12, so raw |det 𝒟|
-# is ~1e14 at a genuine root (cancellation floor ~‖𝒟‖³ε) — every threshold below
-# only works because sol.resid is Hadamard-normalized (|det|/∏‖rowᵢ‖ ~ ε at a root).
+# is ~1e14 at a genuine root (cancellation floor ~‖𝒟‖³ε)
 
 @testitem "local solve residual is scale-invariant" begin
     import Roots: Order1
@@ -18,7 +17,7 @@
         sol = solve(prob, alg)
         @test sol.retcode == :Success
         @test sol.resid < 1.0e-10
-        @test sol.nevals > 0
+        @test sol.stats.nevals > 0
     end
 end
 
@@ -36,7 +35,6 @@ end
     @test gsol.retcode == :Success
     groots = gsol.roots
     @test !isempty(groots)
-    # GRPF roots are mesh-accurate (~tol), not polished, hence the loose bound.
     @test all(x -> 0 <= x.resid < 1.0e-2, groots)
 
     bsol = solve(DispersionProblem(plasma, ωref, [k]))

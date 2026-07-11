@@ -15,19 +15,35 @@ Base.propertynames(prob::AbstractDispersionProblem) =
 
 _hadamard(D) = prod(norm(D[i, :]) for i in 1:3)
 
+# σ(adj D) = {σ₁σ₂, σ₁σ₃, σ₂σ₃} ⇒ σ₃/σ₁ = |det D| / (σ_max(adj D)·σ_max(D)).
+# σ_max via the normal matrix is cancellation-safe — only the *smallest* eigenvalue of D'D is not.
+_smax(A) = sqrt(max(last(eigvals(Hermitian(A' * A))), zero(real(eltype(A)))))
+_adjugate(A::SMatrix{3, 3}) = @inbounds SMatrix{3, 3}(
+    A[2, 2] * A[3, 3] - A[2, 3] * A[3, 2], A[2, 3] * A[3, 1] - A[2, 1] * A[3, 3], A[2, 1] * A[3, 2] - A[2, 2] * A[3, 1],
+    A[1, 3] * A[3, 2] - A[1, 2] * A[3, 3], A[1, 1] * A[3, 3] - A[1, 3] * A[3, 1], A[1, 2] * A[3, 1] - A[1, 1] * A[3, 2],
+    A[1, 2] * A[2, 3] - A[1, 3] * A[2, 2], A[1, 3] * A[2, 1] - A[1, 1] * A[2, 3], A[1, 1] * A[2, 2] - A[1, 2] * A[2, 1],
+)
+_sigma_ratio(D) = (s = svdvals(D); s[end] / s[1])
+function _sigma_ratio(D::SMatrix{3, 3})
+    D_scaled = D / maximum(abs, D) # Pre-scaled to avoid overflow in det/adj'adj
+    return abs(det(D_scaled)) / (_smax(_adjugate(D_scaled)) * _smax(D_scaled))
+end
+
 """
     residual(plasma, ω, k; closure=HarmonicSum())
     residual(prob, ω)
 
-Scale-invariant residual `|det 𝒟(ω)| / ∏ᵢ‖𝒟ᵢ,:‖ ∈ [0,1]`; ~machine epsilon at a
-genuine root regardless of the tensor's magnitude. `NaN` for non-finite `ω`.
+Relative Eckart–Young distance to singularity, `σ_min(𝒟)/σ_max(𝒟) ∈ [0,1]`,
+is used as the scale-invariant residual. `NaN` for non-finite `ω` or `𝒟`.
 
-Raw |det 𝒟| floors at ~‖𝒟‖³ε from cancellation.
+Known blind spot: as `ω → 0` transverse terms inflate, causing `σ_max ∝ 1/ω²`.
+The determinant's structural origin zero reads small but may not be a true root.
 """
 function residual(plasma, ω, k; closure = HarmonicSum())
     isfinite(ω) || return NaN
     D = dispersion_tensor(plasma, ω, k; closure)
-    return abs(det(D)) / _hadamard(D)
+    all(isfinite, D) || return NaN
+    return _sigma_ratio(D)
 end
 residual(prob::AbstractDispersionProblem, ω, k = prob.k) =
     residual(prob.plasma, ω, k; closure = prob.closure)
@@ -41,6 +57,8 @@ end
 include("solver/muller.jl")
 include("solver/GRPF.jl")
 include("solver/ArcLength.jl")
+include("solver/AAA.jl")
+include("solver/survey.jl")
 
 """
     solve(prob::DispersionProblem, alg = Muller()) -> DispersionSolution
@@ -67,42 +85,20 @@ function wave_dispersion_tensor(plasma, ω, k; kwargs...)
 end
 
 """
-    solve(prob::GlobalDispersionProblem; refine=Muller()) -> SurveySolution
+    solve(prob::GlobalDispersionProblem, alg=AAA(); refine=Muller(), kw...)::SurveySolution
 
-[`SurveySolution`](@ref) contains a list of [`DispersionBranch`](@ref)es (root and pole).
+Find all root [`DispersionBranch`](@ref)es of the deflated `det(ω̃²𝒟)`: `alg`
+([`AAA`](@ref) or [`GRPF`](@ref)) runs at each point of the geometry's
+parameter grid, and per-point roots are linked into sheets by
+[`link_sheets`](@ref) (`gate` defaults to ⅛ of the box diagonal). 
+The ω box is a soft window tracked `pad` past every edge. 
+Fixed `k` gives single-point branches.
 
-At fixed `k` (`m=0`) each root/pole is a single-point branch.
-
-Global survey (e.g. GRPF) locates roots only to mesh accuracy. 
-`refine` method (default: `Muller()`) polishes each root to convergence.
-Pass `refine=nothing` to keep the raw mesh roots.
+`refine` (default [`Muller`](@ref); `nothing` keeps raw fit/mesh roots)
+polishes each root and filters out candidates with no nearby zero of the det.
 """
 CommonSolve.solve(prob::GlobalDispersionProblem; kwargs...) =
-    CommonSolve.solve(prob, GRPF(); kwargs...)
-# Fixed-k roots/poles as SurveySolution
-function _fixedk_survey(prob, alg, k, roots, poles, nevals, retcode; refine = Muller())
-    if !isnothing(refine)
-        roots, refine_nevals = _refine_roots(prob, k, roots, refine)
-        nevals += refine_nevals
-    end
-    roots = [DispersionBranch(ω, k, residual(prob, ω, k)) for ω in roots]
-    poles = [DispersionBranch(ω, k, nothing) for ω in poles]
-    return SurveySolution(roots, poles, nevals, retcode, prob, alg)
-end
-
-# Keep mesh value on divergence and drop polished duplicates
-function _refine_roots(prob, k, roots, alg)
-    polished = eltype(roots)[]
-    nevals = 0
-    for ω0 in roots
-        sol = solve(DispersionProblem(prob.plasma, ω0, k; closure = prob.closure), alg)
-        nevals += sol.nevals
-        ω = sol.omega
-        isfinite(ω) || (ω = ω0)
-        all(abs(ω - z) > sqrt(alg.atol) for z in polished) && push!(polished, ω)
-    end
-    return polished, nevals
-end
+    CommonSolve.solve(prob, AAA(); kwargs...)
 
 function _in_box(region, point = 0)
     ll, ur = region
