@@ -23,15 +23,16 @@ struct MullerCache{P, A, F}
     f::F
 end
 
-CommonSolve.init(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller) =
-    MullerCache(prob, alg, prob.f)
+function CommonSolve.init(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller)
+    p = prepare(prob)
+    return MullerCache(p, alg, p.f)
+end
 
 function CommonSolve.solve!(cache::MullerCache)
-    t0 = time_ns()
     (; prob, alg, f) = cache
-    ω, nevals = _muller(f, prob.omega0; alg.atol, alg.maxiter)
+    t = @elapsed ω, nevals = _muller(f, prob.omega0; alg.atol, alg.maxiter)
     ok = isfinite(ω)
-    stats = SolveStats(nevals, (time_ns() - t0) / 1.0e9)
+    stats = SolveStats(nevals, t)
     return DispersionSolution(ω, residual(prob, ω), stats, ok ? :Success : :Failure, prob, alg)
 end
 

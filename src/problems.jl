@@ -39,6 +39,11 @@ end
 GlobalDispersionProblem(plasma, region, geometry; closure = HarmonicSum()) =
     GlobalDispersionProblem(plasma, region, geometry, closure)
 
+prepare(prob::DispersionProblem; kw...) =
+    DispersionProblem(prepare(prob.plasma, prob.closure; kw...), prob.omega0, prob.k, prob.closure)
+prepare(prob::GlobalDispersionProblem; kw...) =
+    GlobalDispersionProblem(prepare(prob.plasma, prob.closure; kw...), prob.region, prob.geometry, prob.closure)
+
 _realtype(p::GlobalDispersionProblem) =
     promote_type(_realtype(p.region), _realtype(p.geometry))
 

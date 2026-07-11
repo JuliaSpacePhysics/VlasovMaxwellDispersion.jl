@@ -40,7 +40,7 @@ export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, C
 export BiKappa, ProductBiKappa, Kappa
 export Separable, ⊗, Gaussian, GyroRing
 export plasma_dispersion_function, Z
-export IntegralClosure, HarmonicSum, Newberger
+export IntegralClosure, HarmonicSum, Newberger, prepare
 export contribution, dielectric, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
 export DispersionProblem, GlobalDispersionProblem
 export Muller, GRPF, ArcLength, AAA, JumpFallback, DispersionSolution

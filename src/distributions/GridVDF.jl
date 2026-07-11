@@ -15,7 +15,7 @@ struct GridVDF{V, C, F <: TensorSplineFit} <: AbstractVDF
     vpar::V
     vperp::V
     fit::F
-    coupled::C          # CoupledVDF wrapping the complex-evaluable spline
+    coupled::C
 end
 
 regime(d::GridVDF) = regime(d.coupled)
@@ -30,8 +30,18 @@ function GridVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonR
     dgrad = (v, u) -> _grad2(fit, v, u)
     para = promote(float(fit.knots_para[1]), float(fit.knots_para[end]))
     perp = oftype(para[2], fit.knots_perp[1]), oftype(para[2], fit.knots_perp[end])
-    cpl = CoupledVDF(fit, dgrad, para, perp, one(para[1]), regime)
-    return GridVDF(vpara, vperp, fit, cpl)
+    cpl = CoupledVDF(fit, dgrad, para, perp, regime)
+    # fit is pre-normalized (n = 1); pperp2_mean closes per cell, cheaper than
+    # the generic nested quadrature in `precompute`
+    cache = if regime isa NonRelativistic
+        p2m = 2π * QuadGK.quadgk(
+            v -> v^3 * _fit_par_integral(fit, v), zero(perp[2]), perp[2]; rtol = 1.0e-7
+        )[1]
+        (; n = one(para[1]), pperp2_mean = oftype(para[1], p2m))
+    else
+        (; n = one(para[1]), bernstein33 = _bernstein_rel(cpl))
+    end
+    return GridVDF(vpara, vperp, fit, PreparedVDF(cpl, cache))
 end
 
 # A tabulated f₀ is ZERO outside its sampled support — never the bicubic's cubic
@@ -76,11 +86,7 @@ function _grid_contribution(d::GridVDF, s, ω, k; rtol = 1.0e-6)
     fit = d.fit
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
-    # nmax from the perp scale (mean p⊥² over the fitted), as in CoupledVDF.
-    p⊥²_mean = 2π * QuadGK.quadgk(
-        v -> v^3 * _fit_par_integral(fit, v), zero(fit.knots_perp[end]), fit.knots_perp[end]; rtol = 1.0e-7
-    )[1]
-    nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
+    nmax = nmax_bessel(a^2 * abs(d.coupled.cache.pperp2_mean) / 2)
     f = n -> _grid_harmonic(n, fit, ω, Ω, kz, a)
     χ = converge(f; nmax, rtol)
     return (s.Pi2 / ω^2) * _antisymmat(χ)

@@ -1,16 +1,11 @@
 """
-    CoupledVDF(f0; para=(lo,hi), perp=(lo,hi), dgrad=nothing, n=nothing, regime=NonRelativistic())
+    CoupledVDF(f0; para=(lo,hi), perp=(lo,hi), dgrad=nothing, regime=NonRelativistic())
 
-**Most general** gyrotropic VDF: an arbitrary analytic `f0(p⊥,p∥)`.
-
-`f0` must be evaluable at complex argument (continued onto the Landau contour).
-It is stored raw; χ is linear in `f₀`, so `contribution` scales it by `1/n`.
+General analytic gyrotropic VDF `f0(p⊥,p∥)`.
 
 And `para`/`perp` are `(lower, upper)` integration ranges.
 
 `dgrad(p⊥,p∥) -> (∂⊥f0, ∂∥f0)` supplies the gradient and default to autodiff.
-
-`n ≡ ∫d³p f₀`; default `nothing` autocomputes `n` by quadrature.
 
 Prefer [`SeparableVDF`] when `f0(p⊥,p∥)=f⊥(p⊥)f∥(p∥)`.
 """
@@ -19,7 +14,6 @@ struct CoupledVDF{F, Dg, T, R <: Regime} <: AbstractVDF
     dgrad::Dg
     para::Tuple{T, T}
     perp::Tuple{T, T}
-    n::T           # ∫d³p f₀
     regime::R
 end
 
@@ -28,66 +22,80 @@ regime(d::CoupledVDF) = d.regime
 @inline _pair(x::Tuple) = x
 @inline _pair(x) = (zero(x), x)
 
-function CoupledVDF(
-        f0; para, perp, dgrad = nothing, n = nothing,
-        regime = NonRelativistic()
-    )
-    plo, phi = promote(para[1], para[2])
+function CoupledVDF(f0; para, perp, dgrad = nothing, regime = NonRelativistic())
+    plo, phi = promote(float(para[1]), float(para[2]))
     qlo, qhi = oftype(phi, _pair(perp)[1]), oftype(phi, _pair(perp)[2])
-    n = @something n 2π * QuadGK.quadgk(
-        q -> q * QuadGK.quadgk(u -> f0(q, u), plo, phi; rtol = 1.0e-9)[1],
-        qlo, qhi; rtol = 1.0e-9
-    )[1]
     dg = isnothing(dgrad) ? ((q, u) -> _grad2(f0, q, u)) : dgrad
-    return CoupledVDF(f0, dg, (plo, phi), (qlo, qhi), oftype(phi, n), regime)
+    return CoupledVDF(f0, dg, (plo, phi), (qlo, qhi), regime)
 end
 
-function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum(), kw...)
-    return _coupled_contribution(closure, regime(d), d, s, complex(float(ω)), k; kw...) / d.n
+function contribution(d::CoupledVDF, args...; closure = HarmonicSum(), kw...)
+    return contribution(prepare(d, closure; kw...), args...; closure, kw...)
 end
 
-function _coupled_contribution(::HarmonicSum, ::NonRelativistic, d::CoupledVDF, s, ω, k; norm = NORM, rtol = 1.0e-6)
+density(d::CoupledVDF; rtol = 1.0e-9) = 2π * QuadGK.quadgk(
+    q -> q * QuadGK.quadgk(u -> d.f0(q, u), d.para...; rtol)[1],
+    d.perp...; rtol
+)[1]
+
+pperp2_mean(d::CoupledVDF, n = density(d); rtol = 1.0e-3) = 2π * QuadGK.quadgk(
+    q -> q^3 * QuadGK.quadgk(u -> d.f0(q, u), d.para...; rtol)[1],
+    d.perp...; rtol
+)[1] / n
+
+prepare(d::CoupledVDF, closure = HarmonicSum(); kw...) =
+    PreparedVDF(d, precompute(regime(d), closure, d; kw...))
+
+precompute(::NonRelativistic, ::Newberger, d; kw...) = (; n = density(d))
+function precompute(::NonRelativistic, ::HarmonicSum, d; kw...)
+    n = density(d)
+    return (; n, pperp2_mean = pperp2_mean(d, n))
+end
+precompute(::Relativistic, ::Any, d; quad = BoxQuad(_GL24, _GL32), kw...) =
+    (; n = density(d), bernstein33 = _bernstein_rel(d, quad))
+
+contribution(c::PreparedVDF, s, ω, k; closure = HarmonicSum(), kw...) =
+    _coupled_contribution(closure, regime(c), c, s, complex(float(ω)), k; kw...) / c.cache.n
+
+function _coupled_contribution(::HarmonicSum, ::NonRelativistic, c, s, ω, k; alg = PeeledGK(), norm = NORM, rtol = 1.0e-6)
+    d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
-    L, U = d.para
-    p⊥²_mean = 2π * QuadGK.quadgk(
-        v -> v^3 * QuadGK.quadgk(u -> d.f0(v, u), L, U; rtol = 1.0e-3)[1],
-        d.perp...; rtol = 1.0e-3
-    )[1] / d.n
-    nmax = nmax_bessel(a^2 * abs(p⊥²_mean) / 2)
+    nmax = nmax_bessel(a^2 * abs(c.cache.pperp2_mean) / 2)
     ns = (-nmax):nmax
     b2s = similar(ns, SVector{6, typeof(a)})
-
-    X = if !iszero(kz)
-        invkz = -1 / kz
-        ζs = [(ω - n * Ω) / kz for n in ns]
-        landau_integral = plan_landau(d.para, ζs, sign(kz))
-
-        # I(p⊥) for the WHOLE harmonic sum at one perp node
-        QuadGK.quadgk(d.perp...; rtol, norm) do v
-            _perp_Bessel_bilinears!(b2s, a, v)
-            Is = landau_integral(; rtol) do u
-                q, p = d.dgrad(v, u)
-                SVector(q, u * q, u^2 * q, p, u * p)
-            end
-            sum(enumerate(ns)) do (i, n)
-                _In_block(Is[i], invkz, b2s[i], v, ω, kz, n * Ω)
-            end
-        end[1]
-    else
-        # I is harmonic-independent, weight per n by 1/Δ_n = 1/(ω−nΩ)
-        QuadGK.quadgk(d.perp...; rtol, norm) do v
-            _perp_Bessel_bilinears!(b2s, a, v)
-            I = QuadGK.quadgk(d.para...; norm, rtol) do u
-                q, p = d.dgrad(v, u)
-                SVector(q, u * q, u^2 * q, p, u * p)
-            end[1]
-            sum(enumerate(ns)) do (i, n)
-                _In_block(I, 1 / (ω - n * Ω), b2s[i], v, ω, kz, n * Ω)
-            end
-        end[1]
-    end
+    X = iszero(kz) ? _coupled_X0(d, ω, Ω, a, ns, b2s; rtol, norm) :
+        _coupled_X(alg, d, ω, Ω, kz, a, ns, b2s; rtol, norm)
     return (s.Pi2 / ω^2) * _antisymmat(X)
+end
+
+# kz≠0: outer perp quadrature over the ladder primitive.
+function _coupled_X(alg, d, ω, Ω, kz, a, ns, b2s; rtol, norm)
+    invkz = -1 / kz
+    ζs = [(ω - n * Ω) / kz for n in ns]
+    ctx = (; lims = d.para, ζs, side = sign(kz), nΩs = ns * Ω, ω, kz)
+    plan = plan_ladder(alg, ctx; rtol)
+    return QuadGK.quadgk(d.perp...; rtol, norm) do v
+        _perp_Bessel_bilinears!(b2s, a, v)
+        (2π * invkz) * plan(v, b2s) do u
+            q, p = d.dgrad(v, u)
+            SVector(q, u * q, u^2 * q, p, u * p)
+        end
+    end[1]
+end
+
+# kz=0: I is harmonic-independent, weight per n by 1/Δ_n = 1/(ω−nΩ)
+function _coupled_X0(d, ω, Ω, a, ns, b2s; rtol, norm)
+    return QuadGK.quadgk(d.perp...; rtol, norm) do v
+        _perp_Bessel_bilinears!(b2s, a, v)
+        I = QuadGK.quadgk(d.para...; norm, rtol) do u
+            q, p = d.dgrad(v, u)
+            SVector(q, u * q, u^2 * q, p, u * p)
+        end[1]
+        sum(enumerate(ns)) do (i, n)
+            _In_block(I, 1 / (ω - n * Ω), b2s[i], v, ω, zero(a), n * Ω)
+        end
+    end[1]
 end
 
 const _GL24 = GaussLegendre(24)
@@ -101,25 +109,25 @@ const _GL32 = GaussLegendre(32)
 # Endpoints |p∥|=P sit where f₀≈0, so no endpoint (rim-type) corrections arise.
 # f₀ must be evaluable at complex p∥ (poles sit off-axis for complex ω).
 # Validated vs Maxwell–Jüttner (Swanson) to ~1e-5 down to Im ω = −0.15 at μ=2.
-function _coupled_contribution(::HarmonicSum, ::Relativistic, d::CoupledVDF, s, ω, k; quad = BoxQuad(_GL24, _GL32), rtol = 1.0e-6)
+function _coupled_contribution(::HarmonicSum, ::Relativistic, c, s, ω, k; quad = BoxQuad(_GL24, _GL32), rtol = 1.0e-6)
+    d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     if imag(ω) < 0 && real(ω)^2 > kz^2
         @warn "damped superluminal ω (|Re ω| > |k∥|): the (p⊥,p∥) integral is not the analytic continuation there (apex branch cut, docs/relativistic.md); evaluate at Im ω ≥ 0 and continue externally" maxlog = 1
     end
     a = kperp / Ω
-    plo, phi = d.para
     qhi = d.perp[2]
-    γmax = sqrt(1 + max(phi^2, plo^2) + qhi^2)
     nmax = nmax_bessel(a^2 * qhi^2 / 2)
     f = n -> _coupled_harmonic_rel(n, d, ω, Ω, kz, a, quad)
     X_T = 2π * converge(f; nmax, rtol)
-    X = _antisymmat(X_T) .+ _ee33(_bernstein_rel(d, γmax, quad))
+    X = _antisymmat(X_T) .+ _ee33(c.cache.bernstein33)
     return (s.Pi2 / ω^2) * X
 end
 
 # Relativistic non-resonant e∥e∥ term without prefactor
 # Edge-mapped: γ→q² concentrates nodes near γ=1, p∥→θ half-angle over the resonance ellipse
-function _bernstein_rel(d, γmax, qs = BoxQuad(_GL24, _GL32))
+function _bernstein_rel(d, qs = BoxQuad(_GL24, _GL32))
+    γmax = sqrt(1 + max(d.para[1]^2, d.para[2]^2) + d.perp[2]^2)
     acc = quad(qs.outer, 0, 1) do q
         γ = 1 + (γmax - 1) * q^2
         wγ = 2 * (γmax - 1) * q

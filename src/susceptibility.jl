@@ -93,20 +93,28 @@ end
     return SA[xx, xy, xz, yy, zy, zz]
 end
 
-# Pointwise (Grid): the perp tensor at node p⊥ before parallel integration
-# M=(q,uq,u²q,p,up); here M=c·Δm
-@inline function _In_block(Δm, c, bvec, px, ω, kz, nΩ)
-    b11, b12, b22, b13, b23, b33 = bvec
+# Pointwise (Grid): the perp tensor at node p⊥ before parallel integration.
+# M=(q,uq,u²q,p,up); here M=c·Δm. Split into the LINEAR FORMS of Δm it depends
+# on (`_In_forms`: D0/D1 Landau weights and the zz split nΩ(Δ2−pxΔ4)+ω·pxΔ4)
+# and the Bessel-bilinear assembly (`_In_assemble`), so callers can apply linear
+# operations (peel subtraction, Cauchy weights) to 4 scalars instead of 5 moments.
+@inline function _In_forms(Δm, px, ω, kz)
     Δ0, Δ1, Δ2, Δ3, Δ4 = Δm
-    c2 = 2π * c
     kzpx = kz * px
-    D0 = c2 * (ω * Δ0 - kz * Δ1 + kzpx * Δ3)
-    D1 = c2 * (ω * Δ1 - kz * Δ2 + kzpx * Δ4)
-    zz = (c2 * b33) * (nΩ * Δ2 + (ω - nΩ) * px * Δ4)
-    xx, xy, yy = b11 * D0, im * b12 * D0, b22 * D0
-    xz, zy = b13 * D1, im * b23 * D1
-    return SA[xx, xy, xz, yy, zy, zz]
+    return SA[
+        ω * Δ0 - kz * Δ1 + kzpx * Δ3,
+        ω * Δ1 - kz * Δ2 + kzpx * Δ4,
+        Δ2 - px * Δ4, px * Δ4,
+    ]
 end
+@inline function _In_assemble(F, bvec, nΩ, ω)
+    b11, b12, b22, b13, b23, b33 = bvec
+    D0, D1 = F[1], F[2]
+    zz = b33 * (nΩ * F[3] + ω * F[4])
+    return SA[b11 * D0, im * b12 * D0, b13 * D1, b22 * D0, im * b23 * D1, zz]
+end
+@inline _In_block(Δm, c, bvec, px, ω, kz, nΩ) =
+    _In_assemble((2π * c) .* _In_forms(Δm, px, ω, kz), bvec, nΩ, ω)
 
 # Materialize the antisymmetric-paire
 @inline _antisymmat(t) =

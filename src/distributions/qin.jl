@@ -4,7 +4,8 @@
 # Empirically A is a CROSS-VALIDATION backend, not a speedup.
 # Using residue extraction so the first integrand is smooth in 2-D (near-resonance peaks removed) and
 # the second is a 1-D p⊥ integral carrying the analytic pole + Landau residue
-function _coupled_contribution(::Newberger, ::NonRelativistic, d::CoupledVDF, s, ω, k; rtol = 1.0e-7, norm = NORM)
+function _coupled_contribution(::Newberger, ::NonRelativistic, c::PreparedVDF, s, ω, k; rtol = 1.0e-7, norm = NORM)
+    d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     lo, hi = d.para
     qlo, qhi = d.perp
@@ -34,7 +35,8 @@ end
 # (γ,p∥) edge-mapped relativistic Newberger backend, cross-validation only.
 # Valid for Im ω ≥ 0 (and damped ω with no resonance in support); it has no
 # damped-side continuation (rim branch-cut / apex).
-function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω, k; norm = NORM)
+function _coupled_contribution(::Newberger, ::Relativistic, c::PreparedVDF, s, ω, k; norm = NORM)
+    d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     β = kperp / Ω
     pmax = maximum(abs, d.para)
@@ -78,7 +80,7 @@ function _coupled_contribution(::Newberger, ::Relativistic, d::CoupledVDF, s, ω
         (2 * (γmax - 1) * q) .* inner(γ)
     end[1]
     # `fI` carries only the resonant 𝒰·𝓣ₙ; add the same pole-free nonresonant 𝒳_B
-    bern = _ee33((s.Pi2 / ω^2) * _bernstein_rel(d, γmax))
+    bern = _ee33((s.Pi2 / ω^2) * c.cache.bernstein33)
     return (s.Pi2 / (ω^2 * Ω)) .* _antisymmat(val) .+ bern
 end
 
