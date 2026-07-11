@@ -102,22 +102,11 @@ fig
 # `geom` sweeps `k` at fixed `θ`, spanning `kρ ∈ [0.005, 0.3]`. `AAA` runs an
 # independent rational fit at every sweep point and links the results
 # into branches — one solve returns every branch in the box.
-#
-# The box floor is set at `Re ω = 0.005`, well below the electron scale: branches
-# are kept however low they run (only roots within `10⁻⁶` of the box diagonal
-# from `ω = 0` — the deflated determinant's structural origin zero — are
-# rejected), so branch 4 is recovered down to `Re ω ≈ 0.008` at the low-`k` edge
-# along with a heavily damped kinetic branch near `Re ω ≈ 0.003–0.013` that the
-# reference table does not include.
 
 region = (0.005 - 0.16im, 3.05 + 0.02im)
 geom = AngleSweep(k = (0.05 / vtp * 0.1, 0.3 / vtp), theta = θ)
 prob = GlobalDispersionProblem(plasma, region, geom)
-tsurvey = @elapsed sol = solve(prob, AAA())
-@printf(
-    "seedless survey: %.1f s, %d branches, %d det evaluations (%d threads)\n",
-    tsurvey, length(sol.roots), sol.nevals, Threads.nthreads()
-)
+sol = solve(prob, AAA())
 
 # `dispersion_diagram` plots the surveyed branches: `Re ω(kρ)` and `Im ω(kρ)`,
 # one colour per discovered branch. The four tabulated branches appear as

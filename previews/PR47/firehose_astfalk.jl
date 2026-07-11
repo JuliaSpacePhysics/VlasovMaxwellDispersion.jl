@@ -45,11 +45,7 @@ vA = B0 / sqrt(mu0 * n * mp)
 kunit = c0 / vA                        # k·dᵢ → k c/ωcp
 region = (-0.1 - 0.15im, 0.5 + 0.12im)
 geom = AngleSweep(k = (0.01, 0.5) .* kunit, theta = θ)
-tsurvey = @elapsed sol = solve(GlobalDispersionProblem(plasma, region, geom), AAA())
-@printf(
-    "seedless survey: %.1f s, %d branches, %d det evaluations (%d threads)\n",
-    tsurvey, length(sol.roots), sol.nevals, Threads.nthreads(),
-)
+sol = solve(GlobalDispersionProblem(plasma, region, geom), AAA())
 
 # ## Verification against PlasmaBO
 #
