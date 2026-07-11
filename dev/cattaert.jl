@@ -8,7 +8,7 @@
 
 using VlasovMaxwellDispersion
 using DelimitedFiles, Printf
-using CairoMakie                       # loads the plotting extension
+using CairoMakie
 
 # ## Plasma setup
 #
