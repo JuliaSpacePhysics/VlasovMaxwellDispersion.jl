@@ -72,6 +72,13 @@ plan_landau(lims, ζs, side = 1; alg = PeeledGK()) = LandauPlan(alg, lims, ζs, 
 
 @inline _peel(gζ, gscale) = all(isfinite, gζ) && NORM(gζ) * sqrt(eps(one(gscale))) ≤ gscale
 
+# Initial QuadGK segments split at the Landau-pole real parts inside (lo,hi)
+function _quadgk_pole_segments(ζs, lo, hi)
+    lo, hi = float(lo), float(hi)
+    bnds = sort!(unique!(push!(clamp.(real.(ζs), lo, hi), lo, hi)))
+    return QuadGK.Segment.(@view(bnds[1:(end - 1)]), @view(bnds[2:end]))
+end
+
 function _landau(::PeeledGK, g, lims, ζ::Number, side; kw...)
     lo, hi = lims
     gζ = g(ζ)
@@ -118,12 +125,13 @@ function plan_ladder(alg::PeeledGK, ctx; rtol)
     CT = eltype(ctx.ζs)
     Fs = Vector{SVector{4, CT}}(undef, length(ctx.ζs))
     segbuf = QuadGK.alloc_segbuf(typeof(float(ctx.lims[1])), SVector{6, CT}, real(CT))
-    return LadderPlan(alg, ctx, (; Fs, segbuf, rtol))
+    edges = _quadgk_pole_segments(ctx.ζs, ctx.lims...)
+    return LadderPlan(alg, ctx, (; Fs, segbuf, rtol, edges))
 end
 
 function (p::LadderPlan{PeeledGK})(g::G, v, b2s) where {G}
     (; lims, ζs, side, nΩs, ω, kz) = p.ctx
-    (; Fs, segbuf, rtol) = p.ws
+    (; Fs, segbuf, rtol, edges) = p.ws
     lo, hi = lims
     X0 = zero(SVector{6, eltype(eltype(Fs))})
     Xan = X0
@@ -135,7 +143,7 @@ function (p::LadderPlan{PeeledGK})(g::G, v, b2s) where {G}
         lp = _In_forms(gζ, v, ω, kz) .* _lpole_term(ζ, lo, hi, side, peeled)
         Xan = Xan .+ _In_assemble(lp, b2s[i], nΩs[i], ω)
     end
-    reg = QuadGK.quadgk(lo, hi; rtol, norm = NORM, segbuf) do u
+    reg = QuadGK.quadgk(lo, hi; rtol, norm = NORM, segbuf, eval_segbuf = edges) do u
         Fu = _In_forms(g(u), v, ω, kz)
         acc = X0
         @inbounds for i in eachindex(ζs)
