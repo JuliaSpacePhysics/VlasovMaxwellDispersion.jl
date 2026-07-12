@@ -25,7 +25,6 @@ end
 
 function contribution(d::BiKappa, s, ω, k; rtol = 1.0e-8, norm = NORM, kwargs...)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
-    ω = complex(float(ω))
     a = kperp / Ω
     p⊥2 = d.a_perp / (d.kappa - 1.5)
     ns = (-nmax_bessel(a^2 * p⊥2 / 2)):nmax_bessel(a^2 * p⊥2 / 2)
@@ -59,9 +58,10 @@ function _harmonic_sum_perp(d::BiKappa, v, ns, C, ω, Ω, kz, a)
             end
         else
             invk = -1 / kz
+            node = _kappa_node(a_para, b)   # β²=a∥·b fixed across the harmonic sweep ⇒ one sqrt
             sum(zip(b2s, ns)) do (b2, n)
                 ζ = (ω - n * Ω) / kz
-                G0, G1, G2 = _kappa_Gm(ζ, a_para, b, κ, σ)
+                G0, G1, G2 = _kappa_Gm(ζ, a_para, b, κ, σ, node)
                 # F slice ← ∂⊥f (moments G0..G2), T slice ← ∂∥f (uᵐ·∂∥f → G_{m+1})
                 z = invk .* (cFr * G0, cFr * G1, cFr * G2, cTr * G1, cTr * G2)
                 _In_block(z, 1, b2, v, ω, kz, n * Ω)

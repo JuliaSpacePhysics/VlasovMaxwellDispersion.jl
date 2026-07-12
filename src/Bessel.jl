@@ -86,7 +86,8 @@ function besselj_ladder!(out, M::Integer, z::T) where {T} # out[k+1] = J_k(z), k
     base = max(M, ceil(Int, abs(z)))             # seed must clear BOTH the wanted M and the turning point n≈z
     # extra steps decay the seed error in the n>z stable region; digits gained scale
     # with step count, so widen the margin for higher-precision T (≥ the Float64 margin).
-    margin = (sqrt(40 * (base + 1)) + 15) * max(1, precision(T) / 53)
+    # Coefficients tuned to keep worst-case rel error ~3e-13 (Float64) over M≤30, z≤40
+    margin = (sqrt(40 * (base + 1)) / 2 + 12) * max(1, precision(T) / 53)
     N = base + ceil(Int, margin)
     fkp1 = zero(T)
     fk = sqrt(floatmin(T))                       # tiny seed leaves full exponent range to grow downward

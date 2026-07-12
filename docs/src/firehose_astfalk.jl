@@ -19,7 +19,7 @@ const c0 = 2.99792458e8
 qe = 1.602176634e-19; mp = 1.67262192369e-27; me = 9.1093837015e-31
 eps0 = 8.8541878128e-12; mu0 = 1.25663706212e-6
 
-B0 = 0.1; θ = deg2rad(45); n = 5.0e19
+B0 = 0.1; n = 5.0e19
 Te = 496.683; Tpz = 1986.734; Tpp = 993.367; κ = 5.5
 
 wcp = qe * B0 / mp
@@ -43,9 +43,9 @@ plasma = (
 
 vA = B0 / sqrt(mu0 * n * mp)
 kunit = c0 / vA                        # k·dᵢ → k c/ωcp
-region = (-0.1 - 0.15im, 0.5 + 0.12im)
-geom = AngleSweep(k = (0.01, 0.5) .* kunit, theta = θ)
-sol = solve(GlobalDispersionProblem(plasma, region, geom), AAA())
+region = (-0.1 - 0.25im, 0.5 + 0.12im)
+geom = AngleSweep(k = (0.01, 0.5) .* kunit, theta = deg2rad(45))
+sol = solve(GlobalDispersionProblem(plasma, region, geom))
 
 # ## Verification against PlasmaBO
 #

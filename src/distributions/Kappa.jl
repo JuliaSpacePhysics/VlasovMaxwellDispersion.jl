@@ -36,16 +36,15 @@ function ProductBiKappa(; vth_para, vth_perp = vth_para, kappa_para, kappa_perp 
 end
 
 
-# Residue-sum assembly shared by every meromorphic parallel factor with a single closed-half-
-# plane pole p₀ of order M
+# Residue-sum assembly shared by every meromorphic parallel factor 
+# with a single closed-half-plane pole p₀ of order M
 # Hₘ = ∫pᵐf/(p−ζ)dp = 2πi·(Res_{p₀}[pᵐf/(p−ζ)] + [σ>0] ζᵐf(ζ)),   m=0,1,2
 # σ<0 drops the Landau (ζ-side) residue
-@inline function _residue_Hm(p₀, ζ, cM1, cM2, cM3, fζ, σ)
-    L = σ > 0 ? fζ : zero(fζ)
+@inline function _residue_Hm(p₀, ζ, cM1, cM2, cM3, fζ)
     pref = 2π * im
-    H0 = pref * (cM1 + L)
-    H1 = pref * (p₀ * cM1 + cM2 + ζ * L)
-    H2 = pref * (p₀^2 * cM1 + 2p₀ * cM2 + cM3 + ζ^2 * L)
+    H0 = pref * (cM1 + fζ)
+    H1 = pref * (p₀ * cM1 + cM2 + ζ * fζ)
+    H2 = pref * (p₀^2 * cM1 + 2p₀ * cM2 + cM3 + ζ^2 * fζ)
     return H0, H1, H2
 end
 
@@ -56,11 +55,20 @@ end
 # Residue at iβ: aᴹ·cMⱼ = (−1)^{…}·dζ^{j−1}·Σₖ Dₖ with Dₖ = ρᴹpₖwᵏ, ρ=a/(2iβ·dζ), w=dζ/(2iβ),
 # pₖ=Γ(M+k)/(Γ(M)k!). The prefix sums Σ_{k≤M−1}, ≤M−2, ≤M−3 give cM1,cM2,cM3 (Sₚ=0 for p<0 ⇒
 # M<3 guards).
-function _kappa_Hm_scaled(ζ, a, b, M::Integer, σ = 1)
+# Node constants shared by every harmonic in a perp-velocity slice: β²=a·b (and hence iβ)
+# is ζ-independent, so a whole harmonic sweep needs one sqrt. inv2iβ=1/(2iβ) is pure
+# imaginary ⇒ ρ,w below reduce to imaginary-scalar mults, not full complex divisions.
+@inline function _kappa_node(a, b)
     β2 = a * b
-    iβ = im * sqrt(β2)
-    twoiβ, dζ = 2iβ, iβ - ζ
-    ρ, w = a / (twoiβ * dζ), dζ / twoiβ
+    β = sqrt(β2)
+    return β2, im * β, -im / (2β)
+end
+
+# Integer-M residue moments at ζ given precomputed node (β2, iβ, inv2iβ). See scaling notes above.
+@inline function _kappa_Hm_node(ζ, a, b, β2, iβ, inv2iβ, M::Integer, σ)
+    dζ = iβ - ζ
+    ρ = (a * inv2iβ) / dζ               # a/(2iβ·dζ)
+    w = dζ * inv2iβ                     # dζ/(2iβ)
     D = ρ^M
 
     # Plain forward sweep using ratio recurrence Dₖ=D_{k−1}(M+k−1)w/k from D₀=ρᴹ
@@ -76,12 +84,17 @@ function _kappa_Hm_scaled(ζ, a, b, M::Integer, σ = 1)
         end
         if isfinite(S1)                     # a mid-sweep overflow ⇒ anchor
             s = iseven(M) ? -one(ρ) : one(ρ) # (−1)^{M−1}
-            L = (a / (ζ^2 + β2))^M
-            return _residue_Hm(iβ, ζ, s * S1, -s * dζ * S2, s * dζ^2 * S3, L, σ)
+            L = σ > 0 ? (a / (ζ^2 + β2))^M : zero(ρ)   # Landau term dropped for σ<0
+            return _residue_Hm(iβ, ζ, s * S1, -s * dζ * S2, s * dζ^2 * S3, L)
         end
     end
     # Defer to `_kappa_Hm_anchored`, valid when peak term |Dₖ*| (k*≈|w|(M−1)/(1−|w|)) is still representable
     return _kappa_Hm_anchored(ζ, a, b, M, σ)
+end
+
+function _kappa_Hm_scaled(ζ, a, b, M::Integer, σ = 1)
+    β2, iβ, inv2iβ = _kappa_node(a, b)
+    return _kappa_Hm_node(ζ, a, b, β2, iβ, inv2iβ, M, σ)
 end
 
 # Start sweep at k* via loggamma so every partial stays ~O(answer).
@@ -113,8 +126,8 @@ function _kappa_Hm_anchored(ζ, a, b, M::Integer, σ = 1)
     SD2 = SD1 - Dm1
     SD3 = M >= 2 ? SD1 - Dm1 - exp(c + loggamma(2M - 2) - loggamma(M - 1.0) + (M - 2) * logw) : zero(SD1)
     s = iseven(M) ? -one(ρ) : one(ρ)
-    L = (a / (ζ^2 + β2))^M                    # aᴹ·(ζ²+β²)^{-M}, |base|≤1 ⇒ underflows cleanly
-    return _residue_Hm(iβ, ζ, s * SD1, -s * dζ * SD2, s * dζ^2 * SD3, L, σ)
+    L = σ > 0 ? (a / (ζ^2 + β2))^M : zero(SD1) # aᴹ·(ζ²+β²)^{-M}, |base|≤1 ⇒ underflows cleanly
+    return _residue_Hm(iβ, ζ, s * SD1, -s * dζ * SD2, s * dζ^2 * SD3, L)
 end
 
 # Non-integer M: residue fails at the branch point.
@@ -174,7 +187,8 @@ function _separable_harmonics(para, p::Kappa, args...; kw...)
 end
 
 # Slice moments Gₘ=∫uᵐ(b+u²/a∥)^{-M}/(u-ζ)du = a∥^M·H_m(ζ, a∥b, M), M=κ+2.
-@inline _kappa_Gm(ζ, a_para, b, κ, σ = 1) = _kappa_Hm_scaled(ζ, a_para, b, κ + 2, σ)
+@inline _kappa_Gm(ζ, a_para, b, κ::Integer, σ, node) = _kappa_Hm_node(ζ, a_para, b, node[1], node[2], node[3], κ + 2, σ)
+@inline _kappa_Gm(ζ, a_para, b, κ, σ, args...) = _kappa_Hm_scaled(ζ, a_para, b, κ + 2, σ)
 
 # kz=0 slice: pole-free plain moments a∥^M·Sₘ=∫uᵐ(b+u²/a∥)^{-M}du (S₁=0 by parity), M=κ+2.
 @inline function _kappa_Gm0(a_para, b, κ)
