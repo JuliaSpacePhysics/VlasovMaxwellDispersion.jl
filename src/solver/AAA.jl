@@ -1,7 +1,7 @@
-using RationalFunctionApproximation: approximate, poles as aaa_poles, degree as aaa_degree
+using RationalFunctionApproximation: approximate, poles as aaa_poles
 
 """
-    AAA(; n=(20, 16), tol=1e-13, max_degree=150)
+    AAA(; n=(20, 16), kw...)
 
 Derivative-free rational-fit global solver: `aaa`-fit `1/det(ω̃²𝒟)` on an
 `n = (nRe, nIm)` grid over the ω window; the fit's poles are the det's zeros.
@@ -11,18 +11,17 @@ screens nearby roots from the fit's far field — exactly the low-frequency
 (Alfvén/EMIC) roots a wide ω box must keep. A fit saturating `max_degree`
 flags the solution `:Partial`; shrink the window.
 """
-Base.@kwdef struct AAA
-    n::Tuple{Int, Int} = (20, 16)
-    tol::Float64 = 1.0e-13
-    max_degree::Int = 150
+Base.@kwdef struct AAA{K}
+    n::Tuple{Int,Int} = (20, 16)
+    kw::K = (; stagnation=10)
 end
 
-function _slice_zeros(alg::AAA, f, region)
+function discover(alg::AAA, f, region)
     ll, ur = region
     Z = [
         complex(x, y)
-            for x in range(real(ll), real(ur); length = alg.n[1])
-            for y in range(imag(ll), imag(ur); length = alg.n[2])
+        for x in range(real(ll), real(ur); length=alg.n[1])
+        for y in range(imag(ll), imag(ur); length=alg.n[2])
     ]
     F = map(f, Z)
     nvalid = 0
@@ -43,9 +42,9 @@ function _slice_zeros(alg::AAA, f, region)
         end
         Z, F = z, y
     end
-    fit = approximate(F, Z; max_iter = alg.max_degree + 1, tol = alg.tol, stagnation = 10)
-    zs = filter(z -> _in_box(region, z), aaa_poles(fit))
-    return zs, aaa_degree(fit) >= alg.max_degree
+    fit = approximate(F, Z; alg.kw...)
+    zs = filter!(z -> _in_box(region, z), aaa_poles(fit))
+    return zs, prod(alg.n)
 end
 
 # Deflation pins a structural zero at ω=0 for kinetic species (ω̃²χ → 0). No

@@ -15,8 +15,12 @@ Base.@kwdef struct GRPF{P}
     params::P = nothing
 end
 
-_slice_zeros(alg::GRPF, f, region) =
-    (first(_grpf_roots(f, region; alg.tol, alg.meshtol, alg.params)), false)
+function discover(alg::GRPF, f0, region)
+    n = Ref{Int}(0)
+    f = ω -> (n[] += 1; f0(ω))
+    roots, _ = _grpf_roots(f, region; alg.tol, alg.meshtol, alg.params)
+    return roots, n[]
+end
 
 # GRPF locates the origin artifact only to mesh accuracy (|ω| ≲ tol even before
 # polish); 2tol gives a one-cell margin — genuine roots inside it are dropped too.

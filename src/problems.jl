@@ -54,8 +54,8 @@ end
 Result of a seeded `solve`. `omega` is a root for point refinement or a vector
 of roots for continuation. `retcode` is
 `:Success`, `:Failure`, or `:Partial` (branch with some non-converged `k`).
-`resid` is the scale-invariant [`residual`](@ref) `|det 𝒟| / ∏ᵢ‖𝒟ᵢ,:‖` at the
-root(s), mirroring the shape of `omega` (`NaN` for non-converged entries).
+`resid` is the scale-invariant [`residual`](@ref) at the root(s),
+mirroring the shape of `omega` (`NaN` for non-converged entries).
 """
 struct DispersionSolution{T, R, S, Pr, A}
     omega::T

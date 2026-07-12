@@ -22,10 +22,10 @@
     @testset "Bernstein root via electrostatic_de" begin
         k = Wavenumber(kperp, 0.0)
         seed = sqrt(complex(1 + Pi2))   # upper-hybrid branch, between n=1 and n=2
-        r = muller(ω -> electrostatic_det(s, ω, k), seed - 1.0e-3, seed, seed + 1.0e-3im)
-        rref = muller(εl, seed - 1.0e-3, seed, seed + 1.0e-3im)
+        r = muller(ω -> electrostatic_det(s, ω, k), seed)
+        rref = muller(εl, seed)
         @test r ≈ rref rtol = 1.0e-8
-        @test abs(imag(r)) < 1.0e-10   # Bernstein modes are undamped at kz=0
+        @test abs(imag(r)) < 1.0e-10  # Bernstein modes are undamped at kz=0
     end
 end
 
@@ -86,7 +86,7 @@ end
     for ω in (0.5 + 0.1im, 0.5 - 0.05im)
         a = contribution(sp, ω, Wavenumber(0.2, 0.0))
         b = contribution(spc, ω, Wavenumber(0.2, 0.0))
-        @test maximum(abs.(a .- b)) / maximum(abs.(a)) < 1.0e-5
+        @test maximum(abs.(a .- b)) / maximum(abs, a) < 1.0e-5
     end
 end
 

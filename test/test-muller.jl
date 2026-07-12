@@ -13,6 +13,14 @@
     @test hits[] > 0
 end
 
+@testitem "Polish and consolidate" begin
+    using VlasovMaxwellDispersion: consolidate, polish!
+
+    roots, _ = polish!(z -> z^2 - 1, [0.9 + 0.1im, 1.1 - 0.1im, -0.9im - 1])
+    @test all(isfinite, roots)
+    @test consolidate(roots; atol = 1.0e-8) ≈ [1 + 0im, -1 + 0im]
+end
+
 @testitem "Polishes |ω|≪1 roots (relative seed spread)" begin
     # Dense cold e-p plasma: EMIC/Alfvén root near ω≈8.6e-5 (≪ 1).
     mp_me = 1836.15

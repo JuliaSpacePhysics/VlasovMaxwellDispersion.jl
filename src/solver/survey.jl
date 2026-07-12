@@ -1,10 +1,23 @@
 # Generic global survey: per-slice zero finding + cross-slice linking. Any alg
-# implementing `_slice_zeros(alg, f, region) -> (zeros, saturated)` and
+# implementing `discover(alg, f, region) -> (zeros, saturated)` and
 # `_origin_gate(alg, diag)` solves GlobalDispersionProblem at any swept
 # dimension through this one path.
 
+function CommonSolve.init(
+        prob::GlobalDispersionProblem, alg;
+        refine = Muller(), linking = nothing
+    )
+    ll, ur = prob.region
+    diag = hypot(real(ur - ll), imag(ur - ll))
+    linking = @something linking (; maxgap = 1, gate = diag / 8)
+
+    return SurveyCache(prob, alg, refine, linking)
+end
+
+polish!(f, ωs, ::Nothing) = ωs, 0
+
 """
-    link_sheets(grids, vals; gate, maxgap=1) -> Vector{Vector{Tuple{NTuple,ComplexF64}}}
+    link(alg, grids, vals)
 
 Link per-grid-point complex value sets `vals[I]` into continuous sheets over
 the m-D parameter grid `grids`. 
@@ -12,7 +25,7 @@ Values match extrapolated sheet tips greedily within `gate`, bridging up to
 `maxgap` empty points; unmatched values start new sheets. Extrapolation (not
 plain nearest-tip) is what keeps two crossing branches from swapping partners.
 """
-function link_sheets(grids, vals; gate, maxgap = 0)
+function link(alg, grids, vals)
     m = length(grids)
     P = float(promote_type(map(eltype, grids)...))
     V = ComplexF64
@@ -22,7 +35,7 @@ function link_sheets(grids, vals; gate, maxgap = 0)
         p = ntuple(j -> P(grids[j][c[j]]), m)
         vs = V.(vals[c])
         ref = Dict{Int, Tuple{V, V, Int}}()          # sid ⇒ (tip, velocity, gap l); closest l wins
-        for j in 1:m, l in 1:(maxgap + 1)
+        for j in 1:m, l in 1:(alg.maxgap + 1)
             c[j] - l ≥ 1 || break
             nb = c - CartesianIndex(ntuple(i -> i == j ? l : 0, m))
             for (sid, v, dv) in get(tips, nb, Tuple{Int, V, V}[])
@@ -39,7 +52,7 @@ function link_sheets(grids, vals; gate, maxgap = 0)
         useds = Set{Int}()
         assigned = Tuple{Int, V, V}[]
         for (d, i, sid, v, l) in cand
-            (d ≤ gate && !usedv[i] && sid ∉ useds) || continue
+            (d ≤ alg.gate && !usedv[i] && sid ∉ useds) || continue
             usedv[i] = true
             push!(useds, sid)
             push!(sheets[sid], (p, vs[i]))
@@ -55,22 +68,15 @@ function link_sheets(grids, vals; gate, maxgap = 0)
     return sheets
 end
 
-struct SurveyCache{P, A, R}
+struct SurveyCache{P, A, R, L}
     prob::P
     alg::A
     refine::R
-    pad::Float64
-    gate::Union{Nothing, Float64}
-    maxgap::Int
+    linking::L
 end
 
-CommonSolve.init(
-    prob::GlobalDispersionProblem, alg;
-    refine = Muller(), pad = 0.15, gate = nothing, maxgap = 1
-) = SurveyCache(prob, alg, refine, pad, gate, maxgap)
-
 function _tforeach(f, xs)
-    Threads.@threads :dynamic for x in xs
+    Threads.@threads for x in xs
         f(x)
     end
     return nothing
@@ -78,47 +84,46 @@ end
 
 function CommonSolve.solve!(cache::SurveyCache)
     t0 = time_ns()
-    (; prob, alg, refine, pad, maxgap) = cache
+    (; prob, alg) = cache
     grids = paramgrids(prob.geometry)
     m = length(grids)
     kf = wavefun(prob.geometry)
     ll, ur = prob.region
-    # Soft window: track `pad` past every edge so an edge-dipping branch stays
-    # one sheet; only in-box results are returned.
-    pll, pur = ll - pad * (ur - ll), ur + pad * (ur - ll)
     diag = hypot(real(ur - ll), imag(ur - ll))
     gate0 = _in_box(prob.region) ? _origin_gate(alg, diag) : 0.0
     dims = map(length, grids)
     zv = Array{Vector{ComplexF64}}(undef, dims)
     nev = zeros(Int, dims)
-    sat = fill(false, dims)
     _tforeach(CartesianIndices(dims)) do c
         p = ntuple(j -> grids[j][c[j]], m)
         k = kf(p...)
-        n = Ref(0)
-        f = ω -> (n[] += 1; det(wave_dispersion_tensor(prob.plasma, ω, k; closure = prob.closure)))
-        zs, sat[c] = _slice_zeros(alg, f, (pll, pur))
-        if !isnothing(refine)
-            # Polish on the deflated det (pole-free at ω=0, where the raw det
-            # defeats Muller); runaways past the padded window are dropped.
-            zs = _polish_seeds(zs, f, refine, 1.0e-4 * diag)
-            filter!(ω -> _in_box((pll, pur), ω), zs)
+        f = ω -> (det(wave_dispersion_tensor(prob.plasma, ω, k; closure = prob.closure)))
+        zs, nevals = discover(alg, f, (ll, ur))
+        polished, np = polish!(f, zs, cache.refine)
+        checked = filter!(polished) do z
+            isfinite(z) && _in_box((ll, ur), z) && abs(z) > gate0
         end
-        filter!(ω -> abs(ω) > gate0, zs)
-        zv[c], nev[c] = zs, n[]
+        zs = consolidate(checked; atol = 1.0e-4 * diag)
+        zv[c], nev[c] = zs, nevals + np
         return nothing
     end
-    nevals = sum(nev)
-    stats() = SolveStats(nevals, (time_ns() - t0) / 1.0e9)
+    stats = SolveStats(sum(nev), (time_ns() - t0) / 1.0e9)
+    return build_solution(cache, grids, zv, stats)
+end
+
+function build_solution(cache::SurveyCache, grids, values, stats)
+    (; prob, alg) = cache
+    m = length(grids)
+    kf = wavefun(prob.geometry)
     if m == 0
         k0 = kf()
         roots = [
             DispersionBranch(ω, k0, residual(prob, ω, k0))
-                for ω in zv[] if _in_box(prob.region, ω)
+                for ω in values[] if _in_box(prob.region, ω)
         ]
-        return SurveySolution(roots, stats(), _retcode(roots, any(sat)), prob, alg)
+        return SurveySolution(roots, stats, _retcode(roots), prob, alg)
     end
-    sheets = link_sheets(grids, zv; gate = @something(cache.gate, diag / 8), maxgap)
+    sheets = link(cache.linking, grids, values)
     filter!(sh -> any(_in_box(prob.region, ω) for (_, ω) in sh), sheets)
     T = _realtype(prob)
     makebranch(sh) = begin
@@ -128,25 +133,16 @@ function CommonSolve.solve!(cache::SurveyCache)
         DispersionBranch(ωs, ks, res)
     end
     roots = map(makebranch, sheets)
-    return SurveySolution(roots, stats(), _retcode(roots, any(sat)), prob, alg)
+    return SurveySolution(roots, stats, _retcode(roots), prob, alg)
 end
 
-_retcode(roots, saturated) =
-    isempty(roots) ? :Failure : (saturated ? :Partial : :Success)
+_retcode(roots) = isempty(roots) ? :Failure : :Success
 
-
-# Muller-polish seeds to machine accuracy on `f`, dedup by `dedup`.
-# A diverged polish drops its seed — the artifact filter: fit poles with no
-# zero of f nearby (Froissart) diverge; every observed genuine stall is the
-# structural ω=0 double zero the origin gate removes anyway.
-function _polish_seeds(seeds, f, alg::Muller, dedup)
-    CT = complex(float(eltype(seeds)))
-    out = CT[]
-    for ωc in seeds
-        h = _seed_offset(ωc)
-        ω = muller(f, ωc - h, ωc + h, ωc + im * h; alg.atol, alg.maxiter)
-        isfinite(ω) || continue
-        any(o -> abs(ω - o) < dedup, out) || push!(out, ω)
+# Deduplicate candidate roots using absolute distance `atol`
+function consolidate(points; atol)
+    out = empty(points)
+    for point in points
+        any(other -> abs(point - other) < atol, out) || push!(out, point)
     end
     return out
 end
