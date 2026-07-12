@@ -29,8 +29,8 @@ function CoupledVDF(f0; para, perp, dgrad = nothing, regime = NonRelativistic())
     return CoupledVDF(f0, dg, (plo, phi), (qlo, qhi), regime)
 end
 
-function contribution(d::CoupledVDF, args...; closure = HarmonicSum(), kw...)
-    return contribution(prepare(d, closure; kw...), args...; closure, kw...)
+function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum(), kw...)
+    return contribution(prepare(d, closure), s, ω, k; closure, kw...)
 end
 
 density(d::CoupledVDF; rtol = 1.0e-9) = 2π * QuadGK.quadgk(

@@ -116,7 +116,7 @@ NormalizedPlasma(species::NormalizedSpecies...) = NormalizedPlasma(Tuple(species
 One-time setup before repeated `contribution` evaluations: normalize specs and precompute (ω,k)-independent quantities held in [`PreparedVDF`](@ref)
 wrappers.
 """
-prepare(x, args...; kw...) = x
+prepare(x, closure = HarmonicSum(); kw...) = x
 prepare(s::NormalizedSpecies, args...; kw...) =
     NormalizedSpecies(s.Omega, s.Pi2, prepare(s.vdf, args...; kw...))
 prepare(p::NormalizedPlasma, args...; kw...) =
