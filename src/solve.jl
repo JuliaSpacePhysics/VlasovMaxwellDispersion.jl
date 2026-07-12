@@ -90,7 +90,7 @@ end
 Find all root [`DispersionBranch`](@ref)es of the deflated `det(ω̃²𝒟)`: `alg`
 ([`AAA`](@ref) or [`GRPF`](@ref)) runs at each point of the geometry's
 parameter grid, and per-point roots are linked into sheets by
-[`link_sheets`](@ref) (`gate` defaults to ⅛ of the box diagonal). 
+[`link`](@ref), tuned via `linking` options (`gate` defaults to ⅛ of the box diagonal).
 The ω box is a soft window tracked `pad` past every edge. 
 Fixed `k` gives single-point branches.
 

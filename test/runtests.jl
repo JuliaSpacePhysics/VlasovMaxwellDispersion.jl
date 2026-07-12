@@ -12,6 +12,9 @@ end
 @testitem "SciML interop" begin
     include("test-sciml-interop.jl")
 end
+@testitem "Linking" begin
+    include("test-link.jl")
+end
 
 @testitem "Aqua" begin
     using Aqua

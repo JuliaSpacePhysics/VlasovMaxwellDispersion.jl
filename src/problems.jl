@@ -73,9 +73,10 @@ end
 
 
 """
-    DispersionBranch
-
-One surveyed branch: mode `omega` at wavevector `k` with residual `resid`.
+Dispersion branch for parameter sweep. 
+For a fixed wavevector, `omega`, `k`, and `resid` are scalars. 
+Otherwise they are arrays shaped like the parameter grid.
+Missing branch points are `NaN` in `omega` and `resid`.
 """
 struct DispersionBranch{W, K, R}
     omega::W
@@ -100,7 +101,7 @@ struct SurveySolution{BR, Pr, A}
     alg::A
 end
 
-# Prune branches post hoc, e.g. filter(b -> length(b.omega) ≥ 5, sol)
+# Prune branches post hoc, e.g. filter(b -> count(isfinite, b.omega) ≥ 5, sol)
 Base.filter(pred, s::SurveySolution) = SurveySolution(
     filter(pred, s.roots), s.stats, s.retcode, s.prob, s.alg
 )
