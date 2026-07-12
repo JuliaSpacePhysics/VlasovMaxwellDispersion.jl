@@ -49,11 +49,12 @@ let g = SUITE["Nonrelativistic/coupled"]
     g0(w, u) = exp(-(u^2 + w^2 + 0.6u * w))
     kw = (para = (-8.0, 8.0), perp = 6.0)
     s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))
+    sp = prepare(s)
     ω = 1.2 + 0.05im
     for kp in (0.3, 1.0, 3.0)
         k = Wavenumber(kp, 0.4)
-        g["B_truncated/kperp=$kp"] = @benchmarkable contribution($s, $ω, $k)
-        g["A_newberger/kperp=$kp"] = @benchmarkable contribution($s, $ω, $k; closure = Newberger())
+        g["B_truncated/kperp=$kp"] = @benchmarkable contribution($sp, $ω, $k)
+        g["A_newberger/kperp=$kp"] = @benchmarkable contribution($sp, $ω, $k; closure = Newberger())
     end
 end
 
@@ -62,7 +63,7 @@ let g = SUITE["Relativistic"], regime = Relativistic()
     for μ in (2.0, 40.0), kp in (0.7, 3.5)
         f0(w, u) = exp(-μ * γ(w, u))
         L = sqrt((1 + 25 / μ)^2 - 1)
-        vdf = CoupledVDF(f0; para = (-L, L), perp = L, regime)
+        vdf = prepare(CoupledVDF(f0; para = (-L, L), perp = L, regime))
         ω = 0.3 + 0.05im
         k = Wavenumber(kp, 0.4)
         g["coupled/A_newberger/μ=$μ/kperp=$kp"] = @benchmarkable contribution($vdf, $ω, $k; closure = Newberger())

@@ -38,16 +38,15 @@ mutable struct ArcLengthCache{P, A, K, W, R}
 end
 
 function CommonSolve.init(prob::DispersionProblem, alg::ArcLength)
-    ks = collect(prob.k)
-    CT = complex(float(typeof(prob.omega0)))
-    prev = CT(prob.omega0)
-    return ArcLengthCache(prob, alg, ks, CT[], real(CT)[], prev, _complex_nan(prev), 0)
+    p = prepare(prob)
+    CT = complex(float(typeof(p.omega0)))
+    prev = CT(p.omega0)
+    return ArcLengthCache(p, alg, collect(p.k), CT[], real(CT)[], prev, _complex_nan(prev), 0)
 end
 
 function CommonSolve.step!(cache::ArcLengthCache)
     i = length(cache.omega) + 1
     i > length(cache.ks) && return cache
-   
     (; prob, alg, prev, prev2) = cache
     k = cache.ks[i]
     guess = isfinite(prev2) && isfinite(prev) ? 2prev - prev2 : prev

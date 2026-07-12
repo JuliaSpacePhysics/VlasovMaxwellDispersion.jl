@@ -100,6 +100,53 @@ function _landau(::PeeledGK, g, lims, ζs::AbstractVector, side; kw...)
     return I
 end
 
+# ---- Parallel-stage primitive: the harmonic-ladder Landau reduction.
+# At one perp node p⊥=v with Bessel bilinears `b2s`, a `LandauAlg` computes
+#   X(v) = Σᵢ _In_assemble(ℒ[_In_forms∘g](ζᵢ), b2s[i], nᵢΩ, ω),
+# with ℒ[h](ζ) = ∫ h(u)/(u−ζ) du. This is the backend seam — a `plan_ladder`
+# method plus a call overload per alg. PeeledGK fuses the pole sum into one
+# adaptive peeled integrand. The plan holds the per-(ω,k) context and all
+# buffers, so calling it per perp node is allocation-free. Default backend:
+# `alg` kwarg upstream.
+struct LadderPlan{A, C, W}
+    alg::A
+    ctx::C      # (; lims, ζs, side, nΩs, ω, kz)
+    ws::W       # alg-specific workspace/precomputation
+end
+
+function plan_ladder(alg::PeeledGK, ctx; rtol)
+    CT = eltype(ctx.ζs)
+    Fs = Vector{SVector{4, CT}}(undef, length(ctx.ζs))
+    segbuf = QuadGK.alloc_segbuf(typeof(float(ctx.lims[1])), SVector{6, CT}, real(CT))
+    return LadderPlan(alg, ctx, (; Fs, segbuf, rtol))
+end
+
+function (p::LadderPlan{PeeledGK})(g::G, v, b2s) where {G}
+    (; lims, ζs, side, nΩs, ω, kz) = p.ctx
+    (; Fs, segbuf, rtol) = p.ws
+    lo, hi = lims
+    X0 = zero(SVector{6, eltype(eltype(Fs))})
+    Xan = X0
+    @inbounds for i in eachindex(ζs)
+        ζ = ζs[i]
+        gζ = g(ζ)
+        peeled = _peel(gζ, NORM(g(clamp(real(ζ), lo, hi))))
+        Fs[i] = _In_forms(peeled ? gζ : zero(gζ), v, ω, kz)   # peel subtrahend, stored as its forms
+        lp = _In_forms(gζ, v, ω, kz) .* _lpole_term(ζ, lo, hi, side, peeled)
+        Xan = Xan .+ _In_assemble(lp, b2s[i], nΩs[i], ω)
+    end
+    reg = QuadGK.quadgk(lo, hi; rtol, norm = NORM, segbuf) do u
+        Fu = _In_forms(g(u), v, ω, kz)
+        acc = X0
+        @inbounds for i in eachindex(ζs)
+            F = (Fu .- Fs[i]) .* safe_inv(u - ζs[i])
+            acc = acc .+ _In_assemble(F, b2s[i], nΩs[i], ω)
+        end
+        acc
+    end[1]
+    return reg .+ Xan
+end
+
 # Scaled Bessel moment `Γ_n(λ) = I_n(λ) e^{-λ}` from perp gyro-averaging.
 # `λ = (k⊥ v_th⊥ / Ω_s)^2 / 2`. Uses scaled modified Bessel `besselix`.
 @inline Gamma_n(n, lambda) = besselix(n, lambda)

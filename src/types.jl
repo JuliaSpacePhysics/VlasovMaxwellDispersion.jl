@@ -108,3 +108,23 @@ struct NormalizedPlasma{S} <: AbstractPlasma
     species::S
 end
 NormalizedPlasma(species::NormalizedSpecies...) = NormalizedPlasma(Tuple(species))
+
+"""
+    prepare(x[, closure]; kw...) -> x′
+
+One-time setup before repeated `contribution` evaluations: normalize specs and precompute (ω,k)-independent quantities held in [`PreparedVDF`](@ref)
+wrappers.
+"""
+prepare(x, args...; kw...) = x
+prepare(s::NormalizedSpecies, args...; kw...) =
+    NormalizedSpecies(s.Omega, s.Pi2, prepare(s.vdf, args...; kw...))
+prepare(p::NormalizedPlasma, args...; kw...) =
+    NormalizedPlasma(map(s -> prepare(s, args...; kw...), p.species))
+
+"""VDF spec plus its `precompute`d (ω,k)-independent constants."""
+struct PreparedVDF{V, C} <: AbstractVDF
+    vdf::V
+    cache::C
+end
+
+regime(c::PreparedVDF) = regime(c.vdf)

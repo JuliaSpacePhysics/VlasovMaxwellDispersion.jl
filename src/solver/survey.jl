@@ -11,7 +11,7 @@ function CommonSolve.init(
     diag = hypot(real(ur - ll), imag(ur - ll))
     linking = @something linking (; maxgap = 1, gate = diag / 8)
 
-    return SurveyCache(prob, alg, refine, linking)
+    return SurveyCache(prepare(prob), alg, refine, linking)
 end
 
 polish!(f, ωs, ::Nothing) = ωs, 0
