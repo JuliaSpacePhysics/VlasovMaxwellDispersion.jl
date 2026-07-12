@@ -4,7 +4,7 @@
 # Empirically A is a CROSS-VALIDATION backend, not a speedup.
 # Using residue extraction so the first integrand is smooth in 2-D (near-resonance peaks removed) and
 # the second is a 1-D p⊥ integral carrying the analytic pole + Landau residue
-function _coupled_contribution(::Newberger, ::NonRelativistic, c::PreparedVDF, s, ω, k; rtol = 1.0e-7, norm = NORM)
+function _coupled_contribution(::Newberger, ::NonRelativistic, c::PreparedVDF, s, ω, k; rtol = 1.0e-6, norm = NORM)
     d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     lo, hi = d.para
@@ -14,13 +14,17 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, c::PreparedVDF, s
     ζs = [(ω - n * Ω) / kz for n in ns]
     ε = max(qlo, sqrt(eps(real(ω))) * qhi)   # perp lower bound (ε edge-removes the p⊥=0 origin)
     lpole_terms = _lpole_term.(ζs, lo, hi, sign(kz), true)  # u-integral of the analytic pole term
+    ρs = Vector{SVector{6, typeof(ω)}}(undef, length(ns))
+    β, a0, ak = kperp / Ω, ω / Ω, kz / Ω
+    kzω, Ωω = kz / ω, Ω / ω
+    residue_prefactor = -2π * Ω / kz
     χ = QuadGK.quadgk(ε, qhi; rtol, norm) do w
-        ρs = _qin_residues(d, ns, ζs, w, ω, Ω, kz, kperp)
+        _qin_residues!(ρs, d, ns, ζs, w, β, kzω, residue_prefactor)
         # smooth p∥ remainder: full resummed integrand minus the peeled poles.
         inner = QuadGK.quadgk(lo, hi; rtol, norm) do u
-            val = _qin_integrand(u, w, one(real(ω)), d, ω, Ω, kz, kperp)
+            val = _qin_integrand_nonrel(u, w, d, a0, ak, β, kzω, Ωω)
             @inbounds for i in eachindex(ζs)
-                val = val .- ρs[i] ./ (u - ζs[i])
+                val = val .- ρs[i] .* safe_inv(u - ζs[i])
             end
             val
         end[1]
@@ -52,7 +56,7 @@ function _coupled_contribution(::Newberger, ::Relativistic, c::PreparedVDF, s, �
     σ = sign(kz)
     function inner(γ)
         umax = sqrt(γ^2 - 1)
-        ζρ = NamedTuple[]
+        ζρ = NamedTuple{(:ζ, :ρ), Tuple{typeof(ω), SVector{6, typeof(ω)}}}[]
         for n in nlo:nhi
             ζ = (ω * γ - n * Ω) / kz
             -umax < real(ζ) < umax || continue
@@ -86,15 +90,14 @@ end
 
 include("qin_sigmas.jl")
 
-@inline function _qin_integrand(u, w, γ, d, ω, Ω0, kz, kperp)
-    a = (ω * γ - kz * u) / Ω0
-    β = kperp / Ω0
+@inline function _qin_integrand_nonrel(u, w, d, a0, ak, β, kzω, Ωω)
+    a = a0 - ak * u
     z = β * w
     r = u / w
     dfpe, dfpa = d.dgrad(w, u)
     cross = w * dfpa - u * dfpe
-    U = dfpe + (kz / (ω * γ)) * cross               # velocity-form numerator (§2)
-    ee = (Ω0 / (γ * ω)) * r * cross                  # e∥e∥ Bernstein term (§3)
+    U = dfpe + kzω * cross
+    ee = Ωω * r * cross
     bern = @SVector ComplexF64[0, 0, 0, 0, 0, ee]
     return (2π * U) .* _qin_T_bare(a, z, u, w) .+ (2π * w) .* bern
 end
@@ -107,14 +110,14 @@ end
 
 # Residue of the bare resummed integrand at p⊥=w for each in-range resonance n,ζ:
 # ρ_n = 2π U(ζ,w) 𝓣_n(z,ζ,w) (−Ω/k∥). U is velocity-form.
-@inline function _qin_residues(d, ns, ζs, w, ω, Ω, kz, kperp)
-    β = kperp / Ω
+@inline function _qin_residues!(ρs, d, ns, ζs, w, β, kzω, prefactor)
     z = β * w
-    return map(ns, ζs) do n, ζ
+    for (i, (n, ζ)) in enumerate(zip(ns, ζs))
         dfpe, dfpa = d.dgrad(w, ζ)
-        U = dfpe + (kz / ω) * (w * dfpa - ζ * dfpe)
-        ((2π * U) * (-Ω / kz)) .* _T_n_bare(n, z, ζ, w)
+        U = dfpe + kzω * (w * dfpa - ζ * dfpe)
+        ρs[i] = (prefactor * U) .* _T_n_bare(n, z, ζ, w)
     end
+    return ρs
 end
 
 # 𝓣(a,z)=p⊥²·T(a,z): z=k⊥p⊥/Ω₀, w=p⊥, u=p∥. Assembled from the regularized (σ0,σ1,σD,σJ)

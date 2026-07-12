@@ -19,6 +19,21 @@ function _besselj_series(ν, z; maxiters = 4000, tol = 1.0e-16)
     return s
 end
 
+function _besselj_series_deriv(ν, z; maxiters = 4000, tol = 1.0e-16)
+    half = z / 2
+    term = half^ν / gamma(ν + 1)
+    s = term
+    sd = ν * term
+    z2 = -half^2
+    for m in 1:maxiters
+        term *= z2 / (m * (m + ν))
+        s += term
+        sd += (ν + 2m) * term
+        abs(term) <= tol * abs(s) && break
+    end
+    return s, sd / z
+end
+
 # Large-|z| asymptotic (Abramowitz & Stegun 9.2.5). Divergent series ⇒ stop at
 # the smallest term. Reliable for |z| ≳ |ν| and |z| ≳ 14.
 function _besselj_asym(ν, z; nterms = 80)
@@ -43,18 +58,11 @@ function _besselj_asym(ν, z; nterms = 80)
     return sqrt(2 / (π * z)) * (P * cos(χ) - Q * sin(χ))
 end
 
-"""
-    besselj_complex(ν, z)
-
-Bessel `J_ν(z)` for complex order `ν`. See `_BESSELJ_ASYM_Z` for
-the series/asymptotic crossover and its precision limits at large `|z|`.
-"""
-@inline function besselj_complex(ν::Real, z::Real)
-    return isinteger(ν) ? besselj(Int(ν), float(z)) : besselj(float(ν), float(z))
-end
-@inline function besselj_complex(ν, z)
-    return abs(z) >= _BESSELJ_ASYM_Z ? _besselj_asym(complex(ν), complex(z)) :
-        _besselj_series(complex(ν), complex(z))
+# Bessel function J_ν(z) and its derivative for complex order ν.
+# See `_BESSELJ_ASYM_Z` for the series/asymptotic crossover.
+@inline function besselj_deriv(ν, z)
+    νc, zc = complex(ν), complex(z)
+    return abs(z) < _BESSELJ_ASYM_Z ? _besselj_series_deriv(νc, zc) : _val_dwrt(x -> _besselj_asym(νc, x), zc)
 end
 
 function besselj_ladder!(out, M::Integer, z::T) where {T} # out[k+1] = J_k(z), k=0..M
