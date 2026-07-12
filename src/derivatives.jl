@@ -50,4 +50,5 @@ SpecialFunctions.erfc(z::Complex{<:Dual{HoloTag}}) = _holo_chain(erfc, w -> -2 /
 SpecialFunctions.erfcx(z::Complex{<:Dual{HoloTag}}) = _holo_chain(erfcx, w -> 2w * erfcx(w) - 2 / sqrt(π), z)
 SpecialFunctions.erfi(z::Complex{<:Dual{HoloTag}}) = _holo_chain(erfi, w -> 2 / sqrt(π) * exp(w^2), z)
 SpecialFunctions.dawson(z::Complex{<:Dual{HoloTag}}) = _holo_chain(dawson, w -> 1 - 2w * dawson(w), z)
-SpecialFunctions.gamma(z::Complex{<:Dual{HoloTag}}) = _holo_chain(gamma, w -> gamma(w) * digamma(w), z)
+SpecialFunctions.gamma(z::Complex{<:Dual{HoloTag}}) = _holo_chain(SF.gamma, w -> SF.gamma(w) * SF.digamma(w), z)
+Gamma.gamma(z::Complex{<:Dual{HoloTag}}) = _holo_chain(Gamma.gamma, w -> Gamma.gamma(w) * Gamma.digamma(w), z)
