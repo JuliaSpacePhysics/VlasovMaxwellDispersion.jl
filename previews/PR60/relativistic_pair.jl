@@ -16,10 +16,8 @@
 #
 # We verify against the two tabulated roots of the
 # [ALPS](https://github.com/danielver02/ALPS) `test_relativistic` case (~1 % in
-# `Re ω`), against Fig. 5 pixel-digitized at 300 dpi (marker size `±0.05` in
-# `ωr`, `±0.1` in `γ`), and cross-check the closed-form Maxwell–Jüttner
-# susceptibility (Swanson time-integral) against the general grid path
-# (`CoupledVDF`).
+# `Re ω`), against Fig. 5 and cross-check the closed-form Maxwell–Jüttner
+# susceptibility (Swanson time-integral) against the general path (`CoupledVDF`).
 
 using VlasovMaxwellDispersion
 using Printf
@@ -88,39 +86,32 @@ end
 # `CoupledVDF` momentum-grid truncation), confirming both evaluators resolve the
 # same relativistic mode.
 
-# ## The A/IC branch: two dispersive zones
+# ## A/IC-related roots
 #
-# López et al. (2014) note the Alfvén branch has **two dispersive zones**. For
-# `μ = 2` our transverse dispersion relation (identical at `k⊥ = 0` and `10⁻³`)
-# resolves them as two root families that exchange near `k* ≈ 0.85`:
+# For `μ = 2` our transverse dispersion relation (identical at `k⊥ = 0` and
+# `10⁻³`) contains two distinct root families:
 #
-# 1. **Propagating zone** (`k∥ ≲ k*`): a subluminal root continued from the
-#    ALPS seed. `ωr` rises (the hump) and `γ` deepens from `0` to `≈ −0.46`,
-#    matching the digitized Fig. 5 blue `γ` to marker size up to `k∥ ≈ 0.65`
+# 1. A **propagating family** continued from the ALPS seed. `ωr` rises and `γ`
+#    deepens from `0` to `≈ −0.46` by `k∥ = 0.85`,
+#    matching the digitized Fig. 5 blue `γ` through `k∥ ≈ 0.65`
 #    (`−0.236` vs. `−0.24` at `k∥ = 0.65`).
-# 2. **Non-propagating zone** (`k∥ ≳ k*`): a purely imaginary root
+# 2. A **purely imaginary family**, displayed over `0.85 ≤ k∥ ≤ 3`,
 #    (`ωr = 0`, pinned by the pair plasma's `ω ↔ −ω̄` mirror symmetry) whose
 #    `γ` dives monotonically to `−3.75` at `k∥ = 3` — Fig. 5's blue dive
 #    (`≈ −3.9`). On the imaginary axis the deflated determinant is exactly
 #    real, so the root is unambiguous (`resid ~ 10⁻¹⁰`).
 #
-# The zones join where the propagating mode's damping meets the purely-damped
-# rate (`γ ≈ −0.46/−0.48` at `k* ≈ 0.85`), giving a near-continuous `γ(k∥)`.
-# In the **exchange window** `k∥ ≈ 0.5–1.25` the published curve descends to
-# `ωr = 0` at moderate damping (`ωr ≈ 0.02, γ ≈ −0.3` at `k∥ = 0.75`); our
-# determinant carries **no root there** — global GRPF surveys over
-# `ωr ∈ (0, 0.4)`, `γ ∈ (−1.3, 0)` find only the two families above, with the
-# propagating `ωr` drifting toward the light line instead of turning down past
-# `k∥ ≈ 0.5` (the faded tail below). This is precisely the
+# Their damping rates happen to be close near `k∥ = 0.85`, but the roots do not
+# coalesce there (`ω ≈ 0.53 − 0.46im` versus `ω ≈ −0.48im`); we therefore
+# do not splice them into one eigenmode branch. The propagating root rises toward
+# the light line instead of following the published finite-`ωr` descent. This is
+# precisely the
 # "large-`k∥`/low-`ωr` end of the A/IC branch" where Verscharen et al. §4.4
 # flag the visible deviation between López and ALPS — ALPS's own `ωr` tails in
 # Fig. 5 overshoot the López descent the same way.
 #
-# For `μ = 10` the exchange never happens within `k∥ ≤ 3`: the imaginary axis
-# carries **no root** (`γ ∈ (−0.05, −3)` scanned) and global surveys around the
-# published descent (`ωr < 0.5`, `γ ∈ (−1.8, 0)` at `k∥ = 2.45, 2.9`) are
-# empty. The single propagating root's `γ` still tracks the digitized red curve
-# to `≲ 0.2` all the way to `k∥ = 3` (`−1.76` vs. `−1.58`), while its `ωr`
+# For `μ = 10` the traced propagating root's `γ` tracks the digitized red curve
+# to `≲ 0.2` through `k∥ = 3` (`−1.76` vs. `−1.58`), while its `ωr`
 # keeps rising past the published peak (`≈ 0.44` at `k∥ ≈ 1.65`) instead of
 # descending — the same §4.4 deviation zone, stronger at this temperature in
 # our determinant.
@@ -137,22 +128,19 @@ function trace(plasma, kzs, seed)
     return ω
 end
 
-## μ=2 propagating: forward from the ALPS k∥=0.1 seed (backward to 0.05), into
-## the faded light-line tail past k*=0.85
-kstar2 = 0.85
+## μ=2 propagating: forward from the ALPS k∥=0.1 seed (backward to 0.05)
 kz2p = collect(0.05:0.05:1.6)
 j0 = findfirst(==(0.1), kz2p)
 ω2p = similar(kz2p, ComplexF64)
 ω2p[j0:end] = trace(plasma2, kz2p[j0:end], complex(alps[1][3], alps[1][4]))
 ω2p[1:(j0 - 1)] = reverse(trace(plasma2, reverse(kz2p[1:(j0 - 1)]), ω2p[j0]))
-i2s = findlast(<=(kstar2), kz2p)
 
-## μ=2 non-propagating: purely imaginary root from k* to 3
-kz2d = collect(kstar2:0.05:3.0)
+## μ=2 distinct purely imaginary family over the displayed interval
+kz2d = collect(0.85:0.05:3.0)
 ω2d = trace(plasma2, kz2d, complex(1.0e-4, -0.478))
 
 ## μ=10: single propagating root over the full range; ωr departs the published
-## descent past k≈1.8 (faded there). Fresh near-marginal seeds below k∥ ≈ 0.3
+## descent past k≈1.8. Fresh near-marginal seeds below k∥ ≈ 0.3
 ## make Muller wander to the mirror (negative-frequency) root, so continue
 ## forward and backward from a robust k∥ = 0.3 seed.
 kz10 = collect(0.1:0.05:3.0)
@@ -160,7 +148,6 @@ j10 = findfirst(==(0.3), kz10)
 ω10 = similar(kz10, ComplexF64)
 ω10[j10:end] = trace(plasma10, kz10[j10:end], complex(0.155, -1.0e-4))
 ω10[1:(j10 - 1)] = reverse(trace(plasma10, reverse(kz10[1:(j10 - 1)]), ω10[j10]))
-i10s = findlast(<=(1.8), kz10)
 
 # ## O-modes
 #
@@ -243,14 +230,10 @@ end
 # ## Figure 5 reproduction
 #
 # Blue: `β = 1` (`μ = 2`); red: `β = 0.2` (`μ = 10`). Crosses: digitized
-# Fig. 5; open circles: tabulated ALPS roots. Solid: the branch as identified
-# above — for `μ = 2` the `ωr = 0` non-propagating zone continues the branch
-# past `k*` (drawn just below the axis-visible zero line). Faded thin: the
-# light-line-bound `ωr` riser our determinant carries where the published
-# branch turns down — the descent is a continuation artifact of the references
-# (see the closing section), so the faded riser is the true root there, drawn
-# subordinate only because the references lack it. O-mode `γ ≈ 0` sits on the
-# zero line.
+# Fig. 5; open circles: tabulated ALPS roots. Line style identifies the root
+# family: solid A/IC-like propagating, dash-dot O-mode, dotted aperiodic. Color
+# identifies temperature. These styles deliberately do not connect the distinct
+# propagating and purely imaginary families.
 
 blu, red = Makie.wong_colors()[1], Makie.wong_colors()[6]
 fig = Figure(size = (860, 430))
@@ -263,24 +246,18 @@ axi = Axis(
     title = "damping", limits = (0, 3, -4, 0.3)
 )
 
-## ωr solid/faded split at the visual departure from the published descent
-## (blue 0.7, red 1.65); γ split at the physical exchange (blue k*, red none).
-for (kzp, ωp, ir, ii, kzd, ωd, ωoo, c, lab) in (
-        (kz2p, ω2p, findlast(<=(0.7), kz2p), i2s, kz2d, ω2d, ωo2, blu, "β = 1.0"),
-        (kz10, ω10, findlast(<=(1.65), kz10), i10s, nothing, nothing, ωo10, red, "β = 0.2"),
+for (kzp, ωp, kzd, ωd, ωoo, c, lab) in (
+        (kz2p, ω2p, kz2d, ω2d, ωo2, blu, "β = 1.0"),
+        (kz10, ω10, nothing, nothing, ωo10, red, "β = 0.2"),
     )
-    lines!(axr, kzp[1:ir], real.(ωp[1:ir]); color = c, linewidth = 2.5, label = lab)
-    lines!(axr, kzp[ir:end], real.(ωp[ir:end]); color = (c, 0.3), linewidth = 1.2)
-    lines!(axi, kzp[1:ii], imag.(ωp[1:ii]); color = c, linewidth = 2.5)
-    if isnothing(kzd)
-        lines!(axi, kzp[ii:end], imag.(ωp[ii:end]); color = c, linewidth = 2.5)
-    else
-        lines!(axr, kzd, zero(kzd); color = c, linewidth = 2.5)
-        lines!(axi, kzd, imag.(ωd); color = c, linewidth = 2.5)
-        lines!(axi, kzp[ii:end], imag.(ωp[ii:end]); color = (c, 0.3), linewidth = 1.2)
+    lines!(axr, kzp, real.(ωp); color = c, linewidth = 2.5, label = "A/IC $lab")
+    lines!(axi, kzp, imag.(ωp); color = c, linewidth = 2.5)
+    if !isnothing(kzd)
+        lines!(axr, kzd, zero(kzd); color = c, linewidth = 2.5, linestyle = :dot, label = "aperiodic $lab")
+        lines!(axi, kzd, imag.(ωd); color = c, linewidth = 2.5, linestyle = :dot)
     end
-    lines!(axr, kzo, ωoo; color = c, linewidth = 2.5)
-    lines!(axi, kzo, zero(kzo); color = c, linewidth = 2.5)
+    lines!(axr, kzo, ωoo; color = c, linewidth = 2.5, linestyle = :dashdot, label = "O-mode $lab")
+    lines!(axi, kzo, zero(kzo); color = c, linewidth = 2.5, linestyle = :dashdot)
 end
 lines!(axr, 0:3, 0:3; color = (:black, 0.3), linestyle = :dash, label = "ω = k∥")
 hlines!(axi, [0.0]; color = (:black, 0.3), linestyle = :dash)
@@ -292,7 +269,7 @@ for (m, c) in ((fig5.aic_gm2, blu), (fig5.aic_gm10, red))
 end
 scatter!(axr, [a[2] for a in alps], [a[3] for a in alps]; color = :black, markersize = 9)
 scatter!(axi, [a[2] for a in alps], [a[4] for a in alps]; color = :black, markersize = 9)
-axislegend(axr; position = :lt, framevisible = false, labelsize = 10)
+axislegend(axr; position = :lt, framevisible = false, labelsize = 9, nbanks = 2)
 fig
 
 # ## The A/IC `ωr` descent: a continuation artifact in the references
@@ -301,9 +278,9 @@ fig
 # roots (~1 % `Re ω`), the damping curves at both temperatures, and both O-modes
 # — **except** the A/IC `ωr` descent ("anomalous zone" of López et al.):
 # López/ALPS show `ωr` turning down to zero past the hump peak, while our
-# determinant carries no root along that path (global GRPF/AAA surveys over the
-# descent boxes find only the families plotted above, at both `μ`; our two
-# independent evaluators agree there to `|Δω| ≲ 6·10⁻⁴`).
+# corrected continuation instead carries the rising roots plotted above. At
+# the tested `μ = 2` points, our two independent evaluators agree to
+# `|Δω| ≲ 6·10⁻⁴`.
 #
 # We adjudicated this numerically, since analytic continuation off the upper
 # half-plane — where all three codes agree and no continuation is needed — is
@@ -329,7 +306,6 @@ fig
 #   chases the same artifact, which is why its `ωr` tails overshoot López's in
 #   our direction (their §4.4 deviation).
 #
-# The physical `μ = 2` branch is therefore the one plotted solid above:
-# propagating hump exchanging with the purely-imaginary aperiodic family at
-# `k* ≈ 0.85` — while the finite-`ωr` descent between them is not a mode of the
-# Maxwell–Jüttner pair plasma.
+# The corrected root set therefore contains a rising propagating family and,
+# for `μ = 2`, a distinct purely imaginary family. The finite-`ωr` descent is
+# not a mode of the Maxwell–Jüttner pair plasma.
