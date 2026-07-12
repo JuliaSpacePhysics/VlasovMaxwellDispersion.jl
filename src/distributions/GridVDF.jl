@@ -30,7 +30,7 @@ function GridVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonR
     dgrad = (v, u) -> _grad2(fit, v, u)
     para = promote(float(fit.knots_para[1]), float(fit.knots_para[end]))
     perp = oftype(para[2], fit.knots_perp[1]), oftype(para[2], fit.knots_perp[end])
-    cpl = CoupledVDF(fit, dgrad, para, perp, regime)
+    cpl = CoupledVDF(erase_f2(fit, para[2]), erase_g2(dgrad, para[2]), para, perp, regime)
     # fit is pre-normalized (n = 1); pperp2_mean closes per cell, cheaper than
     # the generic nested quadrature in `precompute`
     cache = if regime isa NonRelativistic

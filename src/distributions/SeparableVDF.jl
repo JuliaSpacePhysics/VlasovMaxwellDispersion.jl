@@ -24,7 +24,7 @@ end
 
 function _factor(f, df, n, lo, hi)
     fdf = isnothing(df) ? (x -> _val_dwrt(f, x)) : (x -> (f(x), df(x) / n))
-    return AnalyticFactor(f, fdf, lo, hi)
+    return AnalyticFactor(erase_f1(f, hi), erase_fd1(fdf, hi), lo, hi)
 end
 
 # Force generic quadrature path
