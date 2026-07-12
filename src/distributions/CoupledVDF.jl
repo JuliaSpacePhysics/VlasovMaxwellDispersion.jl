@@ -25,8 +25,8 @@ regime(d::CoupledVDF) = d.regime
 function CoupledVDF(f0; para, perp, dgrad = nothing, regime = NonRelativistic())
     plo, phi = promote(float(para[1]), float(para[2]))
     qlo, qhi = oftype(phi, _pair(perp)[1]), oftype(phi, _pair(perp)[2])
-    dg = isnothing(dgrad) ? ((q, u) -> _grad2(f0, q, u)) : dgrad
-    return CoupledVDF(f0, dg, (plo, phi), (qlo, qhi), regime)
+    dg = @something dgrad (q, u) -> _grad2(f0, q, u)
+    return CoupledVDF(erase_f2(f0, phi), erase_g2(dg, phi), (plo, phi), (qlo, qhi), regime)
 end
 
 function contribution(d::CoupledVDF, s, ω, k; closure = HarmonicSum(), kw...)

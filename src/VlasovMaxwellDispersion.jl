@@ -19,6 +19,7 @@ import CommonSolve: solve, init, solve!, step!
 function contribution end
 
 include("derivatives.jl")
+include("erased.jl")
 include("Bessel.jl")
 include("types.jl")
 include("problems.jl")

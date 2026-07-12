@@ -15,7 +15,7 @@ function ReducedVDF(fpar; para, df = nothing, normalize = true)
     lo, hi = promote(float(para[1]), float(para[2]))
     n = normalize ? QuadGK.quadgk(fpar, lo, hi; rtol = 1.0e-10)[1] : one(lo)
     dfp = @something df (u -> _dwrt(fpar, u))
-    return ReducedVDF(dfp, (lo, hi), n)
+    return ReducedVDF(erase_f1(dfp, hi), (lo, hi), n)
 end
 
 function contribution(d::ReducedVDF, s, ω, k; rtol = 1.0e-9, closure = HarmonicSum(), kw...)
