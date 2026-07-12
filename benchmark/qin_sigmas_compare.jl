@@ -1,7 +1,7 @@
 # Compare different ways to evaluate the σ-quartet (derivation §6.1) that the Newberger kernel `_qin_T_bare` needs:
 #
-#   series  — `_qin_sigmas_series` : entire z²-series (the package's |z|<1 branch)
-#   closed  — `_qin_sigmas_closed` : 4 complex-order Bessel evals (the |z|≥1 branch)
+#   series  — `_qin_sigmas_series` : entire z²-series (the package's |z|<8 branch)
+#   closed  — `_qin_sigmas_closed` : complex-order Bessel evals (the |z|≥8 branch)
 #   pFq     — HypergeometricFunctions: σ0 = (1/a)·₁F₂(½; 1+a, 1−a; −z²)
 #
 # Reference is the same z²-series in BigFloat (entire ⇒ exact once enough terms are summed
@@ -72,7 +72,7 @@ function sigma_compare(;
             )
         end
     end
-    println("\nerr = rel. error of σ0 vs BigFloat-series gold. Package uses series for |z|<1, closed for |z|≥1.")
+    println("\nerr = rel. error of σ0 vs BigFloat-series gold. Package uses series for |z|<8, closed for |z|≥8.")
     println("Expect: series accurate+fast small z, cancels large z; closed accurate large z, degrades→z=0; pFq uniform but slowest.")
     return nothing
 end

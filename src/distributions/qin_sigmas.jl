@@ -1,12 +1,10 @@
-const _QIN_ZC2 = 1.0
+const _QIN_ZC2 = 64.0
 @inline qin_sigmas(a, z) =
     abs2(z) < _QIN_ZC2 ? _qin_sigmas_series(a, z) : _qin_sigmas_closed(a, z)
 
 function _qin_sigmas_closed(a, z)
-    Ja, J_a = besselj_complex(a, z), besselj_complex(-a, z)
-    # J_ν′=J_{ν−1}−(ν/z)J_ν
-    Jad = besselj_complex(a - 1, z) - (a / z) * Ja
-    J_ad = besselj_complex(-a - 1, z) + (a / z) * J_a
+    Ja, Jad = besselj_deriv(a, z)
+    J_a, J_ad = besselj_deriv(-a, z)
     s = sinpi(a)
     z2 = z^2
     σ0 = π * J_a * Ja / s
@@ -33,6 +31,7 @@ function _qin_sigmas_series(a, z)
     σJacc = zero(a)                                 # Σ_{k≥1} k² q_k x^{k-1}
     xpow = one(real(z))                             # x^{k-1}
     k = 1
+    converged = false
     while k <= 100
         q *= -(2k) * (2k - 1) / (k^2 * (k^2 - a^2))
         term = q * xpow                             # q_k x^{k-1}
@@ -40,10 +39,14 @@ function _qin_sigmas_series(a, z)
         σDacc += k * term
         σJacc += k^2 * term
         σ0 += q * (xpow * x)                        # q_k x^k
-        (k > absa && k^2 * abs(term * x) <= tolscale) && break
+        if k > absa && k^2 * abs(term * x) <= tolscale
+            converged = true
+            break
+        end
         xpow *= x
         k += 1
     end
+    converged || return _qin_sigmas_closed(a, z)
     σ1 = (a / 4) * σ1acc
     σD = σDacc / 4
     σJ = σJacc / 2 + σ0 - a * σ1                     # (½Σk²q x^{k-1}) + σ0 − a σ1
