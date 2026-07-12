@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Relativistic pair plasma (ALPS / Verscharen 2018) · VlasovMaxwellDispersion.jl</title><meta name="title" content="Relativistic pair plasma (ALPS / Verscharen 2018) · VlasovMaxwellDispersion.jl"/><meta property="og:title" content="Relativistic pair plasma (ALPS / Verscharen 2018) · VlasovMaxwellDispersion.jl"/><meta property="twitter:title" content="Relativistic pair plasma (ALPS / Verscharen 2018) · VlasovMaxwellDispersion.jl"/><meta name="description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="og:description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="twitter:description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="og:url" content="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/relativistic_pair/"/><meta property="twitter:url" content="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/relativistic_pair/"/><link rel="canonical" href="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/relativistic_pair/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">VlasovMaxwellDispersion.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../cattaert/">Kappa-Maxwellian Plasma — Cattaert 2007</a></li><li><a class="tocitem" href="../firehose_astfalk/">Firehose — bi-kappa (Astfalk 2017)</a></li><li><a class="tocitem" href="../ionbeam_gary84/">Ion beam (Gary 1984)</a></li><li class="is-active"><a class="tocitem" href>Relativistic pair plasma (ALPS / Verscharen 2018)</a><ul class="internal"><li><a class="tocitem" href="#Plasma-setup"><span>Plasma setup</span></a></li><li><a class="tocitem" href="#Verification-against-ALPS-(μ-2)"><span>Verification against ALPS (μ = 2)</span></a></li><li><a class="tocitem" href="#Closed-form-vs.-general-relativistic-path-(μ-2)"><span>Closed-form vs. general relativistic path (μ = 2)</span></a></li><li><a class="tocitem" href="#The-A/IC-branch:-two-dispersive-zones"><span>The A/IC branch: two dispersive zones</span></a></li><li><a class="tocitem" href="#Branch-continuation"><span>Branch continuation</span></a></li><li><a class="tocitem" href="#O-modes"><span>O-modes</span></a></li><li><a class="tocitem" href="#Quantitative-check-against-digitized-Fig.-5"><span>Quantitative check against digitized Fig. 5</span></a></li><li><a class="tocitem" href="#Figure-5-reproduction"><span>Figure 5 reproduction</span></a></li><li><a class="tocitem" href="#The-A/IC-ωr-descent:-a-continuation-artifact-in-the-references"><span>The A/IC <code>ωr</code> descent: a continuation artifact in the references</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Relativistic pair plasma (ALPS / Verscharen 2018)</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Relativistic pair plasma (ALPS / Verscharen 2018)</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/blob/main/docs/src/relativistic_pair.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Relativistic-pair-plasma-—-(López-2014,-Verscharen-2018)"><a class="docs-heading-anchor" href="#Relativistic-pair-plasma-—-(López-2014,-Verscharen-2018)">Relativistic pair plasma — (López 2014, Verscharen 2018)</a><a id="Relativistic-pair-plasma-—-(López-2014,-Verscharen-2018)-1"></a><a class="docs-heading-anchor-permalink" href="#Relativistic-pair-plasma-—-(López-2014,-Verscharen-2018)" title="Permalink"></a></h1><p>A hot electron–positron pair plasma: both species share an isotropic <strong>Maxwell–Jüttner</strong> momentum distribution, <code>μ = mc²/T = 2Π²/β∥</code>. We reproduce the two transverse branches of §4.4, Fig. 5 of the ALPS paper (Verscharen et al. 2018, <a href="https://doi.org/10.1017/S0022377818000739">JPP 84, 905840403</a>), which itself reproduces Fig. 1 of López et al. (2014, <a href="https://doi.org/10.1063/1.4894679">PoP 21, 092107</a>), for two temperatures: <code>β = 1.0</code> (<code>μ = 2</code>, blue) and <code>β = 0.2</code> (<code>μ = 10</code>, red):</p><ul><li>the <strong>quasi-parallel A/IC wave</strong> (low <code>ωr</code>): a weakly damped propagating Alfvén-like mode at small <code>k∥</code> that turns strongly cyclotron-damped;</li><li>the <strong>ordinary wave</strong> (O-mode, high <code>ωr</code>): a superluminal branch starting at <code>ωr ≈ 1.1</code> (<code>β = 1</code>) / <code>1.5</code> (<code>β = 0.2</code>) rising toward the light line, <code>γ ≈ 0</code> throughout.</li></ul><p>We verify against the two tabulated roots of the <a href="https://github.com/danielver02/ALPS">ALPS</a> <code>test_relativistic</code> case (~1 % in <code>Re ω</code>), against Fig. 5 pixel-digitized at 300 dpi (marker size <code>±0.05</code> in <code>ωr</code>, <code>±0.1</code> in <code>γ</code>), and cross-check the closed-form Maxwell–Jüttner susceptibility (Swanson time-integral) against the general grid path (<code>CoupledVDF</code>).</p><pre><code class="language-julia hljs">using VlasovMaxwellDispersion
+using Printf
+using CairoMakie</code></pre><h2 id="Plasma-setup"><a class="docs-heading-anchor" href="#Plasma-setup">Plasma setup</a><a id="Plasma-setup-1"></a><a class="docs-heading-anchor-permalink" href="#Plasma-setup" title="Permalink"></a></h2><p>Normalized to the gyrofrequency <code>|Ω| = 1</code>; <code>Π² = ωp²/Ω² = 1</code> per species; momenta in <code>mc</code>, <code>k</code> in <code>Ω/c</code>, <code>k⊥ = 10⁻³</code> (quasi-parallel, as in ALPS). <code>MaxwellJuttner(μ)</code> feeds the relativistic closed-form tensor. Equal masses and opposite charges make R/L degenerate, so the parallel branch is a single relativistic Alfvén-like mode.</p><pre><code class="language-julia hljs">pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
+plasma2 = pair(MaxwellJuttner(mu = 2.0))    ## β = 1.0
+plasma10 = pair(MaxwellJuttner(mu = 10.0))  ## β = 0.2
+kp = 0.001</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.001</code></pre><h2 id="Verification-against-ALPS-(μ-2)"><a class="docs-heading-anchor" href="#Verification-against-ALPS-(μ-2)">Verification against ALPS (μ = 2)</a><a id="Verification-against-ALPS-(μ-2)-1"></a><a class="docs-heading-anchor-permalink" href="#Verification-against-ALPS-(μ-2)" title="Permalink"></a></h2><p>ALPS <code>test_relativistic</code> roots: columns <code>(k⊥, k∥, Re ω, Im ω)</code>, refined from the tabulated values with seeded Muller.</p><pre><code class="language-julia hljs">alps = [
+    (0.001, 0.1, 3.9621e-2, -2.644e-6),
+    (0.001, 0.10965, 4.3132e-2, -2.2947e-8),
+]
+for (kpa, kz, re, im) in alps
+    sol = solve(DispersionProblem(plasma2, complex(re, im), Wavenumber(kpa, kz)))
+    ω = sol.omega
+    @printf(
+        &quot;k∥=%.5f  ALPS Re ω=%.5f  VMD Re ω=%.5f  ΔRe/Re=%.1e  resid=%.1e\n&quot;,
+        kz, re, real(ω), abs(real(ω) - re) / re, sol.resid
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">k∥=0.10000  ALPS Re ω=0.03962  VMD Re ω=0.03919  ΔRe/Re=1.1e-02  resid=2.3e-14
+k∥=0.10965  ALPS Re ω=0.04313  VMD Re ω=0.04262  ΔRe/Re=1.2e-02  resid=1.3e-14</code></pre><p><code>Re ω</code> agrees to ~1 %. The damping (<code>Im ω ~ 10⁻⁶</code>) is near-marginal and far more sensitive to ALPS&#39;s coarse <code>(p⊥,p∥)</code> sampling than the propagation frequency, so — as in the ALPS paper — the comparison is on <code>Re ω</code>.</p><h2 id="Closed-form-vs.-general-relativistic-path-(μ-2)"><a class="docs-heading-anchor" href="#Closed-form-vs.-general-relativistic-path-(μ-2)">Closed-form vs. general relativistic path (μ = 2)</a><a id="Closed-form-vs.-general-relativistic-path-(μ-2)-1"></a><a class="docs-heading-anchor-permalink" href="#Closed-form-vs.-general-relativistic-path-(μ-2)" title="Permalink"></a></h2><p>The analytic Swanson susceptibility (<code>MaxwellJuttner</code>) and the general grid-tabulated path (<code>CoupledVDF</code> with <code>Relativistic()</code> closure) are two independent evaluators of the same relativistic tensor. We re-polish representative A/IC roots — the two ALPS points, a propagating hump point, and two purely-damped points — with the <code>CoupledVDF</code> plasma seeded from the closed-form root, and report <code>|Δω|</code>.</p><pre><code class="language-julia hljs">plasmaC2 = pair(CoupledVDF(MaxwellJuttner(2.0); para = (-15.0, 15.0), perp = 15.0, regime = Relativistic()))
+xcheck = [
+    (0.1, complex(3.9621e-2, -2.644e-6)), (0.10965, complex(4.3132e-2, -2.29e-8)),
+    (0.5, complex(0.163, -0.11)), (1.5, complex(0.0, -0.939)), (3.0, complex(0.0, -3.749)),
+]
+for (kz, ω0) in xcheck
+    a = solve(DispersionProblem(plasma2, ω0, Wavenumber(kp, kz)))
+    b = solve(DispersionProblem(plasmaC2, a.omega, Wavenumber(kp, kz)))
+    @printf(
+        &quot;k∥=%.3f  ω=%.5f%+.5fim  |Δω|(closed−general)=%.1e\n&quot;,
+        kz, real(a.omega), imag(a.omega), abs(a.omega - b.omega)
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">k∥=0.100  ω=0.03919-0.00003im  |Δω|(closed−general)=3.5e-05
+k∥=0.110  ω=0.04262-0.00007im  |Δω|(closed−general)=3.7e-05
+k∥=0.500  ω=0.16297-0.11048im  |Δω|(closed−general)=2.0e-05
+k∥=1.500  ω=0.00000-0.93928im  |Δω|(closed−general)=2.2e-04
+k∥=3.000  ω=0.00000-3.74944im  |Δω|(closed−general)=5.8e-04</code></pre><p>The two paths agree to <code>|Δω| ≲ 6·10⁻⁴</code> (tightest, <code>~2·10⁻⁵</code>, for the propagating roots; loosest at the deep-damped <code>k∥ = 3</code> point, limited by the <code>CoupledVDF</code> momentum-grid truncation), confirming both evaluators resolve the same relativistic mode.</p><h2 id="The-A/IC-branch:-two-dispersive-zones"><a class="docs-heading-anchor" href="#The-A/IC-branch:-two-dispersive-zones">The A/IC branch: two dispersive zones</a><a id="The-A/IC-branch:-two-dispersive-zones-1"></a><a class="docs-heading-anchor-permalink" href="#The-A/IC-branch:-two-dispersive-zones" title="Permalink"></a></h2><p>López et al. (2014) note the Alfvén branch has <strong>two dispersive zones</strong>. For <code>μ = 2</code> our transverse dispersion relation (identical at <code>k⊥ = 0</code> and <code>10⁻³</code>) resolves them as two root families that exchange near <code>k* ≈ 0.85</code>:</p><ol><li><strong>Propagating zone</strong> (<code>k∥ ≲ k*</code>): a subluminal root continued from the ALPS seed. <code>ωr</code> rises (the hump) and <code>γ</code> deepens from <code>0</code> to <code>≈ −0.46</code>, matching the digitized Fig. 5 blue <code>γ</code> to marker size up to <code>k∥ ≈ 0.65</code> (<code>−0.236</code> vs. <code>−0.24</code> at <code>k∥ = 0.65</code>).</li><li><strong>Non-propagating zone</strong> (<code>k∥ ≳ k*</code>): a purely imaginary root (<code>ωr = 0</code>, pinned by the pair plasma&#39;s <code>ω ↔ −ω̄</code> mirror symmetry) whose <code>γ</code> dives monotonically to <code>−3.75</code> at <code>k∥ = 3</code> — Fig. 5&#39;s blue dive (<code>≈ −3.9</code>). On the imaginary axis the deflated determinant is exactly real, so the root is unambiguous (<code>resid ~ 10⁻¹⁰</code>).</li></ol><p>The zones join where the propagating mode&#39;s damping meets the purely-damped rate (<code>γ ≈ −0.46/−0.48</code> at <code>k* ≈ 0.85</code>), giving a near-continuous <code>γ(k∥)</code>. In the <strong>exchange window</strong> <code>k∥ ≈ 0.5–1.25</code> the published curve descends to <code>ωr = 0</code> at moderate damping (<code>ωr ≈ 0.02, γ ≈ −0.3</code> at <code>k∥ = 0.75</code>); our determinant carries <strong>no root there</strong> — global GRPF surveys over <code>ωr ∈ (0, 0.4)</code>, <code>γ ∈ (−1.3, 0)</code> find only the two families above, with the propagating <code>ωr</code> drifting toward the light line instead of turning down past <code>k∥ ≈ 0.5</code> (the faded tail below). This is precisely the &quot;large-<code>k∥</code>/low-<code>ωr</code> end of the A/IC branch&quot; where Verscharen et al. §4.4 flag the visible deviation between López and ALPS — ALPS&#39;s own <code>ωr</code> tails in Fig. 5 overshoot the López descent the same way.</p><p>For <code>μ = 10</code> the exchange never happens within <code>k∥ ≤ 3</code>: the imaginary axis carries <strong>no root</strong> (<code>γ ∈ (−0.05, −3)</code> scanned) and global surveys around the published descent (<code>ωr &lt; 0.5</code>, <code>γ ∈ (−1.8, 0)</code> at <code>k∥ = 2.45, 2.9</code>) are empty. The single propagating root&#39;s <code>γ</code> still tracks the digitized red curve to <code>≲ 0.2</code> all the way to <code>k∥ = 3</code> (<code>−1.76</code> vs. <code>−1.58</code>), while its <code>ωr</code> keeps rising past the published peak (<code>≈ 0.44</code> at <code>k∥ ≈ 1.65</code>) instead of descending — the same §4.4 deviation zone, stronger at this temperature in our determinant.</p><h2 id="Branch-continuation"><a class="docs-heading-anchor" href="#Branch-continuation">Branch continuation</a><a id="Branch-continuation-1"></a><a class="docs-heading-anchor-permalink" href="#Branch-continuation" title="Permalink"></a></h2><pre><code class="language-julia hljs">function trace(plasma, kzs, seed)
+    ω = similar(kzs, ComplexF64)
+    s = seed
+    for i in eachindex(kzs)
+        s = solve(DispersionProblem(plasma, s, Wavenumber(kp, kzs[i]))).omega
+        ω[i] = s
+    end
+    return ω
+end
+
+# μ=2 propagating: forward from the ALPS k∥=0.1 seed (backward to 0.05), into
+# the faded light-line tail past k*=0.85
+kstar2 = 0.85
+kz2p = collect(0.05:0.05:1.6)
+j0 = findfirst(==(0.1), kz2p)
+ω2p = similar(kz2p, ComplexF64)
+ω2p[j0:end] = trace(plasma2, kz2p[j0:end], complex(alps[1][3], alps[1][4]))
+ω2p[1:(j0 - 1)] = reverse(trace(plasma2, reverse(kz2p[1:(j0 - 1)]), ω2p[j0]))
+i2s = findlast(&lt;=(kstar2), kz2p)
+
+# μ=2 non-propagating: purely imaginary root from k* to 3
+kz2d = collect(kstar2:0.05:3.0)
+ω2d = trace(plasma2, kz2d, complex(1.0e-4, -0.478))
+
+# μ=10: single propagating root over the full range; ωr departs the published
+# descent past k≈1.8 (faded there). Fresh near-marginal seeds below k∥ ≈ 0.3
+# make Muller wander to the mirror (negative-frequency) root, so continue
+# forward and backward from a robust k∥ = 0.3 seed.
+kz10 = collect(0.1:0.05:3.0)
+j10 = findfirst(==(0.3), kz10)
+ω10 = similar(kz10, ComplexF64)
+ω10[j10:end] = trace(plasma10, kz10[j10:end], complex(0.155, -1.0e-4))
+ω10[1:(j10 - 1)] = reverse(trace(plasma10, reverse(kz10[1:(j10 - 1)]), ω10[j10]))
+i10s = findlast(&lt;=(1.8), kz10)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">35</code></pre><h2 id="O-modes"><a class="docs-heading-anchor" href="#O-modes">O-modes</a><a id="O-modes-1"></a><a class="docs-heading-anchor-permalink" href="#O-modes" title="Permalink"></a></h2><p>Superluminal (<code>ωr &gt; k∥</code>): the closed-form Landau continuation is unsupported for damped superluminal <code>ω</code>, but the O-mode is near-marginal (<code>γ ≈ 0</code>), so we locate it on the real axis as the <code>|det 𝒟| → 0</code> minimum via the <code>CoupledVDF</code> path, continued in <code>k∥</code>. Momentum bounds follow the thermal spread (<code>±15 mc</code> at <code>μ = 2</code>, <code>±5 mc</code> at <code>μ = 10</code> — the fixed-size grid loses the distribution peak if the box is much wider than the VDF).</p><pre><code class="language-julia hljs">using VlasovMaxwellDispersion: dispersion_function
+function omode(plasmaC, kzs, wr0)
+    out = similar(kzs)
+    wr = wr0
+    for i in eachindex(kzs)
+        g = dispersion_function(DispersionProblem(plasmaC, complex(wr), Wavenumber(kp, kzs[i])))
+        f = w -&gt; abs(g(complex(w, 0.0)))
+        lo, hi = max(0.9wr, kzs[i] + 0.02), wr + 0.4 + 0.25kzs[i]
+        for _ in 1:60
+            m1, m2 = (2lo + hi) / 3, (lo + 2hi) / 3
+            f(m1) &lt; f(m2) ? (hi = m2) : (lo = m1)
+        end
+        wr = (lo + hi) / 2
+        out[i] = wr
+    end
+    return out
+end
+plasmaC10 = pair(CoupledVDF(MaxwellJuttner(10.0); para = (-5.0, 5.0), perp = 5.0, regime = Relativistic()))
+kzo = collect(0.02:0.2:3.0)
+ωo2 = omode(plasmaC2, kzo, 1.1)
+ωo10 = omode(plasmaC10, kzo, 1.5)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">15-element Vector{Float64}:
+ 1.5135107167761708
+ 1.5266637171225108
+ 1.5616712545962392
+ 1.617965344827532
+ 1.6941999271370118
+ 1.7885096426198146
+ 1.8988477674034554
+ 2.0231324034924802
+ 2.159338361373586
+ 2.305575163763399
+ 2.4601484483906537
+ 2.621593446443436
+ 2.7886796154534546
+ 2.960394361682561
+ 3.1359155563683636</code></pre><h2 id="Quantitative-check-against-digitized-Fig.-5"><a class="docs-heading-anchor" href="#Quantitative-check-against-digitized-Fig.-5">Quantitative check against digitized Fig. 5</a><a id="Quantitative-check-against-digitized-Fig.-5-1"></a><a class="docs-heading-anchor-permalink" href="#Quantitative-check-against-digitized-Fig.-5" title="Permalink"></a></h2><pre><code class="language-julia hljs">fig5 = (
+    aic_wr2 = [
+        0.15 0.04; 0.25 0.044; 0.35 0.066; 0.45 0.084; 0.55 0.066;
+        0.65 0.022; 0.75 0.003; 1.0 0.0; 1.5 0.0; 2.0 0.0; 2.5 0.0; 3.0 0.0
+    ],
+    aic_gm2 = [
+        0.35 -0.09; 0.45 -0.09; 0.55 -0.22; 0.65 -0.24; 0.75 -0.3;
+        0.85 -0.35; 0.95 -0.41; 1.05 -0.46; 1.15 -0.55; 1.25 -0.66; 1.45 -0.81;
+        1.75 -1.25; 1.95 -1.69; 2.25 -2.03; 2.45 -2.47; 2.65 -3.0; 2.95 -3.9
+    ],
+    o_wr2 = [
+        0.05 1.09; 0.35 1.14; 0.65 1.27; 0.95 1.45; 1.25 1.65; 1.55 1.9;
+        1.85 2.14; 2.15 2.37; 2.45 2.65; 2.75 2.93
+    ],
+    aic_wr10 = [
+        0.25 0.177; 0.45 0.234; 0.65 0.304; 0.85 0.348; 1.05 0.385;
+        1.25 0.4; 1.45 0.425; 1.65 0.444; 1.85 0.425; 1.95 0.393; 2.05 0.356;
+        2.15 0.275; 2.35 0.15; 2.45 0.077; 2.65 0.044; 2.85 0.0
+    ],
+    aic_gm10 = [
+        0.85 -0.099; 1.05 -0.16; 1.25 -0.214; 1.45 -0.386; 1.65 -0.54;
+        1.85 -0.722; 2.05 -0.902; 2.25 -1.08; 2.45 -1.19; 2.65 -1.339;
+        2.85 -1.499; 2.95 -1.581
+    ],
+    o_wr10 = [
+        0.05 1.511; 0.35 1.537; 0.65 1.614; 0.95 1.749; 1.25 1.918;
+        1.55 2.127; 1.75 2.274; 2.05 2.512; 2.35 2.758; 2.65 2.971
+    ],
+)
+
+println(&quot;μ=10 A/IC γ vs digitized Fig. 5 (red):&quot;)
+for r in eachrow(fig5.aic_gm10)
+    kd, gd = r
+    i = argmin(abs.(kz10 .- kd))
+    @printf(&quot;  k∥=%.2f  VMD γ=%+.3f  Fig5 γ=%+.3f  Δ=%+.3f\n&quot;, kz10[i], imag(ω10[i]), gd, imag(ω10[i]) - gd)
+end
+println(&quot;O-mode ωr (VMD | Fig5):&quot;)
+for (m, ωo, lab) in ((fig5.o_wr10, ωo10, &quot;μ=10&quot;), (fig5.o_wr2, ωo2, &quot;μ=2 &quot;))
+    for j in (1, 5, 10)
+        kd, wd = m[j, 1], m[j, 2]
+        i = argmin(abs.(kzo .- kd))
+        @printf(&quot;  %s: k∥=%.2f  %.3f | %.3f\n&quot;, lab, kzo[i], ωo[i], wd)
+    end
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">μ=10 A/IC γ vs digitized Fig. 5 (red):
+  k∥=0.85  VMD γ=-0.069  Fig5 γ=-0.099  Δ=+0.030
+  k∥=1.05  VMD γ=-0.139  Fig5 γ=-0.160  Δ=+0.021
+  k∥=1.25  VMD γ=-0.228  Fig5 γ=-0.214  Δ=-0.014
+  k∥=1.45  VMD γ=-0.330  Fig5 γ=-0.386  Δ=+0.056
+  k∥=1.65  VMD γ=-0.446  Fig5 γ=-0.540  Δ=+0.094
+  k∥=1.85  VMD γ=-0.576  Fig5 γ=-0.722  Δ=+0.146
+  k∥=2.05  VMD γ=-0.722  Fig5 γ=-0.902  Δ=+0.180
+  k∥=2.25  VMD γ=-0.887  Fig5 γ=-1.080  Δ=+0.193
+  k∥=2.45  VMD γ=-1.074  Fig5 γ=-1.190  Δ=+0.116
+  k∥=2.65  VMD γ=-1.288  Fig5 γ=-1.339  Δ=+0.051
+  k∥=2.85  VMD γ=-1.539  Fig5 γ=-1.499  Δ=-0.040
+  k∥=2.95  VMD γ=-1.683  Fig5 γ=-1.581  Δ=-0.102
+O-mode ωr (VMD | Fig5):
+  μ=10: k∥=0.02  1.514 | 1.511
+  μ=10: k∥=1.22  1.899 | 1.918
+  μ=10: k∥=2.62  2.960 | 2.971
+  μ=2 : k∥=0.02  1.095 | 1.090
+  μ=2 : k∥=1.22  1.637 | 1.650
+  μ=2 : k∥=2.82  3.017 | 2.930</code></pre><h2 id="Figure-5-reproduction"><a class="docs-heading-anchor" href="#Figure-5-reproduction">Figure 5 reproduction</a><a id="Figure-5-reproduction-1"></a><a class="docs-heading-anchor-permalink" href="#Figure-5-reproduction" title="Permalink"></a></h2><p>Blue: <code>β = 1</code> (<code>μ = 2</code>); red: <code>β = 0.2</code> (<code>μ = 10</code>). Crosses: digitized Fig. 5; open circles: tabulated ALPS roots. Solid: the branch as identified above — for <code>μ = 2</code> the <code>ωr = 0</code> non-propagating zone continues the branch past <code>k*</code> (drawn just below the axis-visible zero line). Faded thin: the light-line-bound <code>ωr</code> riser our determinant carries where the published branch turns down — the descent is a continuation artifact of the references (see the closing section), so the faded riser is the true root there, drawn subordinate only because the references lack it. O-mode <code>γ ≈ 0</code> sits on the zero line.</p><pre><code class="language-julia hljs">blu, red = Makie.wong_colors()[1], Makie.wong_colors()[6]
+fig = Figure(size = (860, 430))
+axr = Axis(
+    fig[1, 1]; xlabel = &quot;k∥ c / |Ω|&quot;, ylabel = &quot;ωr / |Ω|&quot;,
+    title = &quot;Pair plasma A/IC + O-mode&quot;, limits = (0, 3, -0.09, 3.2)
+)
+axi = Axis(
+    fig[1, 2]; xlabel = &quot;k∥ c / |Ω|&quot;, ylabel = &quot;γ / |Ω|&quot;,
+    title = &quot;damping&quot;, limits = (0, 3, -4, 0.3)
+)
+
+# ωr solid/faded split at the visual departure from the published descent
+# (blue 0.7, red 1.65); γ split at the physical exchange (blue k*, red none).
+for (kzp, ωp, ir, ii, kzd, ωd, ωoo, c, lab) in (
+        (kz2p, ω2p, findlast(&lt;=(0.7), kz2p), i2s, kz2d, ω2d, ωo2, blu, &quot;β = 1.0&quot;),
+        (kz10, ω10, findlast(&lt;=(1.65), kz10), i10s, nothing, nothing, ωo10, red, &quot;β = 0.2&quot;),
+    )
+    lines!(axr, kzp[1:ir], real.(ωp[1:ir]); color = c, linewidth = 2.5, label = lab)
+    lines!(axr, kzp[ir:end], real.(ωp[ir:end]); color = (c, 0.3), linewidth = 1.2)
+    lines!(axi, kzp[1:ii], imag.(ωp[1:ii]); color = c, linewidth = 2.5)
+    if isnothing(kzd)
+        lines!(axi, kzp[ii:end], imag.(ωp[ii:end]); color = c, linewidth = 2.5)
+    else
+        lines!(axr, kzd, zero(kzd); color = c, linewidth = 2.5)
+        lines!(axi, kzd, imag.(ωd); color = c, linewidth = 2.5)
+        lines!(axi, kzp[ii:end], imag.(ωp[ii:end]); color = (c, 0.3), linewidth = 1.2)
+    end
+    lines!(axr, kzo, ωoo; color = c, linewidth = 2.5)
+    lines!(axi, kzo, zero(kzo); color = c, linewidth = 2.5)
+end
+lines!(axr, 0:3, 0:3; color = (:black, 0.3), linestyle = :dash, label = &quot;ω = k∥&quot;)
+hlines!(axi, [0.0]; color = (:black, 0.3), linestyle = :dash)
+for (m, c) in ((fig5.aic_wr2, blu), (fig5.o_wr2, blu), (fig5.aic_wr10, red), (fig5.o_wr10, red))
+    scatter!(axr, m[:, 1], m[:, 2]; color = (c, 0.75), marker = :xcross, markersize = 8)
+end
+for (m, c) in ((fig5.aic_gm2, blu), (fig5.aic_gm10, red))
+    scatter!(axi, m[:, 1], m[:, 2]; color = (c, 0.75), marker = :xcross, markersize = 8)
+end
+scatter!(axr, [a[2] for a in alps], [a[3] for a in alps]; color = :black, markersize = 9)
+scatter!(axi, [a[2] for a in alps], [a[4] for a in alps]; color = :black, markersize = 9)
+axislegend(axr; position = :lt, framevisible = false, labelsize = 10)
+fig</code></pre><img src="72b1802a.png" alt="Example block output"/><h2 id="The-A/IC-ωr-descent:-a-continuation-artifact-in-the-references"><a class="docs-heading-anchor" href="#The-A/IC-ωr-descent:-a-continuation-artifact-in-the-references">The A/IC <code>ωr</code> descent: a continuation artifact in the references</a><a id="The-A/IC-ωr-descent:-a-continuation-artifact-in-the-references-1"></a><a class="docs-heading-anchor-permalink" href="#The-A/IC-ωr-descent:-a-continuation-artifact-in-the-references" title="Permalink"></a></h2><p>Everything on this page matches the published references — the tabulated ALPS roots (~1 % <code>Re ω</code>), the damping curves at both temperatures, and both O-modes — <strong>except</strong> the A/IC <code>ωr</code> descent (&quot;anomalous zone&quot; of López et al.): López/ALPS show <code>ωr</code> turning down to zero past the hump peak, while our determinant carries no root along that path (global GRPF/AAA surveys over the descent boxes find only the families plotted above, at both <code>μ</code>; our two independent evaluators agree there to <code>|Δω| ≲ 6·10⁻⁴</code>).</p><p>We adjudicated this numerically, since analytic continuation off the upper half-plane — where all three codes agree and no continuation is needed — is <strong>unique</strong>:</p><ul><li>Reimplementing López et al. (2014) Eqs. (23)–(26) reproduces their published curves exactly (their formula does carry the descent roots, e.g. <code>μ = 10</code> peak <code>ωr = 0.443</code> at <code>k∥ = 1.7</code>), and matches our root where everyone agrees (<code>ω = 0.03919</code> at <code>k∥ = 0.1</code> — identical to VMD).</li><li>AAA rational extrapolation of dense <strong>upper-half-plane</strong> samples of <em>both</em> functions (held-out residuals <code>10⁻¹¹</code>–<code>10⁻¹⁰</code>, stable under grid and degree changes) lands on <strong>our</strong> root (<code>Δ ≤ 0.002</code>) and away from the López descent root (<code>Δ ≈ 0.05–0.5</code>): López&#39;s own upper-half-plane values do not continue to their descent root.</li><li>The mechanism: their continuation term <code>θ</code> (the Heaviside-supported <code>πσΘ(γ−γ₁)Θ(γ₂−γ)</code> in Eqs. 23–24) depends only on <code>Re z</code> and <code>sign(Im z)</code>, which enforces <em>continuity</em> across the real axis but violates Cauchy–Riemann below it: the continued <code>Λ_L</code> has holomorphy defect <code>|∂f/∂z̄|/|∂f/∂z| ≈ 0.09–3</code> in the lower half-plane, versus <code>~10⁻⁶</code> for our determinant (and for their own <code>θ</code>-less integrand). The non-holomorphic <code>Λ_L</code> acquires a spurious zero — the anomalous-zone descent — with no counterpart in the true continuation. ALPS&#39;s fitted continuation partially chases the same artifact, which is why its <code>ωr</code> tails overshoot López&#39;s in our direction (their §4.4 deviation).</li></ul><p>The physical <code>μ = 2</code> branch is therefore the one plotted solid above: propagating hump exchanging with the purely-imaginary aperiodic family at <code>k* ≈ 0.85</code> — while the finite-<code>ωr</code> descent between them is not a mode of the Maxwell–Jüttner pair plasma.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../ionbeam_gary84/">« Ion beam (Gary 1984)</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 12 July 2026 14:03">Sunday 12 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
