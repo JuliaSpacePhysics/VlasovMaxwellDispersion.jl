@@ -60,7 +60,7 @@ kdi(b) = [sqrt(abs2(k)) / kunit for k in b.k]
 for r in eachrow(ref)
     r[3] > 0.005 || continue
     γ = maximum(
-        maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if abs(x - r[1]) < 0.004); init = -Inf)
+        maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - r[1]) < 0.004); init = -Inf)
             for b in sol.roots
     )
     global Δmax = max(Δmax, abs(γ - r[3]))

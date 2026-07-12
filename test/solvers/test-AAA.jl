@@ -34,15 +34,16 @@ end
     sp = solve(prob, AAA())
     @test sp.retcode == :Success
     @test !isempty(sp.roots)
-    rb = sp.roots[argmax(length.(getfield.(sp.roots, :k)))]
+    rb = argmax(b -> count(isfinite, b.omega), sp.roots)
+    valid = isfinite.(rb.omega)
     # Every sample Muller-polished to a genuine zero of det𝒟.
-    @test maximum(rb.resid) < 1.0e-6
+    @test maximum(rb.resid[valid]) < 1.0e-6
     # Linked into one sheet spanning the bulk of the sweep, not per-k fragments.
     kz = para.(rb.k)
-    @test maximum(kz) - minimum(kz) > 1.5
+    @test maximum(kz[valid]) - minimum(kz[valid]) > 1.5
 
     # Cross-check a mid-sweep sample against an independent fixed-k GRPF survey.
-    i = argmin(abs.(kz .- 1.5))
+    i = argmin(i -> valid[i] ? abs(kz[i] - 1.5) : Inf, eachindex(kz))
     sg = solve(GlobalDispersionProblem(cold, region, rb.k[i]), GRPF())
     @test minimum(abs(b.omega - rb.omega[i]) for b in sg.roots) < 1.0e-6
 end
@@ -78,9 +79,9 @@ end
     dist(x, S) = minimum(hypot(x[1] - y[1], abs(x[2] - y[2])) for y in S)
     @test maximum(dist(x, sG) for x in sA) < 1.0e-8
     @test maximum(dist(x, sA) for x in sG) < 1.0e-8
-    @test any(b -> all(abs(ω - sqrt(10.005446)) < 1.0e-3 for ω in b.omega), sa.roots)
+    @test any(b -> all(ω -> abs(ω - sqrt(10.005446)) < 1.0e-3, filter(isfinite, b.omega)), sa.roots)
     # σ-ratio residual is ~ε on every branch, including row-vanishing Langmuir.
-    @test all(maximum(b.resid) < 1.0e-6 for b in sa.roots)
+    @test all(maximum(filter(isfinite, b.resid)) < 1.0e-6 for b in sa.roots)
 end
 
 @testitem "AAA keeps genuine low-frequency sheets in a wide ω box" begin
@@ -100,13 +101,13 @@ end
     geom = AngleSweep(k = range(0.02, 2.0, length = 31), theta = 0.001)
     sol = solve(GlobalDispersionProblem(plasma, region, geom), AAA())
     @test sol.retcode == :Success
-    @test any(b -> maximum(abs.(b.omega)) < 3.0e-3, sol.roots)
-    @test all(maximum(b.resid) < 1.0e-4 for b in sol.roots)
+    @test any(b -> maximum(abs, filter(isfinite, b.omega)) < 3.0e-3, sol.roots)
+    @test all(maximum(filter(isfinite, b.resid)) < 1.0e-4 for b in sol.roots)
 
     # Post-hoc pruning without re-solving.
-    long = filter(b -> length(b.omega) ≥ 10, sol)
+    long = filter(b -> count(isfinite, b.omega) ≥ 10, sol)
     @test long isa SurveySolution
-    @test all(length(b.omega) ≥ 10 for b in long.roots)
+    @test all(count(isfinite, b.omega) ≥ 10 for b in long.roots)
 end
 
 @testitem "AAA rejects the deflated det's structural ω=0 zero (kinetic)" begin

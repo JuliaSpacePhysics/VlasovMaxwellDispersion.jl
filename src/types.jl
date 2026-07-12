@@ -27,6 +27,7 @@ Wavenumber(; kz, kperp = zero(kz)) = Wavenumber(kperp, kz)
 
 Base.eltype(::Type{Wavenumber{T}}) where {T} = T
 Base.convert(::Type{Wavenumber{T}}, k::Wavenumber) where {T} = Wavenumber{T}(k.kperp, k.kz)
+Base.broadcastable(k::Wavenumber) = Ref(k)
 
 @inline para(k::Wavenumber) = k.kz
 @inline perp(k::Wavenumber) = k.kperp
