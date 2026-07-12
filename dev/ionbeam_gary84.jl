@@ -61,7 +61,7 @@ for (v0, sol) in zip(v0s, sols)
         end
         best
     end
-    γ = maximum(maximum(imag.(b.omega)) for b in sol.roots)
+    γ = maximum(maximum(imag, filter(isfinite, b.omega)) for b in sol.roots)
     @printf(
         "v0=%2.0f vm: median Δω=%.1e  matched(<5e-3)=%3d/%d  γmax=%.4f (ref %.4f)\n",
         v0, sort(ds)[cld(end, 2)], count(<(5.0e-3), ds), length(ds), γ, maximum(rows[:, 4])
