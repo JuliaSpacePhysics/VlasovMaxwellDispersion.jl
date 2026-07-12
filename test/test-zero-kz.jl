@@ -64,13 +64,12 @@ end
             para = (-8.0, 8.0), perp = (0.0, 8.0)
         )
         bk = BiKappa(vth_para = 0.4, vth_perp = 0.5, kappa = κ)
-        fbk(q, u) = (1 + u^2 / bk.a_para + q^2 / bk.a_perp)^(-(κ + 1))
-        cplk = CoupledVDF(fbk; para = (-8.0, 8.0), perp = (0.0, 8.0))
+        cplk = CoupledVDF(bk; para = (-8.0, 8.0), perp = (0.0, 8.0))
         for ω in (1.4 + 0.2im, 1.4 - 0.1im)
             χp = contribution(sp(pbk), ω, k0)
-            @test maximum(abs.(contribution(sp(sep), ω, k0) .- χp)) / maximum(abs.(χp)) < 1.0e-4
+            @test contribution(sp(sep), ω, k0) ≈ χp rtol = 1.0e-4
             χb = contribution(sp(bk), ω, k0)
-            @test maximum(abs.(contribution(sp(cplk), ω, k0) .- χb)) / maximum(abs.(χb)) < 1.0e-4
+            @test contribution(sp(cplk), ω, k0) ≈ χb rtol = 1.0e-4
         end
     end
 end

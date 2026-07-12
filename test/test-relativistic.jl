@@ -20,7 +20,7 @@
         χA = contribution(rel, ω, k; closure = Newberger())
         χB = contribution(rel, ω, k)
         χref = contribution(ref, ω, k)
-        @test_broken χA ≈ χref rtol = 1.0e-5
+        @test χA ≈ χref rtol = 1.0e-5
         @test χB ≈ χref
     end
 end
@@ -59,9 +59,11 @@ end
     k = Wavenumber(0.7, 0.4)
     for ω in (0.3 + 0.0im, 0.3 + 0.05im, 0.3 - 0.001im, 0.3 - 0.005im, 0.3 - 0.02im, 0.3 - 0.1im, 0.3 - 0.15im)
         χB = contribution(rel, ω, k)
+        χA = contribution(rel, ω, k; closure = Newberger())
         χg = contribution(grel, ω, k)
         χref = contribution(ref, ω, k)
         @test χB ≈ χref rtol = 2.0e-4
+        @test χA ≈ χref rtol = 2.0e-4
         @test_broken χg ≈ χref rtol = 1.0e-3
     end
     # parallel propagation and oblique, damped

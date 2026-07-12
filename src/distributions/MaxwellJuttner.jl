@@ -20,7 +20,6 @@ function contribution(d::MaxwellJuttner, s, ω, k; kwargs...)
     Ω = s.Omega
     kz = para(k)
     kperp = perp(k)
-    ω = complex(float(ω))
 
     if imag(ω) < 0 && iszero(kz)
         throw(ArgumentError("MaxwellJuttner with imag(ω)<0 and kz=0 needs Landau contour continuation"))

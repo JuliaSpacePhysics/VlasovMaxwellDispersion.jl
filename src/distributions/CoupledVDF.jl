@@ -3,9 +3,9 @@
 
 General analytic gyrotropic VDF `f0(p⊥,p∥)`.
 
-And `para`/`perp` are `(lower, upper)` integration ranges.
+`para`/`perp` specify the integration ranges `(lower, upper)`.
 
-`dgrad(p⊥,p∥) -> (∂⊥f0, ∂∥f0)` supplies the gradient and default to autodiff.
+`dgrad(p⊥,p∥) -> (∂⊥f0, ∂∥f0)` supplies the gradient and defaults to autodiff.
 
 Prefer [`SeparableVDF`] when `f0(p⊥,p∥)=f⊥(p⊥)f∥(p∥)`.
 """
@@ -55,7 +55,7 @@ precompute(::Relativistic, ::Any, d; quad = BoxQuad(_GL24, _GL32), kw...) =
     (; n = density(d), bernstein33 = _bernstein_rel(d, quad))
 
 contribution(c::PreparedVDF, s, ω, k; closure = HarmonicSum(), kw...) =
-    _coupled_contribution(closure, regime(c), c, s, complex(float(ω)), k; kw...) / c.cache.n
+    _coupled_contribution(closure, regime(c), c, s, ω, k; kw...) / c.cache.n
 
 function _coupled_contribution(::HarmonicSum, ::NonRelativistic, c, s, ω, k; alg = PeeledGK(), norm = NORM, rtol = 1.0e-6)
     d = c.vdf
@@ -101,6 +101,12 @@ end
 const _GL24 = GaussLegendre(24)
 const _GL32 = GaussLegendre(32)
 
+function _warn_damped_superluminal(ω, kz)
+    return if imag(ω) < 0 && real(ω)^2 > kz^2
+        @warn "damped superluminal ω (|Re ω| > |k∥|): the (p⊥,p∥) integral is not the analytic continuation there (apex branch cut, docs/relativistic.md); evaluate at Im ω ≥ 0 and continue externally" maxlog = 1
+    end
+end
+
 # Relativistic path, sliced in (p⊥,p∥) — docs/relativistic.md.
 # Resonance D(p∥) = ωγ − k∥p∥ − nΩ₀ with γ=√(1+p⊥²+p∥²) rationalizes,
 #   D·D̃ = A(p∥−p₊)(p∥−p₋),  D̃ = ωγ + k∥p∥ + nΩ₀,  A = ω²−k∥²,
@@ -112,9 +118,7 @@ const _GL32 = GaussLegendre(32)
 function _coupled_contribution(::HarmonicSum, ::Relativistic, c, s, ω, k; quad = BoxQuad(_GL24, _GL32), rtol = 1.0e-6)
     d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
-    if imag(ω) < 0 && real(ω)^2 > kz^2
-        @warn "damped superluminal ω (|Re ω| > |k∥|): the (p⊥,p∥) integral is not the analytic continuation there (apex branch cut, docs/relativistic.md); evaluate at Im ω ≥ 0 and continue externally" maxlog = 1
-    end
+    _warn_damped_superluminal(ω, kz)
     a = kperp / Ω
     qhi = d.perp[2]
     nmax = nmax_bessel(a^2 * qhi^2 / 2)
