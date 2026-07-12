@@ -36,56 +36,62 @@ function _coupled_contribution(::Newberger, ::NonRelativistic, c::PreparedVDF, s
     return (s.Pi2 / (ω * Ω)) .* _antisymmat(χ)
 end
 
-# (γ,p∥) edge-mapped relativistic Newberger backend, cross-validation only.
-# Valid for Im ω ≥ 0 (and damped ω with no resonance in support); it has no
-# damped-side continuation (rim branch-cut / apex).
-function _coupled_contribution(::Newberger, ::Relativistic, c::PreparedVDF, s, ω, k; norm = NORM)
+const _GL64 = GaussLegendre(64)
+
+# The resonant denominator D_n is shared with the HarmonicSum path.
+function _coupled_contribution(::Newberger, ::Relativistic, c::PreparedVDF, s, ω, k; quad = BoxQuad(_GL32, _GL64))
     d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
-    β = kperp / Ω
-    pmax = maximum(abs, d.para)
-    γmax = sqrt(1 + pmax^2 + d.perp[2]^2)
-    umaxmax = sqrt(γmax^2 - 1)
-    # Generous harmonic window for (γ,u)∈[1,γmax]×[−umax,umax] —
-    # min/max keeps it valid for either sign of kz, Ω, or Re ω; the per-γ in-range
-    # filter discards non-crossing n.
-    rs = extrema(
-        (real(ω) * γ - kz * u) / Ω for γ in (one(γmax), γmax), u in (-umaxmax, umaxmax)
-    )
-    nlo, nhi = floor(Int, rs[1]) - 1, ceil(Int, rs[2]) + 1
-    σ = sign(kz)
-    function inner(γ)
-        umax = sqrt(γ^2 - 1)
-        ζρ = NamedTuple{(:ζ, :ρ), Tuple{typeof(ω), SVector{6, typeof(ω)}}}[]
-        for n in nlo:nhi
-            ζ = (ω * γ - n * Ω) / kz
-            -umax < real(ζ) < umax || continue
-            w = sqrt(complex(γ^2 - 1 - ζ^2))
-            ρ = ((2π * _U_cov(d, ζ, w, γ, ω, kz)) * (-Ω / kz)) .* _T_n_bare(n, β * w, ζ, w)
-            push!(ζρ, (; ζ, ρ))
-        end
-        fI(u, w) = (2π * _U_cov(d, u, w, γ, ω, kz)) .* _qin_T_bare((ω * γ - kz * u) / Ω, β * w, u, w)
-        # Inner edge map (derivation §5.2.2)
-        acc = QuadGK.quadgk(-π / 2, π / 2; rtol = 1.0e-7, norm) do θ
-            u, w = umax .* sincos(θ)
-            val = fI(u, w)
-            for p in ζρ
-                val = val .- p.ρ ./ (u - p.ζ)
-            end
-            w .* val
-        end[1]
-        for p in ζρ
-            acc = acc .+ p.ρ .* _lpole_term(p.ζ, -umax, umax, σ, true)
-        end
-        return acc
-    end
-    val = QuadGK.quadgk(zero(real(ω)), one(real(ω)); rtol = 1.0e-6, norm) do q
-        γ = 1 + (γmax - 1) * q^2
-        (2 * (γmax - 1) * q) .* inner(γ)
-    end[1]
-    # `fI` carries only the resonant 𝒰·𝓣ₙ; add the same pole-free nonresonant 𝒳_B
+    _warn_damped_superluminal(ω, kz)
+    val = _newberger_rel(d, ω, Ω, kz, kperp / Ω, quad)
     bern = _ee33((s.Pi2 / ω^2) * c.cache.bernstein33)
     return (s.Pi2 / (ω^2 * Ω)) .* _antisymmat(val) .+ bern
+end
+
+# Outer p⊥ sweep peel every in-box resonance n (its two rationalized roots) once
+function _newberger_rel(d, ω, Ω, kz, a, qs::BoxQuad)
+    plo, phi = d.para
+    qlo, qhi = d.perp
+    ν = imag(ω)
+    σsgn = sign(kz)
+    # window over every integer a(p∥) crossed on the box (either sign of kz, Ω, Re ω)
+    pmax = maximum(abs, d.para)
+    γmax = sqrt(1 + pmax^2 + qhi^2)
+    umax = sqrt(γmax^2 - 1)
+    rs = extrema((real(ω) * γ - kz * u) / Ω for γ in (one(γmax), γmax), u in (-umax, umax))
+    nlo, nhi = floor(Int, rs[1]) - 1, ceil(Int, rs[2]) + 1
+    poles = Tuple{typeof(ω), AType}[]
+    return quad(qs.outer, qlo, qhi) do q
+        m2 = 1 + q^2
+        z = a * q
+        γof(u) = sqrt(complex(m2 + u^2))
+        σof(u, γ) = begin
+            dpe, dpa = d.dgrad(q, u)
+            (kz * dpa + dpe * (ω * γ - kz * u) / q) * (q / γ)
+        end
+        empty!(poles)
+        lgsum = zero(AType)
+        for n in nlo:nhi
+            nΩ = n * Ω
+            Wof = (u, γ) -> (σof(u, γ) * (ω * γ + kz * u + nΩ)) .* _T_n_bare(n, z, u, q)
+            (p1, c1), (p2, c2) = _Dn_poles(ω, kz, nΩ, m2)
+            for (p, cc) in ((p1, c1), (p2, c2))
+                r, lg = _peel_residue(p, cc, Wof, γof, ν, plo, phi, σsgn)
+                (isfinite(p) && any(!iszero, r)) || continue
+                push!(poles, (p, (2π * Ω) .* r))
+                lgsum = lgsum .+ (2π * Ω) .* lg
+            end
+        end
+        reg = quad(qs.inner, plo, phi) do u
+            γ = γof(u)
+            base = ((q / γ) * (2π * _U_cov(d, u, q, γ, ω, kz))) .* _qin_T_bare((ω * γ - kz * u) / Ω, z, u, q)
+            for (p, ρ) in poles
+                base = base .- ρ ./ (u - p)
+            end
+            base
+        end
+        reg .+ lgsum
+    end
 end
 
 include("qin_sigmas.jl")

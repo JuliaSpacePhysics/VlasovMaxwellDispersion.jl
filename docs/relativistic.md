@@ -7,21 +7,23 @@ $$
 D_n = \omega\gamma - k_\parallel p_\parallel - n\Omega_0,
 $$
 
-gives per harmonic
+gives per harmonic the term the **`HarmonicSum`** backend sums, $\chi=\sum_n\chi_n$,
 
 $$
 \chi_n \propto \int_0^{p_{\perp\max}}\!\!dp_\perp \int_{-P}^{P}\!\!dp_\parallel\;
 \frac{\mathcal U\,\boldsymbol{\mathcal T}_n\;p_\perp/\gamma}{D_n},
 $$
 
-with the covariant numerator $\mathcal U = k_\parallel\partial_\parallel f_0 + (\omega\gamma-k_\parallel p_\parallel)\,p_\perp^{-1}\partial_\perp f_0$.
+with the covariant numerator $\mathcal U = k_\parallel\partial_\parallel f_0 + (\omega\gamma-k_\parallel p_\parallel)\,p_\perp^{-1}\partial_\perp f_0$
+and $\boldsymbol{\mathcal T}_n(z,p_\parallel,p_\perp)$ the harmonic Bessel tensor.
+
 The Bessel argument $z = k_\perp p_\perp/\Omega_0$ is **independent of the inner
-$p_\parallel$**, so $J$'s are computed once per slice and $\boldsymbol{\mathcal T}_n(p_\parallel)$ is
-mere power scaling of fixed bilinears. No moment closure survives ($\gamma(p_\parallel)$ is
-algebraic in the inner variable), so the integrand is formed pointwise; the non-resonant
-$\mathbf e_\parallel\mathbf e_\parallel$ addend
-$I_B = 2\pi\iint (p_\perp p_\parallel \partial_\parallel f_0 - p_\parallel^2\,\partial_\perp f_0)/\gamma$
-is a separate smooth integral over the same box.
+$p_\parallel$**, so $J$'s are computed once per slice. 
+The non-resonant $\mathbf e_\parallel\mathbf e_\parallel$ term adds a smooth integral:
+$I_B = 2\pi\iint (p_\perp p_\parallel \partial_\parallel f_0 - p_\parallel^2\,\partial_\perp f_0)/\gamma$.
+
+The Qin's formulation uses the complex-order $\sigma$-quartet
+$\boldsymbol{\mathcal T}(a,z)$, $a=(\omega\gamma-k_\parallel p_\parallel)/\Omega_0$.
 
 ## Pole structure: rationalization
 
@@ -44,7 +46,7 @@ Residues are $r_\pm = \mp g(p_\pm)\tilde D_n(p_\pm)/\sqrt{B^2-4AC}$; near-axis p
 For $\omega=\omega_r+i\nu$, $B$ is real and $\operatorname{Im}A = 2\omega_r\nu$,
 $\operatorname{Im}C = 2\omega_r\nu\,m_\perp^2$; a real root would need
 $\operatorname{Im}(Ap^2+Bp+C) = 2\omega_r\nu\,(p^2+m_\perp^2)=0$, i.e. $p^2=-m_\perp^2$ —
-impossible. **Poles touch the real $p_\parallel$ axis only at $\nu=0$**, in every regime.
+impossible. **Poles touch the real $p_\parallel$ axis only at $\nu=0$**.
 Hence the complete continuation bookkeeping (continuation defined from $\nu\to+\infty$,
 $k_\parallel>0$ convention):
 
@@ -111,9 +113,3 @@ analytic continuation at $|\operatorname{Im}p_\parallel|\sim|\nu|\gamma/|k_\para
 — several cell-widths off-axis by $\nu\sim-0.02$, where piecewise-polynomial
 continuation amplifies fit noise (observed floor $\sim3\times10^{-2}$ at $\mu=2$ on a
 61×121 grid vs $10^{-5}$ for analytic f₀). Finer grids push it down.
-
-Caveat: the **Newberger** relativistic backend (cross-validation only) still slices in
-$(\gamma,p_\parallel)$ with per-slice Landau rules and no damped-side continuation — it is
-correct for $\operatorname{Im}\omega\ge0$ or when no resonance lies in the support; for
-damped modes with in-range resonances use the default `HarmonicSum` path, and A/B
-agreement does not certify that regime.
