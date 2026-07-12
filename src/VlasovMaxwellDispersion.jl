@@ -8,8 +8,11 @@ using .PlasmaBase: AbstractVDF, AbstractPlasma, Particle, Species, Plasma,
 using LinearAlgebra
 using StaticArrays
 using Bumper: @no_escape, @alloc
+using Gamma: gamma
+import Gamma
 using SpecialFunctions
-using SpecialFunctions: erfcx, gamma
+using SpecialFunctions: erfcx
+import SpecialFunctions as SF
 using HypergeometricFunctions: _₂F₁
 using QuadGK
 using NonNegLeastSquares: nonneg_lsq

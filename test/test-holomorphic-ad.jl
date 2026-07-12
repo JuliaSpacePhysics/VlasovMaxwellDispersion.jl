@@ -1,6 +1,7 @@
 @testitem "holomorphic AD rules for special functions vs finite differences" begin
     using VlasovMaxwellDispersion: _dwrt, _val_dwrt
-    using SpecialFunctions: erf, erfc, erfcx, erfi, dawson, gamma
+    using SpecialFunctions: erf, erfc, erfcx, erfi, dawson
+    using Gamma: gamma
     z = 0.7 - 0.3im
     h = 1.0e-6
     for f in (erf, erfc, erfcx, erfi, dawson, gamma)
@@ -15,7 +16,8 @@ end
 
 @testitem "holomorphic AD composes through erfc-built expressions" begin
     using VlasovMaxwellDispersion: _dwrt, _grad2
-    using SpecialFunctions: erfc, dawson, gamma
+    using SpecialFunctions: erfc, dawson
+    using Gamma: gamma
     h = 1.0e-6
     g(u) = exp(-u^2) * erfc(-u)
     u = 1.1 - 0.4im
