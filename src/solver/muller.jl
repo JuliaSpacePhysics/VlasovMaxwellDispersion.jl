@@ -25,7 +25,7 @@ end
 
 function CommonSolve.init(prob::DispersionProblem{<:Any, <:Wavenumber}, alg::Muller)
     p = prepare(prob)
-    return MullerCache(p, alg, p.f)
+    return MullerCache(p, alg, erase_cf(DispersionFunction(p)))
 end
 
 function CommonSolve.solve!(cache::MullerCache)
