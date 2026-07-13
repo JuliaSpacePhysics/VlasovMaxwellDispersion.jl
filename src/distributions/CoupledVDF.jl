@@ -54,7 +54,7 @@ end
 precompute(::Relativistic, ::Any, d; quad = BoxQuad(_GL24, _GL32), kw...) =
     (; n = density(d), bernstein33 = _bernstein_rel(d, quad))
 
-contribution(c::PreparedVDF, s, ω, k; closure = HarmonicSum(), kw...) =
+contribution(c::PreparedVDF{<:CoupledVDF}, s, ω, k; closure = HarmonicSum(), kw...) =
     _coupled_contribution(closure, regime(c), c, s, ω, k; kw...) / c.cache.n
 
 function _coupled_contribution(::HarmonicSum, ::NonRelativistic, c, s, ω, k; alg = PeeledGK(), norm = NORM, rtol = 1.0e-6)

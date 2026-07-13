@@ -32,7 +32,7 @@ Bessel-weighted perpendicular moments:
 
     χ_n = ∫₀^∞ dv⊥  𝔅( {z^p_F(v⊥), z^p_T(v⊥)},  {Bessel weights}(v⊥) ),
 
-with `𝔅` the 3×3 entrywise sum-of-products in `_chi_mblock`. `converge` truncates the `n`-sum at `nmax ≈ k⊥ρ` (`nmax_bessel`).
+with `𝔅` the 3×3 entrywise sum-of-products. `converge` truncates the `n`-sum at `nmax ≈ k⊥ρ` (`nmax_bessel`).
 
 ## 3. Exact parallel primitive (piecewise polynomial)
 
