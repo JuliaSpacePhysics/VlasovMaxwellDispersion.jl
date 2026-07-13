@@ -42,7 +42,9 @@ function _pointroots(prob, alg, refine, k)
     region = prob.region
     diag = _boxdiag(region)
     gate0 = _in_box(region) ? _origin_gate(alg, diag) : 0.0
-    f = ω -> det(wave_dispersion_tensor(prob.plasma, ω, k; closure = prob.closure))
+    f0 = ω -> det(wave_dispersion_tensor(prob.plasma, ω, k; closure = prob.closure))
+    # erase only on the ComplexF64 lattice (one probe eval); exotic eltypes pass through
+    f = f0((region[1] + region[2]) / 2) isa ComplexF64 ? erase_cf(f0) : f0
     zs, n1 = discover(alg, f, region)
     zs, n2 = polish!(f, zs, refine)
     filter!(z -> isfinite(z) && _in_box(region, z) && abs(z) > gate0, zs)

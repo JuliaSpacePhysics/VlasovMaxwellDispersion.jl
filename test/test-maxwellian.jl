@@ -1,4 +1,5 @@
 @testitem "Maxwellian -> cold limit" begin
+    using VlasovMaxwellDispersion: dielectric
     # vth -> 0 must reproduce the Stix cold ε to ~vth^2 accuracy (no resonance
     # crossing: Omega large compared to omega so zeta stays far from the pole).
     Omega_e, Pi2 = -1836.0, 0.1

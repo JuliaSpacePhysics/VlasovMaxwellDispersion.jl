@@ -1,6 +1,6 @@
 abstract type AbstractDispersionProblem end
 
-# Orbit-integral evaluator (derivation.md §3), passed as the `closure` keyword of contribution/dielectric/solve.
+# Orbit-integral evaluator (derivation.md §3), passed as the `closure` keyword of contribution/solve.
 abstract type IntegralClosure end
 struct HarmonicSum <: IntegralClosure end
 struct Newberger <: IntegralClosure end
