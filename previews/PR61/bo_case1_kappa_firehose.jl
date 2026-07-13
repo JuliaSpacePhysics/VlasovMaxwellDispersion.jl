@@ -63,8 +63,10 @@ end
 
 ref = readdlm(joinpath(@__DIR__, "bo_case1_ref.tsv"); comments = true)
 kdi(b) = [sqrt(abs2(k)) / kunit for k in b.k]
+## ref grid (Δk = 0.02) is offset from the survey grid (Δk = 0.015): nearest
+## sample is ≤ 0.0075 away, so gate at half the survey spacing
 γmax(sol, x0) = maximum(
-    maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - x0) < 0.004); init = -Inf)
+    maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - x0) < 0.008); init = -Inf)
         for b in sol.roots
 )
 for (κ, sol) in zip(κs, sols)

@@ -70,6 +70,7 @@ for (κ, sol) in zip(κs, sols)
     rows = ref[ref[:, 4] .== κ, :]
     Δmax = 0.0
     for r in eachrow(rows)
+        r[3] > 0 || continue   # ref's damped tail exits the surveyed ω box
         ω_ref = complex(r[2], r[3])
         d = minimum(
             minimum((abs(ω - ω_ref) for (x, ω) in zip(kle(b), b.omega) if isfinite(ω) && abs(x - r[1]) < 0.005); init = Inf)
@@ -80,9 +81,18 @@ for (κ, sol) in zip(κs, sols)
     @printf("κ=%-3s max |ω_vmd - ω_ref| = %.1e ωce\n", isinf(κ) ? "∞" : string(round(Int, κ)), Δmax)
 end
 
-# Agreement at the `10⁻³–10⁻² ωce` truncation level of the reference's harmonic
-# (`N = 2`) and, for the Maxwellian, Hermite expansions; VMD evaluates the
-# analytic product-bi-kappa susceptibility (residuals `~10⁻¹²`).
+# Both codes evaluate the analytic product-bi-kappa susceptibility for this
+# parallel geometry, so the growing branch agrees to `~10⁻⁶ ωce` — far below
+# the visual thickness of the paper's curves.
+#
+# !!! note "Convention discrepancy in the paper's κ = 3 panel"
+#     With the paper's *written* thermal speeds `c∥ = √(2kT∥/m·(1−1/2κ))`,
+#     `c⊥ = √(2kT⊥/m·(1−1/κ))` (used here and by PlasmaBO), the κ = 3 branch
+#     crosses `γ = 0` at `k·λₑ ≈ 2.1`. The paper's Fig. 2(b) instead crosses at
+#     `≈ 2.45`, which VMD reproduces only with *raw* `θ∥,⊥ = √(2kT/m)` (no κ
+#     correction — evidently the convention of the plotted Bai 2024 benchmark).
+#     At κ = 7 and ∞ the correction is within the curve width, so only the
+#     κ = 3 panel differs visibly.
 
 # ## Dispersion diagram — paper Fig. 2
 #
