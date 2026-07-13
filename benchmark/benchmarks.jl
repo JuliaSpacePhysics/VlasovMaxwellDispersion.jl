@@ -29,6 +29,13 @@ let g = SUITE["separable"]
         k = Wavenumber(kp, 0.4)
         g["kappa_kperp=$kp"] = CAV.@benchmarkable contribution($sk, 1.2 - 0.05im, $k)
     end
+    # Fixed-k plan lifecycle: hoisting the perp Bessel tensors out of the ω loop.
+    ssep = NormalizedSpecies(-1.0, 1.0, SeparableVDF(Maxwellian(vth_para = vthp, vth_perp = vthq); para = (-14vthp, 14vthp), perp = 14vthq))
+    for (name, k) in (("moderate", Wavenumber(1.0, 0.4)), ("many_harmonics", Wavenumber(4.0, 0.1)))
+        g["plan/$name"] = CAV.@benchmarkable plan_contribution($ssep, $k)
+        plan = plan_contribution(ssep, k)
+        g["evaluate/$name"] = CAV.@benchmarkable $plan(1.3 - 0.05im)
+    end
 end
 
 let g = SUITE["kappa"]
@@ -57,6 +64,23 @@ let g = SUITE["Nonrelativistic/coupled"]
         g["B_truncated/kperp=$kp"] = CAV.@benchmarkable contribution($sp, $ω, $k)
         g["A_newberger/kperp=$kp"] = CAV.@benchmarkable contribution($sp, $ω, $k; closure = Newberger())
     end
+end
+
+let g = SUITE["Nonrelativistic/lowrank"]
+    vthz, vthp = 0.2, 0.3
+    bk = BiKappa(vth_para = vthz, vth_perp = vthp, kappa = 3.0)
+    kw = (para = (-20vthz, 20vthz), perp = 20vthp, rtol = 1.0e-10)
+    g["construct"] = CAV.@benchmarkable LowRankVDF($bk; $kw...)
+
+    vdf = LowRankVDF(bk; kw...)
+    s = NormalizedSpecies(1.0, 1.0, vdf)
+    for (name, k) in (("moderate", Wavenumber(2.0, 1.0)), ("many_harmonics", Wavenumber(8.0, 0.1)))
+        g["plan/$name"] = CAV.@benchmarkable plan_contribution($s, $k)
+        plan = plan_contribution(s, k)
+        g["evaluate/$name"] = CAV.@benchmarkable $plan(1.3 - 0.02im)
+    end
+    prob = GlobalDispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), Wavenumber(2.0, 1.0))
+    g["global_solve/moderate"] = CAV.@benchmarkable solve($prob)
 end
 
 let g = SUITE["Relativistic"], regime = Relativistic()

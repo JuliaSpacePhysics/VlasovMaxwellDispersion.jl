@@ -318,21 +318,13 @@ how `g` is represented:
 | -------------------------------- | ------------------------------------------------ |
 | normalized Gaussian `e^{−p²}/√π` | `Z(ζ)`, plasma dispersion function               |`                                        |
 | piecewise polynomial             | per cell `∫q dp + P(ζ)·log((p_{i+1}−ζ)/(p_i−ζ))` |
-| arbitrary analytic               | Plemelj split (below)                            |
+
 
 **Piecewise-poly cell.** Synthetic-divide `P(p)=q(p)(p−ζ)+P(ζ)`; then
 `∫P/(p−ζ)dp = ∫q dp + P(ζ)·log((p_{i+1}−ζ)/(p_i−ζ))`. **Branch-cut invariant**: one
 complex `log` of the _ratio_ (not a difference of logs) keeps the continuation
 single-valued as `Im ζ→0`. Landau continuation to the growing sheet (`Im ζ<0`, `Re ζ` in
 cell) adds `2πi·p(ζ)`.
-
-**Arbitrary analytic `g`.** Plemelj split with the removable singularity pulled out:
-
-    𝒞[g](ζ) = ∫ (g(p)−g(ζ))/(p−ζ) dp + g(ζ)·log((b−ζ)/(a−ζ)) [ + 2πi·g(ζ) ]
-
-The first integrand is regular at `p=ζ` ⇒ plain adaptive quadrature; the `log` ratio
-carries the branch cut; the `Im ζ→0⁺` limit supplies the Plemelj `+iπ g(ζ)`, and the
-explicit `2πi g(ζ)` is the lower-half Landau term.
 
 ### 5.4 Perpendicular primitive `P⊥`
 

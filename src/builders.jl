@@ -11,7 +11,7 @@ _normalized_omega(p::Particle, Ωref, B0) = (charge(p) * magnetic_field(B0) / ma
 
 Normalize one physical `Species` against the reference `ref` and field `B0`:
 `Omega = Ω_s/Ω_ref` and `Pi2 = (ω_ps/Ω_ref)² = (wpwc·Omega)²`, `wpwc = √(n m/ε₀)/B0`.
-`ref` is a [`Particle`](@ref) (Ω_ref = its gyrofrequency, Omega is B-free) or any
+`ref` is a particle (Ω_ref = its gyrofrequency, Omega is B-free) or any
 reference frequency.
 """
 function NormalizedSpecies(s::Species, B0::Number, ref = particle(s))
@@ -26,7 +26,7 @@ end
     NormalizedPlasma(plasma::Plasma; ref=first particle)
 
 Normalize a physical plasma into this solver's dimensionless [`NormalizedPlasma`](@ref).
-`B0` comes from the plasma; the reference `ref` (a [`Particle`](@ref) or a reference
+`B0` comes from the plasma; the reference `ref` (a particle or a reference
 frequency) sets `Ω_ref` and defaults to the first species' particle.
 """
 function NormalizedPlasma(plasma::Plasma; ref = particle(first(plasma)))

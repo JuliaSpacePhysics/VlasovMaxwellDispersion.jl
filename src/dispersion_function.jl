@@ -81,11 +81,6 @@ function DispersionFunction(prob::DispersionProblem)
 end
 DispersionFunction(prob::GlobalDispersionProblem, k) =
     DispersionFunction(prob.plasma, k; closure = prob.closure)
-function DispersionFunction(prob::GlobalDispersionProblem)
-    prob.geometry isa Wavenumber ||
-        throw(ArgumentError("prob.f needs a fixed k; this problem sweeps $(typeof(prob.geometry))"))
-    return DispersionFunction(prob, prob.geometry)
-end
 
 @inline Base.getproperty(prob::AbstractDispersionProblem, s::Symbol) =
     s === :f ? DispersionFunction(prob) : getfield(prob, s)

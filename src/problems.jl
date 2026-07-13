@@ -84,6 +84,7 @@ struct DispersionBranch{W, K, R}
     resid::R
 end
 
+Base.iterate(b::DispersionBranch, args...) = iterate(b.omega, args...)
 Base.getindex(b::DispersionBranch, args...) = getindex(b.omega, args...)
 
 """
@@ -93,9 +94,9 @@ A collection of discovered [`DispersionBranch`](@ref)es.
 `retcode` is `:Success`, `:Failure` (no root branch found),
 or `:Partial` (a fit saturated — structure may exceed one rational fit).
 """
-struct SurveySolution{BR, Pr, A}
+struct SurveySolution{BR, S, Pr, A} <: AbstractVector{BR}
     roots::Vector{BR}
-    stats::SolveStats
+    stats::S
     retcode::Symbol
     prob::Pr
     alg::A
@@ -105,6 +106,8 @@ end
 Base.filter(pred, s::SurveySolution) = SurveySolution(
     filter(pred, s.roots), s.stats, s.retcode, s.prob, s.alg
 )
+Base.size(s::SurveySolution) = size(s.roots)
+Base.getindex(s::SurveySolution, args...) = s.roots[args...]
 
 _show_stats(io, st::SolveStats) =
     print(io, st.nevals, " evals, ", round(st.time; sigdigits = 3), " s")
@@ -120,3 +123,5 @@ function Base.show(io::IO, sol::DispersionSolution)
     _show_stats(io, sol.stats)
     return print(io, ")")
 end
+
+Base.show(io::IO, ::MIME"text/plain", sol::SurveySolution) = show(io, sol)

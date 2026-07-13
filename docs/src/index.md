@@ -19,5 +19,5 @@ ks = [Wavenumber(0.0, kz) for kz in 0.3:0.05:1.0]
 ωs = solve(DispersionProblem(pl, 1.2 - 0.1im, ks)).omega            # track a k branch
 ```
 
-The [Cattaert 2007 benchmark](cattaert.md) page works a full non-Maxwellian
+The [Cattaert 2007 benchmark](case-studies/cattaert.md) page works a full non-Maxwellian
 benchmark end to end — seeded branch tracking, then a seedless global survey.
