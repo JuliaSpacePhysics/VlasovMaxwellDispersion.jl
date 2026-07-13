@@ -3,7 +3,7 @@
 #   - ALPS (grid+poly-fit): bi-kappa dispersion roots; our det is ~0 there.
 
 @testitem "CoupledVDF shell ε matches LMV (Newberger) reference" begin
-    using VlasovMaxwellDispersion
+    using VlasovMaxwellDispersion: dielectric
     # matched dimensionless setup (Ωref=Ω_proton); shell f₀=exp(-(√(u²+w²)-v_s)²/2σ²)
     k̃, θ = 0.8, 60 / 180 * π
     k = Wavenumber(k̃ * sin(θ), k̃ * cos(θ))
