@@ -3,8 +3,7 @@
 # Case 1 of the BO/ALPS solver comparison [arXiv:2606.14439](https://arxiv.org/abs/2606.14439):
 # the oblique proton firehose driven by an anisotropic *coupled* kappa distribution
 # `f_p ∝ [1 + v∥²/(κc∥²) + v⊥²/(κc⊥²)]^{-(κ+1)}` with `T∥p = 2 T⟂p` at `θ = 45°`,
-# Maxwellian electrons, for `κ ∈ {4, 6, 8}` (paper Fig. 1 b/d/f). Same plasma as the
-# [Astfalk bi-kappa firehose](firehose_astfalk.md), only the proton VDF model differs.
+# Maxwellian electrons, for `κ ∈ {4, 6, 8}` (paper Fig. 1 b/d/f).
 
 using VlasovMaxwellDispersion
 using DelimitedFiles, Printf
