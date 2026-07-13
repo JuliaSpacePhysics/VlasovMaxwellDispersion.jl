@@ -1,7 +1,7 @@
 """
     contribution(species/vdf, ω, k)
 
-Susceptibility χ_s(ω,k) from one normalized species or vdf.
+Susceptibility χ_s(ω,k) from one species or vdf.
 """
 @inline contribution(s, ω, k; kwargs...) = contribution(s.vdf, s, ω, k; kwargs...)
 
@@ -29,29 +29,39 @@ scaled_contribution(vdf, s, ω, k; kwargs...) =
     end
 end
 
-"""
-    dielectric(plasma, ω, k)
-
-Dielectric tensor `ε = I + Σ_s χ_s(ω,k)`.
-"""
+# ε = I + Σ_s χ_s(ω,k)
 dielectric(plasma, ω, k; kwargs...) =
     _guarded_sum(s -> contribution(s, ω, k; kwargs...), plasma) + I
 
-# Curl-curl operator k̃k̃ᵀ - k̃²I . From the wave eq
-# n×(n×E)+εE=0 with n=k̃/ω̃: n×(n×E) = (nnᵀ-n²I)E ⇒ D = ε + curlcurl/ω̃²
-@inline function _curlcurl(k)
+# Curl-curl operator k̃k̃ᵀ - k̃²I
+function _curlcurl(k)
     kv = vec3(k)
     return kv * kv' - abs2(k) * I
 end
 
 """
-    dispersion_tensor(plasma, ω, k::Wavenumber; closure=HarmonicSum())
+    dispersion_tensor(plasma, ω, k; kw...)
 
 `𝒟(ω,k) = ε + (k̃k̃ᵀ - k̃²I)/ω̃²`. `det(𝒟)=0` is the dispersion relation.
 """
-function dispersion_tensor(plasma, ω, k::Wavenumber; kwargs...)
-    ε = dielectric(plasma, ω, k; kwargs...)
-    return ε + _curlcurl(k) / complex(float(ω))^2
+function dispersion_tensor(plasma, ω, k; kwargs...)
+    return dielectric(plasma, ω, k; kwargs...) + _curlcurl(k) / complex(ω)^2
+end
+
+"""
+    wave_dispersion_tensor(plasma, ω, k; kw...)
+
+Deflated form `ω̃²·𝒟 = ω̃²ε + (k̃k̃ᵀ − k̃²I)` so
+the light-term `curlcurl/ω̃²` pole and any `χ` pole at `ω=0` 
+(cold `ε`'s `1/ω²`, `1/ω` terms) cancel analytically.
+
+Otherwise its winding partially cancels nearby roots =>
+coarse-grid root-finding (e.g., GRPF) may miss them and
+report a spurious net pole.
+"""
+function wave_dispersion_tensor(plasma, ω, k; kwargs...)
+    ω2χ = _guarded_sum(s -> scaled_contribution(s, ω, k; kwargs...), plasma)
+    return ω^2 * I + ω2χ + _curlcurl(k)
 end
 
 "Aliases for `dispersion_tensor`"
@@ -68,88 +78,33 @@ function electrostatic_det(plasma, ω, k::Wavenumber; kwargs...)
     return dot(kv, ε, kv)
 end
 
+"""
+    residual(plasma, ω, k; closure=HarmonicSum())
+    residual(prob, ω)
 
-# Builds one cyclotron-harmonic block χ_n by contracting the perp Bessel tensor
-# with the parallel Landau moments (derivation §5.1). Same algebra for every VDF;
-# only how the moments are obtained differs (Z/Γ_n closed forms for Maxwellian vs
-# `hilbert`+Bessel quadrature for arbitrary f).
-#
-# The numerator p⊥U splits into a ∂f/∂p⊥ and a ∂f/∂p∥ gradient slice, giving two
-# perp Bessel-bilinear matrices and two parallel-moment families:
-#   P∂  ← ∫(Bessel)f⊥′    pairs with the f∥ moments M_F^m  (∂⊥ slice)
-#   PF  ← ∫(Bessel)f⊥·p⊥  pairs with the f∥′ moments M_T^m  (∂∥ slice)
-@inline function _chi_mblock(M, P∂, PF, ω, kz, nΩ)
-    MF0, MF1, MF2, MT0, MT1 = M
-    # Parallel Landau weights D_m = ω M_F^m − k∥ M_F^{m+1} (∂⊥ slice) and k∥ M_T^m (∂∥ slice).
-    # Each tensor entry = (∂⊥ perp bilinear)·wF + (∂∥ perp bilinear)·wT, at order m =
-    wF0, wT0 = ω * MF0 - kz * MF1, kz * MT0
-    wF1, wT1 = ω * MF1 - kz * MF2, kz * MT1
-    xx = P∂[1, 1] * wF0 + PF[1, 1] * wT0
-    xy = im * (P∂[1, 2] * wF0 + PF[1, 2] * wT0)
-    yy = P∂[2, 2] * wF0 + PF[2, 2] * wT0
-    xz = P∂[1, 3] * wF1 + PF[1, 3] * wT1
-    zy = im * (P∂[2, 3] * wF1 + PF[2, 3] * wT1)
-    zz = nΩ * P∂[3, 3] * MF2 + (ω - nΩ) * PF[3, 3] * MT1   # + non-resonant term
-    return SA[xx, xy, xz, yy, zy, zz]
+Relative Eckart–Young distance to singularity, `σ_min(𝒟)/σ_max(𝒟) ∈ [0,1]`,
+is used as the scale-invariant residual. `NaN` for non-finite `ω` or `𝒟`.
+
+Known blind spot: as `ω → 0` transverse terms inflate, causing `σ_max ∝ 1/ω²`.
+The determinant's structural origin zero reads small but may not be a true root.
+"""
+function residual(plasma, ω, k; closure = HarmonicSum())
+    isfinite(ω) || return NaN
+    D = dispersion_tensor(plasma, ω, k; closure)
+    all(isfinite, D) || return NaN
+    return _sigma_ratio(D)
 end
 
-# Pointwise (Grid): the perp tensor at node p⊥ before parallel integration.
-# M=(q,uq,u²q,p,up); here M=c·Δm. Split into the LINEAR FORMS of Δm it depends
-# on (`_In_forms`: D0/D1 Landau weights and the zz split nΩ(Δ2−pxΔ4)+ω·pxΔ4)
-# and the Bessel-bilinear assembly (`_In_assemble`), so callers can apply linear
-# operations (peel subtraction, Cauchy weights) to 4 scalars instead of 5 moments.
-@inline function _In_forms(Δm, px, ω, kz)
-    Δ0, Δ1, Δ2, Δ3, Δ4 = Δm
-    kzpx = kz * px
-    return SA[
-        ω * Δ0 - kz * Δ1 + kzpx * Δ3,
-        ω * Δ1 - kz * Δ2 + kzpx * Δ4,
-        Δ2 - px * Δ4, px * Δ4,
-    ]
-end
-@inline function _In_assemble(F, bvec, nΩ, ω)
-    b11, b12, b22, b13, b23, b33 = bvec
-    D0, D1 = F[1], F[2]
-    zz = b33 * (nΩ * F[3] + ω * F[4])
-    return SA[b11 * D0, im * b12 * D0, b13 * D1, b22 * D0, im * b23 * D1, zz]
-end
-@inline _In_block(Δm, c, bvec, px, ω, kz, nΩ) =
-    _In_assemble((2π * c) .* _In_forms(Δm, px, ω, kz), bvec, nΩ, ω)
-
-# Materialize the antisymmetric-paire
-@inline _antisymmat(t) =
-    @SMatrix [t[1] t[2] t[3]; -t[2] t[4] -t[5]; t[3] t[5] t[6]]
-
-# Symmetric 3×3 from its 6 distinct entries (row-major upper triangle).
-@inline _symmat(a11, a12, a13, a22, a23, a33) =
-    @SMatrix [a11 a12 a13; a12 a22 a23; a13 a23 a33]
-
-@inline function _perp_Bessel_bilinear(n, a, px)
-    z = a * px
-    Jm, Jp = besselj(n - 1, z), besselj(n + 1, z)
-    b1 = px * (Jm + Jp) / 2
-    b2 = px * (Jm - Jp) / 2
-    b3 = besselj(n, z)
-    return SA[b1 * b1, b1 * b2, b2 * b2, b1 * b3, b2 * b3, b3 * b3]
-end
-
-# Fill `out[i]` with the ±nmax ladder of perp bilinear products
-function _perp_Bessel_bilinears!(out, a, px)
-    z = a * px
-    nmax = (length(out) - 1) ÷ 2
-    @no_escape begin
-        Jv = @alloc(typeof(z), nmax + 2)
-        besselj_ladder!(Jv, nmax + 1, z)
-        @inbounds for (i, n) in enumerate(-nmax:nmax)
-            Jm = _jladder(Jv, n - 1)
-            Jp = _jladder(Jv, n + 1)
-            Rn = (Jm + Jp) / 2
-            Jn = _jladder(Jv, n)
-            Jn′ = (Jm - Jp) / 2
-            b1 = px * Rn
-            b2 = px * Jn′
-            out[i] = SA[b1 * b1, b1 * b2, b2 * b2, b1 * Jn, b2 * Jn, Jn * Jn]
-        end
-    end
-    return out
+# σ(adj D) = {σ₁σ₂, σ₁σ₃, σ₂σ₃} ⇒ σ₃/σ₁ = |det D| / (σ_max(adj D)·σ_max(D)).
+# σ_max via the normal matrix is cancellation-safe — only the *smallest* eigenvalue of D'D is not.
+_smax(A) = sqrt(max(last(eigvals(Hermitian(A' * A))), zero(real(eltype(A)))))
+_adjugate(A::SMatrix{3, 3}) = @inbounds SMatrix{3, 3}(
+    A[2, 2] * A[3, 3] - A[2, 3] * A[3, 2], A[2, 3] * A[3, 1] - A[2, 1] * A[3, 3], A[2, 1] * A[3, 2] - A[2, 2] * A[3, 1],
+    A[1, 3] * A[3, 2] - A[1, 2] * A[3, 3], A[1, 1] * A[3, 3] - A[1, 3] * A[3, 1], A[1, 2] * A[3, 1] - A[1, 1] * A[3, 2],
+    A[1, 2] * A[2, 3] - A[1, 3] * A[2, 2], A[1, 3] * A[2, 1] - A[1, 1] * A[2, 3], A[1, 1] * A[2, 2] - A[1, 2] * A[2, 1],
+)
+_sigma_ratio(D) = (s = svdvals(D); s[end] / s[1])
+function _sigma_ratio(D::SMatrix{3, 3})
+    D_scaled = D / maximum(abs, D) # Pre-scaled to avoid overflow in det/adj'adj
+    return abs(det(D_scaled)) / (_smax(_adjugate(D_scaled)) * _smax(D_scaled))
 end

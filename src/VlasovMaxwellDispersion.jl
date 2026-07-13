@@ -21,6 +21,14 @@ import CommonSolve: solve, init, solve!, step!
 
 function contribution end
 
+"""
+    prepare(x, closure; kw...) -> x′
+
+One-time setup before repeated evaluations.
+Precompute (ω,k)-independent quantities held in [`PreparedVDF`](@ref).
+"""
+prepare(x, closure; kw...) = x
+
 include("derivatives.jl")
 include("erased.jl")
 include("Bessel.jl")
@@ -32,6 +40,7 @@ include("perp_analytic.jl")    # perpendicular P⊥ Bessel-moment primitive
 include("projection.jl")
 include("distributions/distributions.jl")
 include("builders.jl")         # particle-identity + physical-unit Species adapters
+include("assemble.jl")
 include("susceptibility.jl")
 include("solve.jl")
 

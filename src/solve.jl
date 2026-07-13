@@ -15,36 +15,6 @@ Base.propertynames(prob::AbstractDispersionProblem) =
 
 _hadamard(D) = prod(norm(D[i, :]) for i in 1:3)
 
-# σ(adj D) = {σ₁σ₂, σ₁σ₃, σ₂σ₃} ⇒ σ₃/σ₁ = |det D| / (σ_max(adj D)·σ_max(D)).
-# σ_max via the normal matrix is cancellation-safe — only the *smallest* eigenvalue of D'D is not.
-_smax(A) = sqrt(max(last(eigvals(Hermitian(A' * A))), zero(real(eltype(A)))))
-_adjugate(A::SMatrix{3, 3}) = @inbounds SMatrix{3, 3}(
-    A[2, 2] * A[3, 3] - A[2, 3] * A[3, 2], A[2, 3] * A[3, 1] - A[2, 1] * A[3, 3], A[2, 1] * A[3, 2] - A[2, 2] * A[3, 1],
-    A[1, 3] * A[3, 2] - A[1, 2] * A[3, 3], A[1, 1] * A[3, 3] - A[1, 3] * A[3, 1], A[1, 2] * A[3, 1] - A[1, 1] * A[3, 2],
-    A[1, 2] * A[2, 3] - A[1, 3] * A[2, 2], A[1, 3] * A[2, 1] - A[1, 1] * A[2, 3], A[1, 1] * A[2, 2] - A[1, 2] * A[2, 1],
-)
-_sigma_ratio(D) = (s = svdvals(D); s[end] / s[1])
-function _sigma_ratio(D::SMatrix{3, 3})
-    D_scaled = D / maximum(abs, D) # Pre-scaled to avoid overflow in det/adj'adj
-    return abs(det(D_scaled)) / (_smax(_adjugate(D_scaled)) * _smax(D_scaled))
-end
-
-"""
-    residual(plasma, ω, k; closure=HarmonicSum())
-    residual(prob, ω)
-
-Relative Eckart–Young distance to singularity, `σ_min(𝒟)/σ_max(𝒟) ∈ [0,1]`,
-is used as the scale-invariant residual. `NaN` for non-finite `ω` or `𝒟`.
-
-Known blind spot: as `ω → 0` transverse terms inflate, causing `σ_max ∝ 1/ω²`.
-The determinant's structural origin zero reads small but may not be a true root.
-"""
-function residual(plasma, ω, k; closure = HarmonicSum())
-    isfinite(ω) || return NaN
-    D = dispersion_tensor(plasma, ω, k; closure)
-    all(isfinite, D) || return NaN
-    return _sigma_ratio(D)
-end
 residual(prob::AbstractDispersionProblem, ω, k = prob.k) =
     residual(prob.plasma, ω, k; closure = prob.closure)
 
@@ -67,22 +37,6 @@ CommonSolve.solve(prob::DispersionProblem{<:Any, <:Wavenumber}) = CommonSolve.so
 CommonSolve.solve(prob::DispersionProblem) = CommonSolve.solve(prob, ArcLength())
 CommonSolve.init(prob::DispersionProblem, alg; kwargs...) =
     CommonSolve.init(prob, ArcLength(base = alg); kwargs...)
-
-
-"""
-    wave_dispersion_tensor(plasma, ω, k::Wavenumber; closure=HarmonicSum())
-
-Deflated form `ω̃²·𝒟 = ω̃²ε + (k̃k̃ᵀ − k̃²I)`, built as `ω̃²I + ω̃²χ + curlcurl` so 
-the light-term `curlcurl/ω̃²` pole for original `det𝒟` and any `χ` pole at `ω=0` 
-(cold `ε`'s `1/ω²`, `1/ω` terms) cancel analytically.
-
-Otherwise its winding partially cancels nearby roots, causing GRPF to miss them
-and report a spurious net pole.
-"""
-function wave_dispersion_tensor(plasma, ω, k; kwargs...)
-    ω2χ = _guarded_sum(s -> scaled_contribution(s, ω, k; kwargs...), plasma)
-    return ω^2 * I + ω2χ + _curlcurl(k)
-end
 
 """
     solve(prob::GlobalDispersionProblem, alg=AAA(); refine=Muller(), kw...)::SurveySolution

@@ -8,10 +8,11 @@ struct Kappa{T, K}
     a::T
     kappa::K
 
-    function Kappa(θ::T, κ::K; check = true) where {T, K}
+    function Kappa(θ::T, κ; check = true) where {T}
         check && (κ > 0.5 || throw(ArgumentError("Kappa needs κ > 1/2 (finite ⟨v²⟩)")))
         a = κ * θ^2
-        return new{T, K}(a, κ)
+        κi = isinteger(κ) ? Int(κ) : κ
+        return new{typeof(a), typeof(κi)}(a, κi)
     end
 end
 
@@ -36,7 +37,7 @@ function ProductBiKappa(; vth_para, vth_perp = vth_para, kappa_para, kappa_perp 
 end
 
 
-# Residue-sum assembly shared by every meromorphic parallel factor 
+# Residue-sum assembly shared by every meromorphic parallel factor
 # with a single closed-half-plane pole p₀ of order M
 # Hₘ = ∫pᵐf/(p−ζ)dp = 2πi·(Res_{p₀}[pᵐf/(p−ζ)] + [σ>0] ζᵐf(ζ)),   m=0,1,2
 # σ<0 drops the Landau (ζ-side) residue
@@ -185,6 +186,9 @@ function _separable_harmonics(para, p::Kappa, args...; kw...)
     fperp = AnalyticFactor{typeof(a)}(f, fdf)
     return _separable_harmonics_sum_first(para, fperp, args...; kw...)
 end
+
+# Harmonic cap from ⟨v⊥²⟩ = a/(κ−1); Kappa has no lo/hi for the generic quadrature.
+nmax_harm(p::Kappa, β) = nmax_bessel(β^2 * p.a / (2 * (p.kappa - 1)))
 
 # Slice moments Gₘ=∫uᵐ(b+u²/a∥)^{-M}/(u-ζ)du = a∥^M·H_m(ζ, a∥b, M), M=κ+2.
 @inline _kappa_Gm(ζ, a_para, b, κ::Integer, σ, node) = _kappa_Hm_node(ζ, a_para, b, node[1], node[2], node[3], κ + 2, σ)

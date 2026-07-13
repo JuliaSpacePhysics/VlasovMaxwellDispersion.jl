@@ -6,11 +6,11 @@ using Chairmarks
 
 vthp, vthq = 0.9, 1.2
 mx = Maxwellian(vth_para = vthp, vth_perp = vthq)
-sep = SeparableVDF(mx; para = (-14vthp, 14vthp), perp = 14vthq)
+sep = prepare(SeparableVDF(mx; para = (-14vthp, 14vthp), perp = 14vthq))
 
 # Non-Gaussian parallel (kappa-like) × Gaussian perp — no closed form, exercises quadrature.
 fpar(u) = (1 + u^2 / 3)^(-2)
-sepk = SeparableVDF(v -> exp(-v^2) / pi, fpar; para = (-30.0, 30.0), perp = 10.0)
+sepk = prepare(SeparableVDF(v -> exp(-v^2) / pi, fpar; para = (-30.0, 30.0), perp = 10.0))
 
 cases = [
     ("sep/kp=0.1", NormalizedSpecies(-1.0, 0.5, sep), 1.3 - 0.05im, Wavenumber(0.1, 0.4)),

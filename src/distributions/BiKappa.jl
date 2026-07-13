@@ -11,10 +11,10 @@ struct BiKappa{K, T} <: AbstractVDF
 end
 
 function BiKappa(; vth_para, vth_perp = vth_para, kappa)
-    κ = float(kappa)
+    κ = kappa
     kappa > 1.5 || throw(ArgumentError("BiKappa needs κ > 3/2 (finite ⟨p²⟩)"))
     a_para, a_perp = promote((κ - 1.5) * vth_para^2, (κ - 1.5) * vth_perp^2)
-    return BiKappa(kappa, a_para, a_perp)
+    return BiKappa(isinteger(κ) ? Int(κ) : κ, a_para, a_perp)
 end
 
 (d::BiKappa)(q, u) = (1 + u^2 / d.a_para + q^2 / d.a_perp)^(-(d.kappa + 1))
