@@ -18,10 +18,10 @@ scaled_contribution(vdf, s, ω, k; kwargs...) =
 
 # Quadrature-based χ paths raise QuadGK's DomainError when overflow.
 # Return NaN so root-finders and ω-scans reject point instead of crashing.
-@inline function _guarded_sum(f, plasma)
+@inline function _guarded_sum(f, xs)
     _nan_tensor() = SMatrix{3, 3, ComplexF64}(ntuple(_ -> complex(NaN, NaN), 9))
     return try
-        mapreduce(f, +, NormalizedPlasma(plasma))
+        mapreduce(f, +, xs)
     catch err
         err isa DomainError && isdefined(err, :msg) &&
             startswith(err.msg, "integrand produced") || rethrow()
@@ -31,7 +31,7 @@ end
 
 # ε = I + Σ_s χ_s(ω,k)
 dielectric(plasma, ω, k; kwargs...) =
-    _guarded_sum(s -> contribution(s, ω, k; kwargs...), plasma) + I
+    _guarded_sum(s -> contribution(s, ω, k; kwargs...), NormalizedPlasma(plasma)) + I
 
 # Curl-curl operator k̃k̃ᵀ - k̃²I
 function _curlcurl(k)
@@ -60,7 +60,7 @@ coarse-grid root-finding (e.g., GRPF) may miss them and
 report a spurious net pole.
 """
 function wave_dispersion_tensor(plasma, ω, k; kwargs...)
-    ω2χ = _guarded_sum(s -> scaled_contribution(s, ω, k; kwargs...), plasma)
+    ω2χ = _guarded_sum(s -> scaled_contribution(s, ω, k; kwargs...), NormalizedPlasma(plasma))
     return ω^2 * I + ω2χ + _curlcurl(k)
 end
 

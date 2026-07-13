@@ -39,7 +39,7 @@ end
 end
 
 @testitem "Langmuir wave: Bohm-Gross + weak Landau damping" begin
-    using VlasovMaxwellDispersion: VlasovMaxwellDispersion as VM
+    using VlasovMaxwellDispersion: Z, VlasovMaxwellDispersion as VM
 
     # Moderate k*lambdaD (~0.25): Bohm-Gross real part good to ~1%, damping
     # small but resolvable (gamma/omega_r ~ -2e-3), cross-checked against the

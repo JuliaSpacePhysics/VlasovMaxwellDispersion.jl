@@ -20,6 +20,7 @@ using CommonSolve
 import CommonSolve: solve, init, solve!, step!
 
 function contribution end
+function plan_contribution end
 
 """
     prepare(x, closure; kw...) -> x′
@@ -42,6 +43,7 @@ include("distributions/distributions.jl")
 include("builders.jl")         # particle-identity + physical-unit Species adapters
 include("assemble.jl")
 include("susceptibility.jl")
+include("dispersion_function.jl")
 include("solve.jl")
 
 export Regime, NonRelativistic, Relativistic
@@ -52,14 +54,14 @@ export NormalizedSpecies
 export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, CoupledVDF, GaussianRing
 export BiKappa, ProductBiKappa, Kappa
 export Separable, ⊗, Gaussian, GyroRing
-export plasma_dispersion_function, Z
 export IntegralClosure, HarmonicSum, Newberger, prepare
-export contribution, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
+export contribution, plan_contribution, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
+export DispersionFunction
 export DispersionProblem, GlobalDispersionProblem
 export Muller, GRPF, ArcLength, AAA, JumpFallback, DispersionSolution
 export AngleSweep, CartesianSweep
 export SurveySolution, DispersionBranch, SolveStats, dispersion_diagram
-export GridFitMethod, NonnegBSpline, BicubicHermite, fit_grid
+export NonnegBSpline, BicubicHermite, fit_grid
 
 function dispersion_diagram end
 
