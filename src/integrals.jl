@@ -50,14 +50,19 @@ end
 abstract type LandauAlg end
 
 """
-Adaptive QuadGK with per-pole subtraction, which removes the singularity for weakly damped/growing modes:
+Adaptive QuadGK with per-pole subtraction for poles within `_PEEL_BAND·(hi−lo)` of the
+real axis, which removes the near-singularity for weakly damped/growing modes:
 
     ∫_L^U g/(v−ζ) = ∫_L^U (g(v)−g(ζ))/(v−ζ) dv  +  g(ζ)·log((U−ζ)/(L−ζ))  [+ σ·2πi·g(ζ)]
 
-Falls back to the direct integrand when the subtraction is ill-conditioned, 
-as g(ζ) cancels ~log₁₀(NORM(gζ)/gscale) digits against the analytic log term.
+Farther poles and subtraction that is ill-conditioned within the band integrate directly.
 """
 struct PeeledGK <: LandauAlg end
+
+# Peel band: |Im ζ| ≤ _PEEL_BAND·(hi−lo). Beyond it the direct integrand is smooth at
+# quadrature scale (≲ log₂(1/_PEEL_BAND) extra bisection levels).
+# Cf. _PQ_NEAR for relativistic case.
+const _PEEL_BAND = 1 / 64
 
 # `alg` selects the numerical method — extensible.
 struct LandauPlan{A, T, V, S}
@@ -70,22 +75,35 @@ plan_landau(lims, ζs, side = 1; alg = PeeledGK()) = LandauPlan(alg, lims, ζs, 
 
 (p::LandauPlan)(g; kw...) = _landau(p.alg, g, p.lims, p.ζs, p.side; kw...)
 
-@inline _peel(gζ, gscale) = all(isfinite, gζ) && NORM(gζ) * sqrt(eps(one(gscale))) ≤ gscale
+# Peel only while ≲2 digits cancel between g(ζ) and the analytic log term
+@inline _peel(gζ, gscale) = all(isfinite, gζ) && NORM(gζ) ≤ 1.0e2 * gscale
 
 # Initial QuadGK segments split at the Landau-pole real parts inside (lo,hi)
 function _quadgk_pole_segments(ζs, lo, hi)
-    lo, hi = float(lo), float(hi)
     bnds = sort!(unique!(push!(clamp.(real.(ζs), lo, hi), lo, hi)))
     return QuadGK.Segment.(@view(bnds[1:(end - 1)]), @view(bnds[2:end]))
 end
 
+# Per-pole reduction. Returns `(gsub, gres)`
+@inline function _peel_pole(g, ζ, lo, hi, side)
+    if abs(imag(ζ)) > (hi - lo) * _PEEL_BAND
+        crossed = lo < real(ζ) < hi && side * imag(ζ) < 0
+        gζ = crossed ? g(ζ) : zero(g(clamp(real(ζ), lo, hi))) .* one(ζ)
+        return zero(gζ), gζ .* (crossed ? side * _2πim : zero(_2πim))
+    end
+    gζ = g(ζ)
+    peeled = _peel(gζ, NORM(g(clamp(real(ζ), lo, hi))))
+    lpole = _lpole_term(ζ, lo, hi, side, peeled)
+    gres = iszero(lpole) ? zero(gζ) .* _2πim : gζ .* lpole
+    return (peeled ? gζ : zero(gζ)), gres
+end
+
 function _landau(::PeeledGK, g, lims, ζ::Number, side; kw...)
     lo, hi = lims
-    gζ = g(ζ)
-    peel = _peel(gζ, NORM(g(clamp(real(ζ), lo, hi))))
-    gsub = peel ? gζ : zero(gζ)
-    reg = QuadGK.quadgk(v -> (g(v) - gsub) / (v - ζ), lo, hi; kw...)[1]
-    return reg + gζ .* _lpole_term(ζ, lo, hi, side, peel)
+    gsub, gres = _peel_pole(g, ζ, lo, hi, side)
+    segs = _quadgk_pole_segments([ζ], lo, hi)
+    reg = QuadGK.quadgk(v -> (g(v) - gsub) / (v - ζ), lo, hi; eval_segbuf = segs, kw...)[1]
+    return reg + gres
 end
 
 # conj/abs2 over Base's overflow-safe inv(::ComplexF64)
@@ -93,17 +111,20 @@ safe_inv(x) = conj(x) / abs2(x)
 
 function _landau(::PeeledGK, g, lims, ζs::AbstractVector, side; kw...)
     lo, hi = lims
-    gζs = g.(ζs)
-    peel = @. _peel(gζs, NORM(g(clamp(real(ζs), lo, hi))))
-    I = similar(gζs)
+    gsub_res = _peel_pole.(g, ζs, lo, hi, side)
+    gsubs = first.(gsub_res)
+    I = similar(ζs, typeof(first(gsub_res)[2]))
     f! = function (y, u)
         gu = g(u)
-        return @inbounds for i in eachindex(gζs)
-            y[i] = ifelse(peel[i], gu - gζs[i], gu) * safe_inv(u - ζs[i])
+        return @inbounds for i in eachindex(ζs)
+            y[i] = (gu - gsubs[i]) * safe_inv(u - ζs[i])
         end
     end
-    QuadGK.quadgk!(f!, I, lo, hi; norm = v -> maximum(NORM, v), kw...)
-    @. I = I + gζs * _lpole_term(ζs, lo, hi, side, peel)
+    segs = _quadgk_pole_segments(ζs, lo, hi)
+    QuadGK.quadgk!(f!, I, lo, hi; eval_segbuf = segs, norm = v -> maximum(NORM, v), kw...)
+    @inbounds for i in eachindex(I, gsub_res)
+        I[i] += last(gsub_res[i])
+    end
     return I
 end
 
@@ -137,10 +158,9 @@ function (p::LadderPlan{PeeledGK})(g::G, v, b2s) where {G}
     Xan = X0
     @inbounds for i in eachindex(ζs)
         ζ = ζs[i]
-        gζ = g(ζ)
-        peeled = _peel(gζ, NORM(g(clamp(real(ζ), lo, hi))))
-        Fs[i] = _In_forms(peeled ? gζ : zero(gζ), v, ω, kz)   # peel subtrahend, stored as its forms
-        lp = _In_forms(gζ, v, ω, kz) .* _lpole_term(ζ, lo, hi, side, peeled)
+        gsub, gres = _peel_pole(g, ζ, lo, hi, side)
+        Fs[i] = _In_forms(gsub, v, ω, kz)   # peel subtrahend, stored as its forms
+        lp = _In_forms(gres, v, ω, kz)
         Xan = Xan .+ _In_assemble(lp, b2s[i], nΩs[i], ω)
     end
     reg = QuadGK.quadgk(lo, hi; rtol, norm = NORM, segbuf, eval_segbuf = edges) do u

@@ -5,14 +5,13 @@
     mx = Maxwellian(vth_para = vthp, vth_perp = vthq)
     cpl = CoupledVDF(mx; para = (-10vthp, 10vthp), perp = 10vthq)
     k = Wavenumber(0.1, 0.4)                     # small k⊥ ⇒ few harmonics ⇒ fast
-    χc = contribution(NormalizedSpecies(-1.0, 0.5, cpl), 1.3 - 0.05im, k)
-    χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), 1.3 - 0.05im, k)
-    @test χc ≈ χm
-    # strongly damped ω ⇒ g(ζ)~1e13: exercises the direct/far conditioning branch per harmonic
-    ωd = 1.3 - 2.0im
-    χcd = contribution(NormalizedSpecies(-1.0, 0.5, cpl), ωd, k)
-    χmd = contribution(NormalizedSpecies(-1.0, 0.5, mx), ωd, k)
-    @test χcd ≈ χmd
+    ωd = 1.3 - 2.0im    # strongly damped ω ⇒ g(ζ)~1e13: exercises the direct path
+    ωfar = 1.3 + 12.0im  # Far causal poles need no complex-VDF residue where f(ζ) overflows
+    for ω in (1.3 - 0.05im, ωd, ωfar)
+        χc = contribution(NormalizedSpecies(-1.0, 0.5, cpl), ω, k)
+        χm = contribution(NormalizedSpecies(-1.0, 0.5, mx), ω, k)
+        @test χc ≈ χm
+    end
 end
 
 @testitem "CoupledVDF Newberger (A) ≡ HarmonicSum (B) for inseparable f₀" begin
@@ -55,7 +54,7 @@ end
     kw = (para = (-8.0, 8.0), perp = 6.0)
     s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))
     k = Wavenumber(0.3, 0.4)
-    for ω in (1.2 - 0.05im, 1.2 - 0.2im)             # damped: Im ω<0
+    for ω in (1.2 - 0.05im, 1.2 - 0.2im)             # damped: Im ω<0 (no complex-VDF residue needed)
         χB = contribution(s, ω, k)
         χA = contribution(s, ω, k; closure = Newberger())
         @test χA ≈ χB rtol = 1.0e-6
