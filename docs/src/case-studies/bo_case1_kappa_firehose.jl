@@ -1,9 +1,10 @@
-# # Oblique proton firehose — coupled bi-kappa protons (Guo et al. 2026, Case 1)
+# # Oblique proton firehose — coupled bi-kappa protons
 #
-# Case 1 of the BO/ALPS solver comparison [arXiv:2606.14439](https://arxiv.org/abs/2606.14439):
-# the oblique proton firehose driven by an anisotropic *coupled* kappa distribution
+# Oblique proton firehose driven by an anisotropic *coupled* kappa distribution
 # `f_p ∝ [1 + v∥²/(κc∥²) + v⊥²/(κc⊥²)]^{-(κ+1)}` with `T∥p = 2 T⟂p` at `θ = 45°`,
-# Maxwellian electrons, for `κ ∈ {4, 6, 8}` (paper Fig. 1 b/d/f).
+# Maxwellian electrons, for `κ ∈ {4, 6, 8}`.
+# 
+# Reference: Guo (Fig. 1, arXiv:2606.14439)
 
 using VlasovMaxwellDispersion
 using DelimitedFiles, Printf
@@ -58,10 +59,8 @@ end
 #
 # The reference (`bo_case1_ref.tsv`) is the unstable branch from PlasmaBO's
 # Hermite–Hermite solver (`N = 2`, `J = 24`) for `κ = 6, 8`. At `κ = 4` the HH
-# fit of the sampled kappa distribution is poor in the tails — the very effect
-# the paper reports for BO (Fig. 1b) — so it is not a valid reference there and
-# is omitted; VMD evaluates the analytic bi-kappa susceptibility and should
-# instead track the paper's ALPS curve.
+# fit of the sampled kappa distribution is poor in the tails and is omitted;
+# VMD evaluates the analytic bi-kappa susceptibility.
 
 ref = readdlm(joinpath(@__DIR__, "bo_case1_ref.tsv"); comments = true)
 kdi(b) = [sqrt(abs2(k)) / kunit for k in b.k]
@@ -85,11 +84,10 @@ end
 # Agreement at the few-`10⁻³ ωcp` truncation level of the reference's
 # Hermite–Hermite expansion, as for the Astfalk case.
 
-# ## Growth rates — paper Fig. 1 (b), (d), (f)
+# ## Growth rates
 #
 # Colored: all surveyed branches; black dots: PlasmaBO track (`κ = 6, 8`).
-# Peak growth `γ ≈ 0.05–0.066 ωcp` near `k·dᵢ ≈ 0.25` grows with `κ`,
-# matching the ALPS (blue dotted) curves of the paper.
+# Peak growth `γ ≈ 0.05–0.066 ωcp` near `k·dᵢ ≈ 0.25` grows with `κ`.
 
 fig = Figure(size = (700, 780))
 palette = Makie.wong_colors()

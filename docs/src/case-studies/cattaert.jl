@@ -41,7 +41,6 @@ i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 # Each branch is followed bidirectionally from its `kρ ≈ 0.1` seed, then compared
 # point-by-point against the BOPBK reference.
 
-
 ttrack = @elapsed ωs = map(1:4) do ib
     rows = ref[ref[:, 2] .== ib, :]
     seed = complex(rows[i0, 3], rows[i0, 4])
@@ -97,8 +96,7 @@ sol = solve(prob)
 # on the tabulated roots; the diagram's x-axis is `|k|` in units of `ωce/c`, so
 # the reference `kρ` maps to `kρ/vtp`.
 
-figs = dispersion_diagram(sol; title = "Cattaert 2007 — seedless m=1 survey")
-axr2, axi2 = contents(figs[1, 1])[1], contents(figs[2, 1])[1]
+figs, (axr2, axi2), = dispersion_diagram(sol; title = "Cattaert 2007 — seedless m=1 survey")
 scatter!(axr2, ref[:, 1] ./ vtp, ref[:, 3]; color = :black, markersize = 4)
 scatter!(axi2, ref[:, 1] ./ vtp, ref[:, 4]; color = :black, markersize = 4)
 ylims!(axi2, -0.02, 0.005)

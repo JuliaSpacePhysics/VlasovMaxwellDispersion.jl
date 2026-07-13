@@ -11,8 +11,18 @@ const SRC = joinpath(@__DIR__, "src")
 const CASE_STUDIES = joinpath(SRC, "case-studies")
 const LITERATE_SOURCES = sort(filter(f -> endswith(f, ".jl"), readdir(CASE_STUDIES; join = true)))
 
+# Wrap each case-study page's @example execution in a hidden wall-clock timer.
+const TIMINGS_FILE = joinpath(@__DIR__, "build-timings.tsv")
+ENV["VMD_TIMINGS"] = TIMINGS_FILE
+rm(TIMINGS_FILE; force = true)
+
+timing_preprocess(name) = str ->
+    "_t0 = time(); nothing #hide\n" * str *
+    "\n#\nopen(ENV[\"VMD_TIMINGS\"], \"a\") do io; println(io, \"$name\\t\", round(time() - _t0; digits = 2)); end #hide\nnothing #hide\n"
+
 foreach(LITERATE_SOURCES) do source
-    Literate.markdown(source, CASE_STUDIES; documenter = true)
+    name = first(splitext(basename(source)))
+    Literate.markdown(source, CASE_STUDIES; documenter = true, preprocess = timing_preprocess(name))
 end
 
 # Typst notes → Documenter pages
@@ -58,6 +68,16 @@ makedocs(;
     checkdocs = :none,                                 # site is benchmark-focused, not full API ref
     pages = PAGES,
 )
+
+# Per-page build timing → CI step summary (or stdout locally), slowest first.
+if isfile(TIMINGS_FILE)
+    rows = sort!(split.(readlines(TIMINGS_FILE), '\t'); by = r -> -parse(Float64, r[2]))
+    summary = get(ENV, "GITHUB_STEP_SUMMARY", nothing)
+    io = isnothing(summary) ? stdout : open(summary, "a")
+    println(io, "\n## Case-study build time\n\n| page | seconds |\n|---|---:|")
+    foreach(r -> println(io, "| ", r[1], " | ", r[2], " |"), rows)
+    isnothing(summary) || close(io)
+end
 
 deploydocs(;
     repo = "github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl",
