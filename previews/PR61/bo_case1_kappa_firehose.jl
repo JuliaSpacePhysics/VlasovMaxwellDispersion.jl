@@ -12,9 +12,7 @@ using CairoMakie
 # ## Plasma setup
 #
 # SI parameters, normalized to the proton gyrofrequency `ωcp`; velocities in
-# units of `c`. The paper's temperature-preserving thermal speeds
-# `c = √(2qT/m·(1−3/2κ))` are exactly VMD's `BiKappa` convention
-# (`a = (κ−3/2)vth²`), so raw `vth = √(2qT/m)` maps both onto the same `f_p`.
+# units of `c`.
 
 const c0 = 2.99792458e8
 qe = 1.602176634e-19; mp = 1.67262192369e-27; me = 9.1093837015e-31
@@ -43,7 +41,12 @@ region = (-0.1 - 0.25im, 0.5 + 0.12im)
 geom = AngleSweep(k = collect(0.03:0.015:0.45) .* kunit, theta = deg2rad(45))
 
 sols = map(κs) do κ
-    vdf_p = BiKappa(vth_para = vthpz, vth_perp = vthpp, kappa = κ)
+    vdf_p = LowRankVDF(
+        BiKappa(vth_para = vthpz, vth_perp = vthpp, kappa = κ);
+        rtol = 1.0e-10,
+        para = (-10vthpz, 10vthpz),
+        perp = 10vthpp,
+    )
     plasma = (
         NormalizedSpecies(1.0, Pi2p, vdf_p),
         NormalizedSpecies(-mp / me, Pi2e, Maxwellian(vthe)),

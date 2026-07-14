@@ -1,12 +1,15 @@
-# # Quasi-perpendicular instability — proton shell
+# # Quasi-perpendicular instability — proton shell (Min & Liu 2015)
 #
-# Ion Bernstein / fast-magnetosonic harmonics driven by a spherical proton shell,
-# Case 5 of (Guo et al. 2026, after Min & Liu 2015):
-# a tenuous (10%) 1 keV proton shell at shell speed `v_d = 2 v_A` in a cold
+# Ion Bernstein / fast-magnetosonic harmonics driven by a spherical proton shell.
+# Ref: Min & Liu 2015, also Case 5 in Guo et al. 2026.
+# A tenuous (10%) 1 keV proton shell at shell speed `v_d = 2 v_A` in a cold
 # proton–electron background, propagating at `θ = 89.5°`.
 #
 # The shell `f_p ∝ exp[−(v − v_d)²/c_p²]` with `v = √(v∥² + v⟂²)`
-# enters as a general analytic `CoupledVDF`
+# enters as a general analytic function, wrapped in a [`LowRankVDF`](@ref): the
+# shell is numerically rank ~12, and factoring it decouples the perpendicular Bessel
+# moments (ω-independent, hoisted into the per-`k` plan) from the parallel Landau
+# integral, accelerating dispersion-tensor evaluation.
 
 using VlasovMaxwellDispersion
 using DelimitedFiles, Printf
@@ -37,10 +40,8 @@ Pi2s = ns * qe^2 / (eps0 * mp) / wcp^2
 Pi2c = nc * qe^2 / (eps0 * mp) / wcp^2
 Pi2e = ne * qe^2 / (eps0 * me) / wcp^2
 
-# `CoupledVDF` takes the `f₀(p⟂, p∥)`
-
 hi = vd + 5cp_
-shell = CoupledVDF(
+shell = LowRankVDF(
     (q, u) -> exp(-(sqrt(q^2 + u^2) - vd)^2 / cp_^2);
     para = (-hi, hi), perp = (0.0, hi)
 )
@@ -58,9 +59,7 @@ plasma = (
 
 kunit = c0 / vA                               # k·λ_p → k c/ωcp
 region = (0.05 - 0.06im, 7.8 + 0.12im)
-## each k costs ~1 min (2-D quadrature per harmonic per ω-eval — no closed
-## form for the non-separable shell), so the grid is kept at 81 points
-geom = AngleSweep(k = range(0.3, 12.5, 81) .* kunit, theta = deg2rad(89.5))
+geom = AngleSweep(k = range(0.3, 12.5, 128) .* kunit, theta = deg2rad(89.5))
 sol = solve(GlobalDispersionProblem(plasma, region, geom))
 
 # ## Dispersion diagram

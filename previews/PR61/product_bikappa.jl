@@ -184,19 +184,19 @@ end
 # for `κ = 3, 7, ∞` — larger and at slightly larger `k` for smaller κ, matching
 # the ALPS/benchmark curves (Fig. 2 b/d/f).
 
-isgrowing(b) = maximum((imag(ω) for ω in b.omega if isfinite(ω)); init = -Inf) > 1e-3
+isgrowing(b) = maximum((imag(ω) for ω in b if isfinite(ω)); init = -Inf) > 1e-3
 
 fig = Figure(size = (850, 780))
 for (i, (κ, sol)) in enumerate(zip(κs, sols))
     lab = isinf(κ) ? "κ = ∞" : "κ = $(round(Int, κ))"
     axr = Axis(fig[i, 1]; ylabel = "Re ω / |ωce|", title = lab, xlabel = i == 3 ? "k λₑ" : "")
     axi = Axis(fig[i, 2]; ylabel = "γ / |ωce|", title = lab, xlabel = i == 3 ? "k λₑ" : "")
-    for b in sol.roots
-        isgrowing(b) || continue
-        x = kle(b)
+    for branch in sol
+        isgrowing(branch) || continue
+        x = kle(branch)
         p = sortperm(x)
-        lines!(axr, x[p], real.(b.omega)[p]; color = :royalblue, linewidth = 2)
-        lines!(axi, x[p], imag.(b.omega)[p]; color = :orangered, linewidth = 2)
+        lines!(axr, x[p], real.(branch.omega)[p]; color = :royalblue, linewidth = 2)
+        lines!(axi, x[p], imag.(branch.omega)[p]; color = :orangered, linewidth = 2)
     end
     rows = ref[ref[:, 4] .== κ, :]
     scatter!(axr, rows[:, 1], rows[:, 2]; color = :black, markersize = 6)
