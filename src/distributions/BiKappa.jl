@@ -29,23 +29,22 @@ function contribution(d::BiKappa, s, ω, k; rtol = 1.0e-8, norm = NORM, kwargs..
     p⊥2 = d.a_perp / (d.kappa - 1.5)
     ns = (-nmax_bessel(a^2 * p⊥2 / 2)):nmax_bessel(a^2 * p⊥2 / 2)
     vc = sqrt(p⊥2)
-    C = normalization(d)
     X = QuadGK.quadgk(zero(vc), oftype(vc, Inf); rtol, norm) do v
-        _harmonic_sum_perp(d, v, ns, C, ω, Ω, kz, a)
+        _harmonic_sum_perp(d, v, ns, ω, Ω, kz, a)
     end[1]
-    return (s.Pi2 / ω^2) * _antisymmat(X)
+    return (s.Pi2 / ω^2) * normalization(d) * _antisymmat(X)
 end
 
 # at fixed p⊥ the parallel slice is a 1-D kappa,
 #     f(·,p⊥) ∝ (b + p∥²/a∥)^{-(κ+1)},  b = 1 + p⊥²/a⊥,
 # whose Cauchy moments close (β²=a∥b in H_m).
-function _harmonic_sum_perp(d::BiKappa, v, ns, C, ω, Ω, kz, a)
+function _harmonic_sum_perp(d::BiKappa, v, ns, ω, Ω, kz, a)
     κ, a_para, a_perp = d.kappa, d.a_para, d.a_perp
     b = 1 + v^2 / a_perp
     σ = sign(kz)
     # ∂⊥f = cFr·D^{-M},  ∂∥f = cTr·u·D^{-M},  M=κ+2, D=b+u²/a∥
-    cFr = -2 * C * (κ + 1) * v / a_perp
-    cTr = -2 * C * (κ + 1) / a_para
+    cFr = -2 * (κ + 1) * v / a_perp
+    cTr = -2 * (κ + 1) / a_para
     return @no_escape begin
         b2s = @alloc(SVector{6, typeof(a * v)}, length(ns))
         _perp_Bessel_bilinears!(b2s, a, v)

@@ -7,9 +7,19 @@ DocMeta.setdocmeta!(VlasovMaxwellDispersion, :DocTestSetup, :(using VlasovMaxwel
 
 # Literate scripts → executed markdown pages (figures rendered at build time).
 const SRC = joinpath(@__DIR__, "src")
-for f in ("cattaert.jl", "firehose_astfalk.jl", "ionbeam_gary84.jl")
-    Literate.markdown(joinpath(SRC, f), SRC; documenter = true)
+const CASE_STUDIES = joinpath(SRC, "case-studies")
+const LITERATE_SOURCES = sort(filter(f -> endswith(f, ".jl"), readdir(CASE_STUDIES; join = true)))
+
+foreach(LITERATE_SOURCES) do source
+    Literate.markdown(source, CASE_STUDIES; documenter = true)
 end
+
+const ROOT_PAGES = sort(filter(f -> endswith(f, ".md"), readdir(SRC)); by = f -> (f != "index.md", f))
+const CASE_STUDY_PAGES = map(
+    f -> joinpath("case-studies", f),
+    sort(filter(f -> endswith(f, ".md"), readdir(CASE_STUDIES))),
+)
+const PAGES = vcat(ROOT_PAGES, ["Case studies" => CASE_STUDY_PAGES])
 
 makedocs(;
     modules = [VlasovMaxwellDispersion],
@@ -19,12 +29,7 @@ makedocs(;
         canonical = "https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl",
     ),
     checkdocs = :none,                                 # site is benchmark-focused, not full API ref
-    pages = [
-        "Home" => "index.md",
-        "Kappa-Maxwellian Plasma — Cattaert 2007" => "cattaert.md",
-        "Firehose — bi-kappa (Astfalk 2017)" => "firehose_astfalk.md",
-        "Ion beam (Gary 1984)" => "ionbeam_gary84.md",
-    ],
+    pages = PAGES,
 )
 
 deploydocs(;
