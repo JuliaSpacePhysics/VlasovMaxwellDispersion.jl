@@ -122,3 +122,36 @@ end
     plan = plan_contribution(prepare(NormalizedSpecies(1.0, 1.0, lr)), k)
     @test !isexact(plan)
 end
+
+@testitem "LowRankVDF: survey drops roots the surrogate cannot resolve" begin
+    using VlasovMaxwellDispersion: trust_error, trusted, residual
+    vthz, vthp = 0.2, 0.3
+    bk = BiKappa(vth_para = vthz, vth_perp = vthp, kappa = 3.0)
+    d = LowRankVDF(bk; para = (-20vthz, 20vthz), perp = 20vthp, rtol = 1.0e-10)
+    # the cross is fitted on the real axis and degrades off it — sharply, in the tails first
+    @test maximum(trust_error(d, u + 0.0im) for u in -4:0.5:4) < 1.0e-7
+    @test maximum(trust_error(d, u - 0.3im) for u in -4:0.5:4) > 1.0e-4
+
+    s = NormalizedSpecies(1.0, 1.0, d)
+    k = Wavenumber(2.0, 1.0)
+    exact = NormalizedSpecies(1.0, 1.0, CoupledVDF(bk; para = (-20vthz, 20vthz), perp = (0.0, 20vthp)))
+    for ω in (1.3 + 0.3im, 1.3 + 0.2im)
+        χl = contribution(s, ω, k)
+        χe = contribution(exact, ω, k)
+        @test χl ≈ χe rtol = 1.0e-6
+        @test trusted(d, s, ω, k)
+    end
+    @testset "A damped root of the surrogate's determinant is not a root of the exact determinant" begin
+        ω_fake = 1.02719 - 0.30161im
+        @test !trusted(d, s, ω_fake, k)
+        @test residual(s, ω_fake, k) < 1.0e-5
+        @test residual(exact, ω_fake, k) > 1.0e-3
+    end
+
+    sol = solve(GlobalDispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), k))
+    for b in sol
+        @test trusted(d, s, b.omega, k)
+        @test residual(exact, b.omega, k) < 1.0e-6
+    end
+    @test length(sol) == 2
+end

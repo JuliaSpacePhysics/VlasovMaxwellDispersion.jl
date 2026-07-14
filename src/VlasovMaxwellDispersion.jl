@@ -19,17 +19,7 @@ using NonNegLeastSquares: nonneg_lsq
 using CommonSolve
 import CommonSolve: solve, init, solve!, step!
 
-function contribution end
-function plan_contribution end
-
-"""
-    prepare(x, closure; kw...) -> x′
-
-One-time setup before repeated evaluations.
-Precompute (ω,k)-independent quantities held in [`PreparedVDF`](@ref).
-"""
-prepare(x, closure; kw...) = x
-
+include("api.jl")
 include("derivatives.jl")
 include("erased.jl")
 include("Bessel.jl")

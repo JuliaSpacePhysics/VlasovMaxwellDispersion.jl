@@ -1,40 +1,37 @@
 # Motivation: At fixed k the ONLY ω-dependence of expensive integral in χ comes from the pole ζₙ=(ω−nΩ)/k∥;
-# the perp Bessel is ω-independent. For a coupled f₀ the inner Cauchy transform still
+# the perp Bessel is ω-independent. For a coupled f₀ the inner Landau integral still
 # depends on p⊥, so perp quadrature cannot leave the ω loop.
-# A rank-R separable approximation
-#     f₀(p⊥,p∥) ≈ Σₛ ãₛ(p⊥)·bₛ(p∥)
-# breaks it: the perp Bessel moments become ω-independent tensors P[n,s] built once
-# per k, and each ω costs only R·(2nmax+1) scalar Cauchy transforms.
+# The separable surrogate makes the perp Bessel moments ω-independent tensors built once per k.
 
 """
     LowRankVDF(f0; para, perp, dgrad=nothing, rtol=1e-8, rmax=40, probe=(200, 401))
     LowRankVDF(d::CoupledVDF; kw...)
 
-Separable surrogate `f₀ ≈ Σₛ ãₛ(p⊥)·bₛ(p∥)` of a general coupled gyrotropic `f₀(p⊥,p∥)`,
-built by adaptive cross approximation to relative tolerance `rtol` (rank capped by `rmax`,
+Separable surrogate `f₀ ≈ Σₛ ãₛ(p⊥)·bₛ(p∥)` of a coupled gyrotropic `f₀(p⊥,p∥)`, built by 
+adaptive cross approximation to relative tolerance `rtol` (rank capped by `rmax`, 
 pivots searched on a `probe = (nperp, npara)` grid).
 
-A drop-in replacement for [`CoupledVDF`](@ref) whose susceptibility costs
-`O(rank · nmax)` per ω instead of a 2-D adaptive quadrature. Typical coupled VDFs are very
-low rank (a spherical shell and a bi-kappa are both ≈ 10), giving 10–300× per-`ω` speedups —
-the win grows with `k⊥` (harmonic count).
+Drop-in for [`CoupledVDF`](@ref): χ costs `O(rank · nmax)` per ω instead of a 2-D adaptive
+quadrature, 10–300× faster per ω (the win grows with `k⊥`). Coupled VDFs are typically very low
+rank — a bi-kappa and a spherical shell are both ≈ 10.
 
-Approximate by construction; `rtol` sets the susceptibility's relative accuracy.
+`f0` must be evaluable at complex `p∥`: each `bₛ(u)=f₀(vₛ,u)` is a literal `f₀` slice, so unlike a
+fitted surrogate ([`GridVDF`](@ref)), which exists only on the real axis, it can be continued.
 
-`f0` must be evaluable at complex `p∥`: each retained parallel factor `bₛ(u)=f₀(vₛ,u)` is a
-literal `f₀` slice, analytic, so its Landau residue is exact.
+# Accuracy
 
-A fitted surrogate (spline like [`GridVDF`](@ref) or SVD vector) only
-exists on the real axis and cannot be continued, giving wrong damping rates.
+The cross is fitted on the REAL axis, so `rtol` bounds χ only where the p∥ integral stays there:
+real ω, growing modes, `k∥=0`.
 
-Note that the cross truncates on the REAL axis: structure below `rtol` there is
-dropped even if it dominates off-axis after continuation, so deeply damped accuracy is NOT
-bounded by `rtol` (a perturbation `f₀(1+εq²cos50u)`, `ε≪rtol`, is invisible to the cross yet
-sizeable at `Im ω<0`). Validate the growth rate against [`CoupledVDF`](@ref) before trusting it.
+A CROSSED Landau pole is different — it picks up the residue `f₀(p⊥,ζ)` at complex
+`ζ=(ω−nΩ)/k∥`, where the `ãₛ` are extrapolating. That error grows with `|Im ω / k∥|`, is NOT
+bounded by `rtol`, and eventually makes the surrogate's det gain exact zeros that are not modes of
+`f₀`. Surveys drop those via [`trusted`](@ref); [`trust_error`](@ref) measures the horizon.
 """
-struct LowRankVDF{F, G, T, C} <: AbstractVDF
+struct LowRankVDF{F, G, H, T, C} <: AbstractVDF
     f0::F
     dgrad::G
+    bd::H                  # (v,u) ↦ (f₀, ∂∥f₀) for the ω hot path
     vp::Vector{T}          # perp pivots  → parallel factors bₛ(u) = f₀(vp[s], u)
     up::Vector{T}          # para  pivots → perp factors  ãₛ(v) = Σᵣ f₀(v,up[r])·M[r,s]
     M::Matrix{T}
@@ -52,10 +49,14 @@ function LowRankVDF(f0; para, perp, dgrad = nothing, rtol = 1.0e-8, rmax = 40, p
     plo, phi = promote(float(para[1]), float(para[2]))
     qlo, qhi = oftype(phi, _pair(perp)[1]), oftype(phi, _pair(perp)[2])
     dg = @something dgrad (q, u) -> _grad2(f0, q, u)
+    bd = isnothing(dgrad) ? (q, u) -> _val_dwrt(x -> f0(q, x), u) : (q, u) -> (f0(q, u), dgrad(q, u)[2])
     vp, up = _cross_pivots(f0, range(qlo, qhi, probe[1]), range(plo, phi, probe[2]), rtol, rmax)
     M = inv([f0(v, u) for v in vp, u in up])
-    mk(cache) = LowRankVDF(erase_f2(f0, phi), erase_g2(dg, phi), vp, up, M, (plo, phi), (qlo, qhi), cache)
-    return mk(_lr_cache(mk(nothing), gl))
+    mk(cache) = LowRankVDF(
+        erase_f2(f0, phi), erase_g2(dg, phi), erase_g2(bd, phi),
+        vp, up, M, (plo, phi), (qlo, qhi), cache
+    )
+    return mk(_lr_cache(mk(nothing), gl, rtol))
 end
 
 LowRankVDF(d::CoupledVDF; kw...) = begin
@@ -89,7 +90,8 @@ end
     (d.M' * [d.f0(v, u) for u in d.up], d.M' * [d.dgrad(v, u)[1] for u in d.up])
 # Parallel factor bₛ(u)=f₀(vpₛ,u) and its p∥-derivative bₛ′(u)=∂∥f₀(vpₛ,u)
 @inline _b(d::LowRankVDF, s, u) = d.f0(d.vp[s], u)
-@inline _db(d::LowRankVDF, s, u) = d.dgrad(d.vp[s], u)[2]
+@inline _bdb(d::LowRankVDF, s, u) = d.bd(d.vp[s], u)
+@inline _db(d::LowRankVDF, s, u) = _bdb(d, s, u)[2]
 
 # Neumann far-field is truncated at (1/THETA)^NMOM ≈ 1e-12.
 const _LR_THETA = 2.0
@@ -151,7 +153,7 @@ end[1]
 # Both are FIXED-node Gauss–Legendre on the base panels, never adaptive: the ãₛ inherit
 # the cross's 1/rtol conditioning, so an adaptive rule targeting _LR_QRTOL on them would
 # chase round-off and subdivide without bound (as would a panel proxy built from them).
-function _lr_cache(d::LowRankVDF, gl)
+function _lr_cache(d::LowRankVDF, gl, rtol)
     pa = LowRankPara(d, gl)
     vpan = _panels(v -> sum(u -> abs(d.f0(v, u)), d.up), d.perp..., zero(pa.U))
     xg, wg = QuadGK.gauss(gl)
@@ -167,7 +169,55 @@ function _lr_cache(d::LowRankVDF, gl)
             end
         end
     end
-    return (; n, pperp2_mean = p2 / n, para = pa, vpan, gl)
+    # ãₛ at a few perp probes, so `trust_error` costs O(nprobe + rank) f₀ evaluations per u
+    vprobe = collect(range(d.perp[1], d.perp[2], _LR_NPROBE))
+    A = reduce(vcat, transpose(_perp_factors(d, v)[1]) for v in vprobe)
+    f0max = maximum(v -> abs(d.f0(v, zero(pa.U))), vprobe)
+    return (; n, pperp2_mean = p2 / n, para = pa, vpan, gl, rtol, vprobe, A, f0max)
+end
+
+const _LR_NPROBE = 24
+
+"""
+    trust_error(d::LowRankVDF, u)
+
+Error of the separable expansion at (generally complex) parallel momentum `u`, 
+against the true `f₀`: `max_v |f₀(v,u) − Σₛ ãₛ(v)bₛ(u)| / max|f₀|`.
+
+Sits at `rtol` on the real axis and grows off it as `ãₛ` were fitted on the real axis.
+That growth is the horizon past which a crossed-pole residue,
+and hence any root behind it, is meaningless.
+"""
+function trust_error(d::LowRankVDF, u)
+    c = d.cache
+    R = rank(d)
+    uc = complex(float(u))
+    bs = [_b(d, s, uc) for s in 1:R]
+    err = zero(real(uc))
+    @inbounds for i in eachindex(c.vprobe)
+        approx = zero(eltype(bs))
+        for s in 1:R
+            approx += c.A[i, s] * bs[s]
+        end
+        err = max(err, abs(d.f0(c.vprobe[i], uc) - approx))
+    end
+    return err / c.f0max
+end
+
+# A root is only as trustworthy as the surrogate is AT THE ζ IT SAMPLES
+const _LR_TRUST = 1.0e4
+function trusted(d::LowRankVDF, s, ω, k)
+    kz = para(k)
+    iszero(kz) && return true
+    sign(kz) * imag(ω) / kz < 0 || return true # growing side: no residue is taken
+    lo, hi = d.para
+    tol = _LR_TRUST * d.cache.rtol
+    nmax = nmax_bessel((perp(k) / s.Omega)^2 * abs(d.cache.pperp2_mean) / 2)
+    return all((-nmax):nmax) do n
+        ζ = (ω - n * s.Omega) / kz
+        lo < real(ζ) < hi || return true    # pole outside the p∥ range: no residue
+        trust_error(d, ζ) <= tol
+    end
 end
 
 prepare(d::LowRankVDF, args...; kw...) = PreparedVDF(d, d.cache)
@@ -243,58 +293,69 @@ function _refine(e, a)
     return out
 end
 
-# Cauchy transforms A₀=∫bₛ/(u−ζ)du, B₀=∫bₛ′/(u−ζ)du on the Landau sheet, σ=sign(k∥).
-# FAR (|ζ|>θU): Neumann series in 1/ζ — no logs, no cancellation, ω-independent moments;
-#   a Landau-crossed pole (Re ζ∈(lo,hi) dragged to the damped side) still adds its residue
-#   σ·2πi·bₛ(ζ). At quasi-perpendicular propagation k∥·p∥max/Ω ≪ 1 all but a couple of
-#   harmonics take this branch — the source of the speedup.
+# Landau integrals A₀ₛ=∫bₛ/(u−ζ)du, B₀ₛ=∫bₛ′/(u−ζ)du for ALL ranks at one ζ, σ=sign(k∥).
+# Batched over s because ζ is shared by the whole rank index: the node kernel wₗ=uwₗ/(uₗ−ζ)
+# — the only division in the ω evaluation — is built once and contracted with every column.
+# FAR speedup (|ζ|>θU): Neumann series in 1/ζ — no logs, no cancellation, ω-independent moments;
+#   When k∥·p∥max/Ω ≪ 1 (quasi-perpendicular propagation), all but a couple of harmonics take this branch.
 # NEAR: pole-subtracted fixed-node sum + the analytic log, with bₛ(ζ),
 #   bₛ′(ζ) from the TRUE f₀ slice ⇒ exact Landau residue.
-@inline function _lr_cauchy(d, pa::LowRankPara, s, ζ, σ)
+function _lr_cauchy!(A, B, w, d, pa::LowRankPara, ζ, σ)
     lo, hi = d.para
     if abs(ζ) > _LR_THETA * pa.U
         invξ = pa.U / ζ
-        A = zero(ζ); B = zero(ζ)
-        @inbounds for p in _LR_NMOM:-1:0
-            A = (A + pa.nu[p + 1, s]) * invξ
-            B = (B + pa.mu[p + 1, s]) * invξ
+        crossed = σ * imag(ζ) < 0 && lo < real(ζ) < hi
+        @inbounds for s in eachindex(A)
+            a = zero(ζ); b = zero(ζ)
+            for p in (_LR_NMOM + 1):-1:1
+                a = (a + pa.nu[p, s]) * invξ
+                b = (b + pa.mu[p, s]) * invξ
+            end
+            A[s] = -a; B[s] = -b
+            if crossed
+                bζ, dbζ = _bdb(d, s, ζ)
+                A[s] += σ * _2πim * bζ
+                B[s] += σ * _2πim * dbζ
+            end
         end
-        A = -A; B = -B
-        if σ * imag(ζ) < 0 && lo < real(ζ) < hi
-            A += σ * _2πim * _b(d, s, ζ)
-            B += σ * _2πim * _db(d, s, ζ)
-        end
-        return (A, B)
+        return
     end
-    bζ = _b(d, s, ζ)
-    dbζ = _db(d, s, ζ)
-    uc = clamp(real(ζ), lo, hi)
-    # b″(ζ) is the removable value of the bₛ′ integral at a real-node coincidence; only real ζ
-    # can land on a fixed node, so compute it only there (nested AD would collide the HoloTag).
-    d2 = iszero(imag(ζ)) ? _d2slice(d, s, real(ζ)) : dbζ
-    A = _cauchy_near(pa.un, pa.uw, pa.Bv, s, bζ, dbζ, ζ, lo, hi, σ, abs(_b(d, s, uc)))
-    B = _cauchy_near(pa.un, pa.uw, pa.dBv, s, dbζ, d2, ζ, lo, hi, σ, abs(_db(d, s, uc)))
-    return (A, B)
+    l0 = 0                      # node coinciding with a real ζ: removable, restored per s
+    W = zero(ζ)
+    @inbounds for l in eachindex(w)
+        δ = pa.un[l] - ζ
+        iszero(δ) && (l0 = l)
+        w[l] = iszero(δ) ? zero(ζ) : pa.uw[l] * inv(δ)
+        W += w[l]
+    end
+    w0 = iszero(l0) ? zero(eltype(pa.uw)) : pa.uw[l0]
+    # The peel gate only needs the magnitude of φ on the real axis beside ζ, so read it off the
+    # node table (bracketing the clamped ζ)
+    j = searchsortedfirst(pa.un, clamp(real(ζ), lo, hi))
+    j1, j2 = clamp(j - 1, 1, length(pa.un)), clamp(j, 1, length(pa.un))
+    @inbounds for s in eachindex(A)
+        bζ, dbζ = _bdb(d, s, ζ)
+        # b″(ζ) is the removable value of the bₛ′ integral at that coincidence;
+        # Note only real ζ can land on a fixed node
+        d2 = iszero(l0) ? dbζ : _d2slice(d, s, real(ζ))
+        sb = max(abs(pa.Bv[j1, s]), abs(pa.Bv[j2, s]))
+        sdb = max(abs(pa.dBv[j1, s]), abs(pa.dBv[j2, s]))
+        A[s] = _cauchy_near(w, W, w0, pa.Bv, s, bζ, dbζ, ζ, lo, hi, σ, sb)
+        B[s] = _cauchy_near(w, W, w0, pa.dBv, s, dbζ, d2, ζ, lo, hi, σ, sdb)
+    end
+    return
 end
 
-# One near-field Landau-Cauchy transform ∫φ/(u−ζ)du by fixed-node quadrature. `φl[:,s]` samples
-# φ at the nodes, `φζ`=φ(ζ), `dφζ`=φ′(ζ) — the L'Hôpital value used when a node coincides with a
-# real ζ (the 0*safe_inv(0) removable singularity).
-@inline function _cauchy_near(un, uw, φl, s, φζ, dφζ, ζ, lo, hi, σ, scale)
-    peeled = _peel(φζ, scale)
-    realζ = iszero(imag(ζ))
-    A = zero(ζ)
-    @inbounds for l in eachindex(un)
-        δ = un[l] - ζ
-        A += if !peeled
-            uw[l] * φl[l, s] * safe_inv(δ)
-        elseif realζ && iszero(real(δ))
-            uw[l] * dφζ
-        else
-            uw[l] * (φl[l, s] - φζ) * safe_inv(δ)
-        end
+# One near-field Landau-Cauchy transform ∫φ/(u−ζ)du from the shared kernel: Σₗwₗφₗ, minus
+# φ(ζ)·Σₗwₗ when the pole is peeled, plus the analytic log.
+@inline function _cauchy_near(w, W, w0, φl, s, φζ, dφζ, ζ, lo, hi, σ, scale)
+    S = zero(ζ)
+    @inbounds @simd for l in eachindex(w)
+        S += w[l] * φl[l, s]
     end
-    return A + φζ * _lpole_term(ζ, lo, hi, σ, peeled)
+    peeled = _peel(φζ, scale)
+    peeled && (S += w0 * dφζ - φζ * W)
+    return S + φζ * _lpole_term(ζ, lo, hi, σ, peeled)
 end
 
 # b″(ζ) by central difference on the first-derivative slice.
@@ -312,15 +373,19 @@ function (pl::LowRankPlan)(ω)
     z0 = iszero(kz)
     σ = z0 ? one(kz) : sign(kz)
     ik = z0 ? zero(kz) : -1 / kz
+    T = typeof(ωc / oneunit(kz))
+    A = similar(pa.I0, T); B = similar(pa.I0, T)   # per-rank Landau integrals at one ζ
+    w = similar(pa.un, T)                          # shared near-field node kernel
     @inbounds for (i, n) in enumerate(pl.ns)
         nΩ = n * pl.Ω
         ζ = z0 ? ωc : (ωc - nΩ) / kz
+        z0 || _lr_cauchy!(A, B, w, pl.vdf, pa, ζ, σ)
         for s in eachindex(pa.I0)
             M = if z0
                 invΔ = 1 / (ωc - nΩ)
                 (pa.I0[s] * invΔ, pa.I1[s] * invΔ, pa.I2[s] * invΔ, pa.J0[s] * invΔ, pa.J1[s] * invΔ)
             else
-                A0, B0 = _lr_cauchy(pl.vdf, pa, s, ζ, σ)
+                A0, B0 = A[s], B[s]
                 A1 = pa.I0[s] + ζ * A0
                 A2 = pa.I1[s] + ζ * A1
                 B1 = pa.J0[s] + ζ * B0
