@@ -3,17 +3,21 @@ residual(prob::AbstractDispersionProblem, ω, k = prob.k) =
 
 include("solver/muller.jl")
 include("solver/GRPF.jl")
-include("solver/ArcLength.jl")
+include("solver/Continuation.jl")
 include("solver/AAA.jl")
 include("solver/survey.jl")
 
 """
     solve(prob::DispersionProblem, alg = Muller()) -> DispersionSolution
+
+A [`Wavenumber`](@ref) refines a single seeded root. Any other `k` — an ordered
+wavenumber list, or a geometry with one swept axis — continues the branch with
+[`Continuation`](@ref), reporting a root at each `k` given.
 """
 CommonSolve.solve(prob::DispersionProblem{<:Any, <:Wavenumber}) = CommonSolve.solve(prob, Muller())
-CommonSolve.solve(prob::DispersionProblem) = CommonSolve.solve(prob, ArcLength())
+CommonSolve.solve(prob::DispersionProblem) = CommonSolve.solve(prob, Continuation())
 CommonSolve.init(prob::DispersionProblem, alg; kwargs...) =
-    CommonSolve.init(prob, ArcLength(base = alg); kwargs...)
+    CommonSolve.init(prob, Continuation(base = alg); kwargs...)
 
 """
     solve(prob::GlobalDispersionProblem, alg=AAA(); refine=Muller(), kw...)::SurveySolution

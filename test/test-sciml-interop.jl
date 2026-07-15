@@ -31,6 +31,6 @@ sh = solve(np, SNS.SimpleHalley())
 
 # SciMLBaseExt with SciML alg
 sd = solve(prob, SNS.SimpleHalley())
-@test sd.retcode == :Success
+@test sd.retcode == ReturnCode.Success
 @test sd.omega ≈ ref rtol=1e-6
 @test sd.stats.nevals > 0

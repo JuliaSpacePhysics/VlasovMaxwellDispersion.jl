@@ -1,7 +1,4 @@
-# Generic global survey: per-slice zero finding + cross-slice linking. Any alg
-# implementing `discover(alg, f, region) -> (zeros, saturated)` and
-# `_origin_gate(alg, diag)` solves GlobalDispersionProblem at any swept
-# dimension through this one path.
+# Generic global survey: per-slice zero finding.
 
 include("linking.jl")
 
@@ -29,11 +26,12 @@ function CommonSolve.solve!(cache::SurveyCache)
     ks = map(c -> kf(map(getindex, grids, Tuple(c))...), CartesianIndices(map(length, grids)))
     zv = similar(ks, Vector{ComplexF64})
     nev = similar(ks, Int)
+    conv = similar(ks, Bool)
     Threads.@threads for i in eachindex(ks)
-        zv[i], nev[i] = _pointroots(prob, alg, refine, ks[i])
+        zv[i], nev[i], conv[i] = _pointroots(prob, alg, refine, ks[i])
     end
     stats = SolveStats(sum(nev), (time_ns() - t0) / 1.0e9)
-    return build_solution(cache, ks, zv, stats)
+    return build_solution(cache, ks, zv, stats, all(conv))
 end
 
 
@@ -47,11 +45,11 @@ function _pointroots(prob, alg, refine, k)
     iscf = f0((region[1] + region[2]) / 2) isa ComplexF64
     f = iscf ? erase_cf(f0) : f0
     trust(z) = _trusted(prob.plasma, z, k)
-    zs, n1 = discover(alg, f, region; keep = trust)
+    zs, n1, converged = discover(alg, f, region; keep = trust)
     filter!(trust, zs)
     zs, n2 = polish!(f, zs, refine)
     filter!(z -> isfinite(z) && _in_box(region, z) && abs(z) > gate0 && trust(z), zs)
-    return consolidate(zs; atol = 1.0e-4 * diag), n1 + n2
+    return consolidate(zs; atol = 1.0e-4 * diag), n1 + n2, converged
 end
 
 _trusted(plasma, ω, k) = all(s -> trusted(s.vdf, s, ω, k), NormalizedPlasma(plasma).species)
@@ -60,12 +58,12 @@ _trusted(plasma, ω, k) = all(s -> trusted(s.vdf, s, ω, k), NormalizedPlasma(pl
 _scalarize(x::AbstractArray{<:Any, 0}) = x[]
 _scalarize(x) = x
 
-function build_solution(cache::SurveyCache, ks, values, stats)
+function build_solution(cache::SurveyCache, ks, values, stats, converged = true)
     (; prob, alg) = cache
     sheets = link(values; cache.linking...)
     filter!(sh -> any(_in_box.(Ref(prob.region), sh)), sheets)
     roots = _branches(prob, sheets, _scalarize(ks), _realtype(prob))
-    return SurveySolution(roots, stats, _retcode(roots), prob, alg)
+    return SurveySolution(roots, stats, _retcode(roots, converged), prob, alg)
 end
 
 # Inference-friendly by construction: the ::Type{T} barrier keeps T static
@@ -85,7 +83,10 @@ _boxdiag((ll, ur)) = abs(ur - ll)
 
 polish!(f, ωs, ::Nothing) = ωs, 0
 
-_retcode(roots) = isempty(roots) ? :Failure : :Success
+# `converged=false` in the discovery process may miss some roots ⇒ `Saturated`.
+_retcode(roots, converged) =
+    isempty(roots) ? ReturnCode.Failure :
+    converged ? ReturnCode.Success : ReturnCode.Saturated
 
 # Deduplicate candidate roots using absolute distance `atol`
 function consolidate(points; atol)

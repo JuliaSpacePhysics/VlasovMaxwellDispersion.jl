@@ -93,7 +93,7 @@ Specialized VDFs include: Cold fluid `ColdVDF`, (bi-)Maxwellian, drifting, ring 
 
 Solvers follow the `CommonSolve.solve(problem, algorithm)` interface: a
 `DispersionProblem`/`GlobalDispersionProblem` (seeded / seedless survey) solved by
-`Muller` (default) / `GRPF` (`RootsAndPoles.jl`) / `ArcLength`. `solve` returns a
+`Muller` (default) / `GRPF` (`RootsAndPoles.jl`) / `Continuation`. `solve` returns a
 `DispersionSolution` (`.omega`, `.retcode`).
 
 Two closures for the orbit integral are available (`derivation.md` §3), passed as

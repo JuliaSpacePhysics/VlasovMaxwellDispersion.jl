@@ -30,7 +30,7 @@ end
     )
     k = Wavenumber(0.0, 0.04)
     sol = solve(DispersionProblem(plasma, 8.5e-5 + 0.0im, k))
-    @test sol.retcode == :Success
+    @test sol.retcode == ReturnCode.Success
     @test sol.stats.nevals ≥ 4
     @test abs(sol.omega - 8.5e-5) < 1.0e-5   # stayed on low-ω branch
     @test sol.resid < 1.0e-8                 # polished to genuine root

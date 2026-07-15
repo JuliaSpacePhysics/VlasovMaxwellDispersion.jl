@@ -17,3 +17,7 @@ prepare(x, closure; kw...) = x
 
 function contribution end
 function plan_contribution end
+
+
+# Contract: `discover(alg, f, region; keep) -> (zeros, nevals, converged)`
+function discover end

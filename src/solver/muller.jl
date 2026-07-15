@@ -6,7 +6,9 @@ Fits a quadratic through `(x0,f0),(x1,f1),(x2,f2)` and advances to
 the root closer to `x2`, picking the denominator branch that
 maximizes `|denom|` for numerical stability.
 
-Returns `NaN+NaN*im` if `maxiter` is exhausted without reaching `atol` on the step size or `|f|`.
+Returns `NaN+NaN*im` if `maxiter` is exhausted without reaching `atol` on the step
+size or `|f|` (`ReturnCode.MaxIters`), or if the iteration hits a non-finite `f`
+or a degenerate quadratic (`ReturnCode.Failure`).
 """
 Base.@kwdef struct Muller
     atol::Float64 = 1.0e-10
@@ -30,16 +32,15 @@ end
 
 function CommonSolve.solve!(cache::MullerCache)
     (; prob, alg, f) = cache
-    t = @elapsed ω, nevals = _muller(f, prob.omega0; alg.atol, alg.maxiter)
-    ok = isfinite(ω)
+    t = @elapsed ω, nevals, code = _muller(f, prob.omega0; alg.atol, alg.maxiter)
     stats = SolveStats(nevals, t)
-    return DispersionSolution(ω, residual(prob, ω), stats, ok ? :Success : :Failure, prob, alg)
+    return DispersionSolution(ω, residual(prob, ω), stats, code, prob, alg)
 end
 
 function polish!(f, ωs, alg::Muller = Muller())
     n = 0
     for i in eachindex(ωs)
-        ωs[i], ni = _muller(f, ωs[i]; alg.atol, alg.maxiter)
+        ωs[i], ni, _ = _muller(f, ωs[i]; alg.atol, alg.maxiter)
         n += ni
     end
     return ωs, n
@@ -61,7 +62,7 @@ function _muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
     for _ in 1:maxiter
         h1 = x1 - x0
         h2 = x2 - x1
-        (h1 == 0 || h2 == 0 || h1 + h2 == 0) && return nan, nevals
+        (h1 == 0 || h2 == 0 || h1 + h2 == 0) && return nan, nevals, ReturnCode.Failure
         delta1 = (f1 - f0) / h1
         delta2 = (f2 - f1) / h2
         a = (delta2 - delta1) / (h2 + h1)
@@ -72,7 +73,7 @@ function _muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
         denom_plus = b + disc
         denom_minus = b - disc
         denom = abs(denom_plus) > abs(denom_minus) ? denom_plus : denom_minus
-        denom == 0 && return nan, nevals
+        denom == 0 && return nan, nevals, ReturnCode.Failure
 
         dx = -2c / denom
         x3 = x2 + dx
@@ -87,7 +88,7 @@ function _muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
             f3 = f(x3)
             nevals += 1
         end
-        isfinite(f3) || return nan, nevals
+        isfinite(f3) || return nan, nevals, ReturnCode.Failure
         if abs(f3) < bestf
             bestx, bestf = x3, abs(f3)
         end
@@ -95,11 +96,11 @@ function _muller(f, x0, x1, x2; atol = 1.0e-10, maxiter = 100)
 
         if abs(f3) <= atol * fscale ||
                 (abs(dx) <= atol * max(abs(x3), 1) && abs(f3) <= sqrt(atol) * fscale)
-            return x3, nevals
+            return x3, nevals, ReturnCode.Success
         end
 
         x0, x1, x2 = x1, x2, x3
         f0, f1, f2 = f1, f2, f3
     end
-    return bestf <= atol ? (bestx, nevals) : (nan, nevals)
+    return bestf <= atol ? (bestx, nevals, ReturnCode.Success) : (nan, nevals, ReturnCode.MaxIters)
 end

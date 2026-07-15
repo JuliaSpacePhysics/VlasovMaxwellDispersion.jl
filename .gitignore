@@ -6,6 +6,7 @@
 Manifest.toml
 benchmark/*.json
 docs/build/
+docs/src/case-studies/*.md
 .claude/
 external/
 *.bib
