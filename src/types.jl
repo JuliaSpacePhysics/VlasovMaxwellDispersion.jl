@@ -123,3 +123,4 @@ struct PreparedVDF{V, C} <: AbstractVDF
 end
 
 regime(c::PreparedVDF) = regime(c.vdf)
+trusted(c::PreparedVDF, s, ω, k) = trusted(c.vdf, s, ω, k)

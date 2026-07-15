@@ -37,7 +37,7 @@ function CommonSolve.solve!(cache::SurveyCache)
 end
 
 
-# All det(𝒟) zeros at one wavevector: discover → polish → box/origin gate → dedupe.
+# All det(𝒟) zeros at one wavevector: discover → trust gate → polish → filter→ dedupe.
 function _pointroots(prob, alg, refine, k)
     region = prob.region
     diag = _boxdiag(region)
@@ -46,11 +46,15 @@ function _pointroots(prob, alg, refine, k)
     # erase only on the ComplexF64 lattice (one probe eval); exotic eltypes pass through
     iscf = f0((region[1] + region[2]) / 2) isa ComplexF64
     f = iscf ? erase_cf(f0) : f0
-    zs, n1 = discover(alg, f, region)
+    trust(z) = _trusted(prob.plasma, z, k)
+    zs, n1 = discover(alg, f, region; keep = trust)
+    filter!(trust, zs)
     zs, n2 = polish!(f, zs, refine)
-    filter!(z -> isfinite(z) && _in_box(region, z) && abs(z) > gate0, zs)
+    filter!(z -> isfinite(z) && _in_box(region, z) && abs(z) > gate0 && trust(z), zs)
     return consolidate(zs; atol = 1.0e-4 * diag), n1 + n2
 end
+
+_trusted(plasma, ω, k) = all(s -> trusted(s.vdf, s, ω, k), NormalizedPlasma(plasma).species)
 
 # m=0 sweeps flow through as 0-dim arrays; collapse to scalars at construction
 _scalarize(x::AbstractArray{<:Any, 0}) = x[]
