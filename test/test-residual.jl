@@ -15,7 +15,7 @@
 
     for alg in (Muller(), Order1())
         sol = solve(prob, alg)
-        @test sol.retcode == :Success
+        @test sol.retcode == ReturnCode.Success
         @test sol.resid < 1.0e-10
         @test sol.stats.nevals > 0
     end
@@ -32,12 +32,12 @@ end
     ωref = 9.9881e-3 - 2.3132e-7im
 
     gsol = solve(GlobalDispersionProblem(plasma, (0.008 - 0.001im, 0.012 + 0.001im), k), GRPF(; tol = 1.0e-4))
-    @test gsol.retcode == :Success
+    @test gsol.retcode == ReturnCode.Success
     groots = gsol.roots
     @test !isempty(groots)
     @test all(x -> 0 <= x.resid < 1.0e-2, groots)
 
     bsol = solve(DispersionProblem(plasma, ωref, [k]))
-    @test bsol.retcode == :Success
+    @test bsol.retcode == ReturnCode.Success
     @test only(bsol.resid) < 1.0e-10
 end

@@ -47,9 +47,9 @@ function discover(alg::AAA, f, region; keep = Returns(true))
         end
         Z, F = z, y
     end
-    fit = _aaa(F, Z; alg.tol, alg.max_degree, alg.stagnation)
+    fit, converged = _aaa(F, Z; alg.tol, alg.max_degree, alg.stagnation)
     zs = filter!(z -> _in_box(region, z), aaa_poles(fit))
-    return zs, nev
+    return zs, nev, converged
 end
 
 # Greedy AAA (Nakatsukasa et al.): interpolate at the worst sample, take the barycentric
@@ -106,15 +106,16 @@ function _aaa(y, z; tol, max_degree, stagnation)
         s = _quitting_check(errs, stagnation, tol, fmax, N)
         if s != 0
             s > 0 && ((σ, w) = hist[s])                # unconverged: fall back on the best fit
-            return Barycentric(z[σ], y[σ], w)
+            return Barycentric(z[σ], y[σ], w), s < 0
         end
 
         k = idx[imax]
         push!(σ, k); test[k] = false
     end
+    # Sample budget spent without ever passing the quitting check: also unconverged.
     s = argmin(errs)
     σ, w = hist[s]
-    return Barycentric(z[σ], y[σ], w)
+    return Barycentric(z[σ], y[σ], w), false
 end
 
 # `RationalFunctionApproximation.quitting_check`, reproduced so the fit stops exactly where

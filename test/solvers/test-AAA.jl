@@ -13,7 +13,7 @@
     prob = GlobalDispersionProblem(plasma, region, k)
 
     sol = solve(prob, AAA())
-    @test sol.retcode == :Success
+    @test sol.retcode == ReturnCode.Success
 
     # The genuine symmetric ±kvA root pair is found off the origin
     @test count(b -> abs(b.omega) > 0.02, sol.roots) ≥ 2
@@ -32,7 +32,7 @@ end
     prob = GlobalDispersionProblem(cold, region, CartesianSweep(; kz = (0.3, 3.0)))
 
     sp = solve(prob, AAA())
-    @test sp.retcode == :Success
+    @test sp.retcode == ReturnCode.Success
     @test !isempty(sp.roots)
     rb = argmax(b -> count(isfinite, b.omega), sp.roots)
     valid = isfinite.(rb.omega)
@@ -67,7 +67,7 @@ end
     margin = 0.15 * (ur - ll)
     padded = (ll - margin, ur + margin)
     sg_padded = solve(GlobalDispersionProblem(cold, padded, prob.geometry), GRPF())
-    @test sa.retcode == sg_exact.retcode == sg_padded.retcode == :Success
+    @test sa.retcode == sg_exact.retcode == sg_padded.retcode == ReturnCode.Success
     @test length(sa.roots) == 4
 
     inbox(ω) = real(ll) ≤ real(ω) ≤ real(ur) && imag(ll) ≤ imag(ω) ≤ imag(ur)
@@ -100,7 +100,7 @@ end
     # Sweep resolution is the geometry's: an explicit k grid replaces any solver knob.
     geom = AngleSweep(k = range(0.02, 2.0, length = 31), theta = 0.001)
     sol = solve(GlobalDispersionProblem(plasma, region, geom), AAA())
-    @test sol.retcode == :Success
+    @test sol.retcode == ReturnCode.Success
     @test any(b -> maximum(abs, filter(isfinite, b.omega)) < 3.0e-3, sol.roots)
     @test all(maximum(filter(isfinite, b.resid)) < 1.0e-4 for b in sol.roots)
 
@@ -129,4 +129,22 @@ end
     diag = hypot(0.37, 0.03)
     @test all(abs(b.omega) > 1.0e-6 * diag for b in sol.roots)
     @test all(b.resid < 1.0e-4 for b in sol.roots)
+end
+
+@testitem "survey reports Saturated when the fit stops short of tol" begin
+    using VlasovMaxwellDispersion: NormalizedSpecies, Wavenumber, ColdVDF,
+        GlobalDispersionProblem, AAA, solve, ReturnCode, successful_retcode
+
+    mp_me = 1836.15
+    plasma = (
+        NormalizedSpecies(-1.0, 100.0, ColdVDF()),
+        NormalizedSpecies(1 / mp_me, 100.0 / mp_me, ColdVDF()),
+    )
+    prob = GlobalDispersionProblem(plasma, (-0.08 - 0.03im, 0.08 + 0.03im), Wavenumber(0.0, 2.0))
+
+    # Tight degree cap fails to reach `tol` => may be missing roots
+    sol = solve(prob, AAA(; max_degree = 2))
+    @test sol.retcode == ReturnCode.Saturated
+    @test !successful_retcode(sol)
+    @test successful_retcode(solve(prob, AAA()))
 end

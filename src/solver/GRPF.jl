@@ -19,7 +19,7 @@ function discover(alg::GRPF, f0, region; keep = Returns(true))
     n = Ref{Int}(0)
     f = ω -> (n[] += 1; f0(ω))
     roots, _ = _grpf_roots(f, region; alg.tol, alg.meshtol, alg.params)
-    return roots, n[]
+    return roots, n[], true
 end
 
 # GRPF locates the origin artifact only to mesh accuracy (|ω| ≲ tol even before

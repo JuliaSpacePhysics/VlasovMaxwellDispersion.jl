@@ -1,35 +1,34 @@
-@testitem "arc-length track follows vacuum light branch" begin
+@testitem "Track follows vacuum light branch" begin
+    using VlasovMaxwellDispersion: ReturnCode
     plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
-    ks = [Wavenumber(0.0, kz) for kz in range(0.5, 1.0; length=6)]
-    roots = solve(DispersionProblem(plasma, 0.5 + 0im, ks), ArcLength()).omega
+    kzs = range(0.5, 1.0; length=12)
+    ks = Wavenumber.(0.0, kzs)
+    sol = solve(DispersionProblem(plasma, 0.5 + 0im, ks)) # default to Continuation with order=3
+    @test sol.omega ≈ kzs rtol = 1.0e-5
+    @testset "track predictor order: degree 1 (secant) through 3 all hold the branch" begin
+        for order in 1:3
+            sol = solve(DispersionProblem(plasma, 0.5 + 0im, ks), Continuation(; order))
+            @test sol.retcode == ReturnCode.Success
+            @test sol.omega ≈ kzs rtol = 1.0e-6
+        end
+    end
 
-    @test all(isfinite, roots)
-    @test maximum(abs.(roots .- [k.kz for k in ks])) < 1e-5
-end
-
-@testitem "arc-length track accepts unsized iterables" begin
-    plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
     ks = (Wavenumber(0.0, kz) for kz in (0.5, 0.6, 0.7))
-    roots = solve(DispersionProblem(plasma, 0.5 + 0im, ks), ArcLength()).omega
-
-    @test length(roots) == 3
+    roots = solve(DispersionProblem(plasma, 0.5 + 0im, ks)).omega
     @test all(isfinite, roots)
-end
 
-@testitem "CommonSolve iterator steps branch" begin
-    plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())
-    ks = [Wavenumber(0.0, kz) for kz in (0.5, 0.6, 0.7)]
-    iter = init(DispersionProblem(plasma, 0.5, ks), Muller())
-
-    step!(iter)
-    @test length(iter.omega) == 1
-    sol = solve!(iter)
-    @test sol.omega ≈ [k.kz for k in ks] atol = 1.0e-6
-    @test sol.stats.nevals ≥ 4length(ks)
+    @testset "track accepts a swept geometry as the k path" begin
+        sol = solve(DispersionProblem(plasma, 0.5 + 0im, CartesianSweep(kz=(0.5, 1.0))))
+        @test sol.retcode == ReturnCode.Success
+        @test sol.omega ≈ range(0.5, 1.0; length=61) atol = 1.0e-6
+        @test_broken solve(
+            DispersionProblem(plasma, 0.5 + 0im, CartesianSweep(kx=(0.0, 0.1), kz=(0.5, 1.0)))
+        )
+    end
 end
 
 
-@testitem "track fallback crosses Gary84 v0=10 branch transition" begin
+@testitem "track subdivides across Gary84 v0=10 branch transition" begin
     mp_me = 1836.15267343
     vA_c = 1.0e-4
     nm, nb = 0.99, 0.01
@@ -49,14 +48,13 @@ end
     )
     ks = [Wavenumber(0.0, ka / vm_c) for ka in 0.1:-0.001:0.01]
 
-    # Without fallback the tracker loses the branch at the transition — historically as NaN;
-    # since muller contracts overflowing trial steps it instead wanders to a distant root
-    # (the electron plasma branch). Either failure mode is what the jump fallback must catch.
-    baseline = solve(DispersionProblem(plasma, 0.08im, ks),
-                     ArcLength(; fallback=nothing)).omega
-    @test !isapprox(baseline[end], 0.009597 + 0im; rtol=5.0e-3, atol=5.0e-5)
+    # This grid is too coarse through the transition to keep the branch: with
+    # subdivision off, muller contracts its overflowing trial steps and wanders
+    # to a distant root (the electron plasma branch) while still "converging".
+    baseline = solve(DispersionProblem(plasma, 0.08im, ks), Continuation(; maxsubdiv=0))
+    @test !isapprox(baseline.omega[end], 0.009597 + 0im; rtol=5.0e-3, atol=5.0e-5)
 
-    roots = solve(DispersionProblem(plasma, 0.08im, ks), ArcLength()).omega
+    roots = solve(DispersionProblem(plasma, 0.08im, ks), Continuation()).omega
 
     @test all(isfinite, roots)
     @test roots[58] ≈ 0.015838 + 0.000212im rtol=5.0e-3 atol=5.0e-5 # ka=0.043

@@ -22,7 +22,7 @@ const CASE_STUDY_PAGES = map(
 const PAGES = vcat(ROOT_PAGES, ["Case studies" => CASE_STUDY_PAGES])
 
 makedocs(;
-    modules = [VlasovMaxwellDispersion],
+    modules = [VlasovMaxwellDispersion, VlasovMaxwellDispersion.ReturnCode],
     authors = "Beforerr <zzj956959688@gmail.com> and contributors",
     sitename = "VlasovMaxwellDispersion.jl",
     format = Documenter.HTML(;

@@ -59,7 +59,7 @@ end
     @test all(x -> isnan(real(x)), D)
     @test isnan(real(electrostatic_det(s, ω, k)))  # guard sits in dielectric: covers this too
     sol = solve(DispersionProblem(s, ω, k))  # seeded in the overflow region
-    @test sol.retcode === :Failure && isnan(sol.resid)
+    @test sol.retcode === ReturnCode.Failure && isnan(sol.resid)
 
     # Same overflow, coupled quadrature path
     cpl = CoupledVDF((q, u) -> exp(-q^2 - u^2) / pi^1.5; para = (-6.0, 6.0), perp = 6.0)
