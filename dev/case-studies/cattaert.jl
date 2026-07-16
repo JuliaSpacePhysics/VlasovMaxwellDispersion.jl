@@ -39,36 +39,25 @@ i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 # ## Seeded tracking of the four branches
 #
 # Each branch is followed bidirectionally from its `kρ ≈ 0.1` seed, then compared
-# point-by-point against the BOPBK reference. Near `k → 0` the branches curve
-# steeply, so tracking runs on a 2×-subdivided `kρ` grid and compares at the
-# reference points. Branch 4's `kρ = 10⁻⁴` endpoint is excluded: there its
-# `ω ≈ −3×10⁻⁶` has merged into the `ω = 0` light-term pole of `det 𝒟` (the
-# reference value is itself numerically zero) — below that separation no root
-# tracker can hold a branch identity.
+# point-by-point against the BOPBK reference.
 
-kρd = sort!(unique(vcat([collect(range(kρs[i], kρs[i + 1]; length = 3)) for i in 1:(length(kρs) - 1)]...)))
-iref = [findfirst(==(kρ), kρd) for kρ in kρs]
-ksd = [Wavenumber(kρ / vtp * sin(θ), kρ / vtp * cos(θ)) for kρ in kρd]
-j0 = iref[i0]
 
 ttrack = @elapsed ωs = map(1:4) do ib
     rows = ref[ref[:, 2] .== ib, :]
     seed = complex(rows[i0, 3], rows[i0, 4])
-    fwd = solve(DispersionProblem(plasma, seed, ksd[j0:end]))
-    bwd = solve(DispersionProblem(plasma, seed, reverse(ksd[1:j0])))
-    ω = vcat(reverse(bwd.omega), fwd.omega[2:end])[iref]
-    ib == 4 && (ω[1] = complex(NaN, NaN))             # pole-merged endpoint (see above)
+    fwd = solve(DispersionProblem(plasma, seed, ks[i0:end]))
+    bwd = solve(DispersionProblem(plasma, seed, reverse(ks[1:i0])))
+    ω = vcat(reverse(bwd.omega), fwd.omega[2:end])
     ωref = complex.(rows[:, 3], rows[:, 4])
-    cmp = ib == 4 ? (2:length(ω)) : eachindex(ω)
-    dre = abs.(real.(ω[cmp]) .- real.(ωref[cmp]))
-    dim = abs.(imag.(ω[cmp]) .- imag.(ωref[cmp]))
+    dre = abs.(abs.(real.(ω)) .- abs.(real.(ωref)))
+    dim = abs.(imag.(ω) .- imag.(ωref))
     @printf(
-        "branch %d: seed=%.5f%+.2eim  maxΔRe=%.2e  maxΔIm=%.2e  nfinite=%d/%d\n",
+        "branch %d: seed=%.5f%+.2eim  maxΔ|Re|=%.2e  maxΔIm=%.2e  nfinite=%d/%d\n",
         ib, real(seed), imag(seed), maximum(dre), maximum(dim), count(isfinite, ω), length(ω)
     )
     ω
 end
-@printf("seeded tracking: %.1f s for 4 branches × %d k-points\n", ttrack, length(kρd))
+@printf("seeded tracking: %.1f s for 4 branches × %d k-points\n", ttrack, length(kρs))
 
 # VMD reproduces the reference roots, including the weak damping.
 #
