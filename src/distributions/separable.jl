@@ -13,6 +13,10 @@ struct Separable{Q, P} <: AbstractVDF
 end
 
 ⊗(perp, para) = Separable(perp, para)
+
+parallel_even(d::Separable) = _factor_even(d.fpara)
+_factor_even(x) = false
+_factor_even(g::Gaussian) = g.vd === nothing || iszero(g.vd)
 (d::Separable)(q, u) = d.fperp(q) * d.fpara(u)
 
 # Analytic 1-D `f` over `[lo,hi]`, with `fdf(x)->(f,f′)`

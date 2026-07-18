@@ -15,6 +15,17 @@ Precompute (ω,k)-independent quantities held in [`PreparedVDF`](@ref).
 """
 prepare(x, closure; kw...) = x
 
+"""
+    parallel_even(vdf)::Bool
+
+Whether `f₀` is guaranteed even in `p∥` (no field-aligned drift or asymmetry).
+The perpendicular-propagation factorization (`Ordinary`/`Extraordinary` at `k∥ = 0`) is exact only then: any odd `p∥`
+moment couples the `E ∥ B₀` component back to the transverse block.
+Defaults to `false` — data-driven VDFs (grids, fits, arbitrary `f₀`) cannot
+certify their symmetry; declare a method to opt in.
+"""
+parallel_even(x) = false
+
 function contribution end
 function plan_contribution end
 

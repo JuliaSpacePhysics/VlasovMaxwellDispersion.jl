@@ -134,5 +134,5 @@ end
 
     # electrostatic_det (k.eps.k) should also vanish there as kperp->0 along x.
     kx = Wavenumber(1.0e-6, 0.0)
-    @test abs(VM.electrostatic_det(plasma, complex(ω_UHR), kx)) < 1.0e-6
+    @test abs(VM.DispersionFunction(plasma, kx; mode = :P)(ω_UHR)) < 1.0e-6
 end

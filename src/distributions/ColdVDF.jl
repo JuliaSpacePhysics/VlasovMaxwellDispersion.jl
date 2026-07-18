@@ -4,6 +4,7 @@
 `T → 0` limit; handled via the closed cold (Stix S,D,P) form for accuracy.
 """
 struct ColdVDF <: AbstractVDF end
+parallel_even(::ColdVDF) = true
 
 # Gyrotropic tensor [S D 0; -D S 0; 0 0 P]
 _gyrotropic(S, D, P) = (z = zero(complex(S)); @SMatrix ComplexF64[S D z; -D S z; z z P])
