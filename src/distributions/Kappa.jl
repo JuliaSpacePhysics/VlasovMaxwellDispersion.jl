@@ -202,3 +202,5 @@ nmax_harm(p::Kappa, β) = nmax_bessel(β^2 * p.a / (2 * (p.kappa - 1)))
     S2 = sqrt(π) / 2 * exp(loggamma(M - 1.5) - lgM) * a_para^1.5 * b^(1.5 - M)
     return S0, S2
 end
+
+_factor_even(::Kappa) = true

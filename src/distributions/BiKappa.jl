@@ -10,6 +10,8 @@ struct BiKappa{K, T} <: AbstractVDF
     a_perp::T
 end
 
+parallel_even(::BiKappa) = true
+
 function BiKappa(; vth_para, vth_perp = vth_para, kappa)
     κ = kappa
     kappa > 1.5 || throw(ArgumentError("BiKappa needs κ > 3/2 (finite ⟨p²⟩)"))

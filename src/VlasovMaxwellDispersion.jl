@@ -24,6 +24,7 @@ include("derivatives.jl")
 include("erased.jl")
 include("Bessel.jl")
 include("types.jl")
+include("reduction.jl")
 include("problems.jl")
 include("integrals.jl")
 include("hilbert_pwpoly.jl")   # parallel H∥ piecewise-poly primitive
@@ -38,6 +39,7 @@ include("solve.jl")
 
 export Regime, NonRelativistic, Relativistic
 export Wavenumber, para, perp
+export TensorReduction
 # re-exported physical vocabulary from PlasmaBase
 export AbstractVDF, Particle, Electron, Proton, Species, Plasma
 export NormalizedSpecies

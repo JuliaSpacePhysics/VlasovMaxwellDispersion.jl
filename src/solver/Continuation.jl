@@ -85,7 +85,7 @@ end
 
 function _refine(cache, kt, guess)
     (; prob, alg) = cache
-    sol = solve(DispersionProblem(prob.plasma, guess, kt; closure = prob.closure), alg.base)
+    sol = solve(DispersionProblem(prob.plasma, guess, kt; closure = prob.closure, mode = prob.mode), alg.base)
     cache.nevals += sol.stats.nevals
     return sol.omega, sol.resid
 end

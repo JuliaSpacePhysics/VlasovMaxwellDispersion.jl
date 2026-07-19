@@ -1,7 +1,7 @@
 # Derivation
 
 The susceptibility of a hot magnetized plasma is **one helical-orbit phase-space integral**.
-This document shows how this integral collapses, step by step, under specific assumptions.
+This document shows how this integral collapses, step by step.
 
 ## Conventions
 
@@ -378,3 +378,19 @@ $$
 
 This is where `P⊥` enters χ — linearly, once per entry. A new VDF is then **only** a new `{P_j,P_j^∂}` recipe; the
 wiring above is fixed (Gaussian→`Γ_n`, gyro-ring, ring-beam all reuse it).
+
+## 6. Notes
+
+**Reality condition.** Because `f₀` is real, the whole chain (susceptibility, dielectric, and
+dispersion tensors) obeys
+
+$$
+\chi(-\omega^*,-\mathbf k)=\chi(\omega,\mathbf k)^*,
+\qquad
+D(-\omega^*,-\mathbf k)=D(\omega,\mathbf k)^*.
+$$
+
+Check on the harmonic sum (§3B): the map with $n\to-n$ conjugates the prefactor
+$\Pi^2/\omega^2$ and the resonant ratio $\mathcal U/(\omega-k_\|v_\|-n\Omega)$, while
+$J_{-n}(-z)=J_n$, $R_{-n}(-z)=R_n$, $J'_{-n}(-z)=-J'_n$ give $\mathcal T_{-n}(-z)=\mathcal
+T_n^*$. So every root comes with a partner at $(-\omega^*,-\mathbf k)$.

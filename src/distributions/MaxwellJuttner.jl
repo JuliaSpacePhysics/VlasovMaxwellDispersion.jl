@@ -9,6 +9,7 @@ Base.@kwdef struct MaxwellJuttner{T} <: AbstractVDF
 end
 
 regime(::MaxwellJuttner) = Relativistic()
+parallel_even(::MaxwellJuttner) = true
 
 # Relativistic density f(q,u)∝exp(-μγ), γ=√(1+q²+u²). Feeds the general CoupledVDF path.
 @inline (d::MaxwellJuttner)(q, u) = exp(-d.mu * sqrt(1 + q^2 + u^2))

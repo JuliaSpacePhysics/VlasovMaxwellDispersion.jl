@@ -124,3 +124,4 @@ end
 
 regime(c::PreparedVDF) = regime(c.vdf)
 trusted(c::PreparedVDF, s, ω, k) = trusted(c.vdf, s, ω, k)
+parallel_even(c::PreparedVDF) = parallel_even(c.vdf)

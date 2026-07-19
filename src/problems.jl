@@ -3,47 +3,53 @@
 abstract type AbstractDispersionProblem end
 
 """
-    DispersionProblem(plasma, omega0, geometry; closure=HarmonicSum())
+    DispersionProblem(plasma, omega0, geometry; closure=HarmonicSum(), mode=:det)
 
 Refine a seeded mode of `det(𝒟(plasma,ω,k))=0`. A [`Wavenumber`](@ref) `geometry`
 selects point refinement. An ordered wavenumber collection, or a geometry selects
 [`Continuation`](@ref) along that path.
+
+`mode` selects the [`TensorReduction`](@ref) whose zeros are chased (`:det` default).
 """
-struct DispersionProblem{P,K,T,C} <: AbstractDispersionProblem
+struct DispersionProblem{P,K,T,C,M} <: AbstractDispersionProblem
     plasma::P
     omega0::T
     k::K
     closure::C
+    mode::M
 end
-DispersionProblem(plasma, omega0, geometry; closure=HarmonicSum()) =
-    DispersionProblem(plasma, omega0, geometry, closure)
+DispersionProblem(plasma, omega0, geometry; closure=HarmonicSum(), mode=FullDet()) =
+    DispersionProblem(plasma, omega0, geometry, closure, TensorReduction(mode))
 
 
 """
-    GlobalDispersionProblem(plasma, region, geometry; closure=HarmonicSum())
+    GlobalDispersionProblem(plasma, region, geometry; closure=HarmonicSum(), mode=:det)
 
 Find *all* root branches of `det(𝒟)` in the complex ω box
-`region=(lowerleft, upperright)` as the k-space `geometry` sweeps its parameters. 
-A branch is an `m`-manifold `ω*(p)` where `m` is the geometry's swept dimension: 
+`region=(lowerleft, upperright)` as the k-space `geometry` sweeps its parameters.
+A branch is an `m`-manifold `ω*(p)` where `m` is the geometry's swept dimension:
 a point (`m=0`), curve (`m=1`), surface (`m=2`), ….
 
 `geometry` can be:
 - a [`Wavenumber`](@ref) — fixed k, `m=0`;
 - an [`AngleSweep`](@ref) `(|k|, θ)` or [`CartesianSweep`](@ref) `(k⊥, k∥)`
+
+`mode` selects the [`TensorReduction`](@ref) to survey.
 """
-struct GlobalDispersionProblem{P,B,G,C} <: AbstractDispersionProblem
+struct GlobalDispersionProblem{P,B,G,C,M} <: AbstractDispersionProblem
     plasma::P
     region::B
     geometry::G
     closure::C
+    mode::M
 end
-GlobalDispersionProblem(plasma, region, geometry; closure=HarmonicSum()) =
-    GlobalDispersionProblem(plasma, region, geometry, closure)
+GlobalDispersionProblem(plasma, region, geometry; closure=HarmonicSum(), mode=FullDet()) =
+    GlobalDispersionProblem(plasma, region, geometry, closure, TensorReduction(mode))
 
-prepare(prob::DispersionProblem; kw...) =
-    DispersionProblem(prepare(prob.plasma, prob.closure; kw...), prob.omega0, prob.k, prob.closure)
-prepare(prob::GlobalDispersionProblem; kw...) =
-    GlobalDispersionProblem(prepare(prob.plasma, prob.closure; kw...), prob.region, prob.geometry, prob.closure)
+prepare(prob::DispersionProblem; kw...) = DispersionProblem(
+    prepare(prob.plasma, prob.closure; kw...), prob.omega0, prob.k, prob.closure, prob.mode)
+prepare(prob::GlobalDispersionProblem; kw...) = GlobalDispersionProblem(
+    prepare(prob.plasma, prob.closure; kw...), prob.region, prob.geometry, prob.closure, prob.mode)
 
 _realtype(p::GlobalDispersionProblem) =
     promote_type(_realtype(p.region), _realtype(p.geometry))
