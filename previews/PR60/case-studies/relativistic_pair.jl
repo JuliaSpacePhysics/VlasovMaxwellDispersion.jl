@@ -5,17 +5,14 @@
 # and `β = 0.2` (`μ = 10`, red). We reproduce Fig. 5 of
 # Verscharen (2018, JPP, 10.1017/S0022377818000739) / López (2014, PoP,
 # 10.1063/1.4894679) and the tabulated
-# [ALPS](https://github.com/danielver02/ALPS) `test_relativistic` roots.
+# [ALPS](https://github.com/danielver02/ALPS).
 #
 # **Verdict.** Every published curve is reproduced — 
 # the damping at both temperatures, and both O-modes — **except**
 # the A/IC `ωr` descent (the "anomalous zone"). That descent is a *continuation
 # artifact* of López's Heaviside `θ`-term (non-holomorphic below the real axis);
 # our corrected roots rise toward the light line instead (see *The A/IC descent
-# is a continuation artifact*). The numeric agreement is asserted in the test
-# suite — ALPS `test_relativistic` roots, the aperiodic ladder law, the EM
-# asymptote and band edge (`test/test-alps-validation.jl`,
-# `test/test-reduction.jl`); this page charts the full root set and the figure.
+# is a continuation artifact*).
 #
 # Modes on the page:
 # - **quasi-parallel A/IC** (low `ωr`): weakly damped Alfvén-like at small `k∥`,
@@ -34,9 +31,7 @@ using CairoMakie
 # `Ω/c`. `MaxwellJuttner(μ)` feeds the relativistic closed-form tensor. Equal
 # masses and opposite charges make R/L degenerate, so the parallel branch is a
 # single Alfvén-like mode and every transverse root of the full determinant is a
-# *double* zero. All traces work at exactly parallel `k` on the factorized
-# L-mode (`mode = :L`, simple zeros); the ALPS-tabulated points sit at ALPS's own
-# quasi-parallel `k⊥ = 10⁻³` full determinant.
+# *double* zero.
 
 pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
 plasma2 = pair(MaxwellJuttner(mu=2.0))    ## β = 1.0
@@ -44,7 +39,7 @@ plasma10 = pair(MaxwellJuttner(mu=10.0))  ## β = 0.2
 kp = 0.001
 
 ## ALPS test_relativistic roots (k⊥, k∥, Re ω, Im ω), refined from the tabulated
-## values with seeded Muller — plotted as black dots, and the k∥=0.1 seed below.
+## values with seeded Muller — and the k∥=0.1 seed below.
 alps = [
     (0.001, 0.1, 3.9621e-2, -2.644e-6),
     (0.001, 0.10965, 4.3132e-2, -2.2947e-8),
@@ -184,7 +179,7 @@ f2_cont = hcat(kz2f, real.(ω2f), imag.(ω2f))
 #
 # Superluminal (`ωr > k∥`): the O-mode is near-marginal (`γ ≈ 0`), and the
 # continued sheet below the axis is exponentially far from the physical
-# boundary value near marginal superluminal `ω` (`docs/relativistic.md`), so we
+# boundary value near marginal superluminal `ω` ([continuation note](../relativistic.typ)), so we
 # locate it on the real axis as the `|det 𝒟| → 0` minimum via the `CoupledVDF`
 # path, continued in `k∥`. Momentum bounds follow the thermal spread (`±15 mc` at
 # `μ = 2`, `±5 mc` at `μ = 10`).
@@ -286,8 +281,6 @@ end
 for (m, ax) in ((fig5.aic_wr2, axr2m), (fig5.o_wr2, axr2m), (fig5.aic_gm2, axi2m))
     scatter!(ax, m[:, 1], m[:, 2]; color=(blu, 0.75), marker=:xcross, markersize=8)
 end
-scatter!(axr2m, [a[2] for a in alps], [a[3] for a in alps]; color=:black, markersize=9)
-scatter!(axi2m, [a[2] for a in alps], [a[4] for a in alps]; color=:black, markersize=9)
 lines!(axr2m, 0:3, 0:3; color=(:black, 0.3), linestyle=:dash, label="ω = k∥")
 hlines!(axi2m, [0.0]; color=(:black, 0.3), linestyle=:dash)
 axislegend(axr2m; position=:lt, framevisible=false, labelsize=9, nbanks=2)
@@ -348,9 +341,7 @@ fig
 
 # ## Beyond the light line
 #
-# Damped **superluminal** `ω` is unreachable by any real-sliced momentum
-# integral — the resonance-ellipse apex branch point crosses the integration
-# path (`docs/relativistic.md`). At exactly parallel `k`, however, the Swanson
+# At exactly parallel `k`, however, the Swanson
 # `ξ`-integrand factorizes and `MaxwellJuttner` evaluates the analytic
 # continuation of the subluminal germ directly (certified to `~10⁻¹⁰` against
 # the corrected closed-form López continuation of script 09, itself holomorphic
