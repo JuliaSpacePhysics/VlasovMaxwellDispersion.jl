@@ -45,9 +45,7 @@ i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 ttrack = @elapsed ωs = map(1:4) do ib
     rows = ref[ref[:, 2] .== ib, :]
     seed = complex(rows[i0, 3], rows[i0, 4])
-    fwd = solve(DispersionProblem(plasma, seed, ks[i0:end]))
-    bwd = solve(DispersionProblem(plasma, seed, reverse(ks[1:i0])))
-    ω = vcat(reverse(bwd.omega), fwd.omega[2:end])
+    ω = solve(DispersionProblem(plasma, Seed(seed, ks[i0]), ks)).omega  # fans out both ways from kρ≈0.1
     ωref = complex.(rows[:, 3], rows[:, 4])
     dre = abs.(abs.(real.(ω)) .- abs.(real.(ωref)))
     dim = abs.(imag.(ω) .- imag.(ωref))

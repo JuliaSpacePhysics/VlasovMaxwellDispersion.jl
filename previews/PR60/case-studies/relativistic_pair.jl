@@ -38,46 +38,28 @@ kp = 0.001
 # ## Branch continuation
 #
 
-## μ=2 propagating (A/IC): forward from the ALPS k∥=0.1 seed, backward to 0.05,
-## up to the last subluminal point k∥=1.85 (crosses ωr = k∥c near 1.9).
-alps_seed = 3.9621e-2 - 2.644e-6im
+## μ=2 propagating (A/IC): from the ALPS k∥=0.1 seed down to 0.05 and up to the
+## last subluminal point k∥=1.85 (crosses ωr = k∥c near 1.9).
 kz2p = collect(0.05:0.05:1.85)
-j0 = findfirst(==(0.1), kz2p)
-seed2 = alps_seed
-ω2pf = solve(DispersionProblem(plasma2, seed2, Wavenumber.(0.0, kz2p[j0:end]); mode=:L)).omega
-ω2pb = solve(DispersionProblem(plasma2, seed2, Wavenumber.(0.0, reverse(kz2p[1:j0])); mode=:L)).omega
-ω2p = vcat(reverse(ω2pb), ω2pf[2:end])
+ω2p = solve(DispersionProblem(plasma2, Seed(3.9621e-2 - 2.644e-6im, Wavenumber(0.0, 0.1)), Wavenumber.(0.0, kz2p); mode=:L)).omega
 
 ## μ=2 purely imaginary (aperiodic) family, both ways from k∥=0.85.
 kz2d = collect(0.05:0.05:3.0)
-j0d = findfirst(==(0.85), kz2d)
-seed2d = complex(1.0e-4, -0.478)
-ω2df = solve(DispersionProblem(plasma2, seed2d, Wavenumber.(0.0, kz2d[j0d:end]); mode=:L)).omega
-ω2db = solve(DispersionProblem(plasma2, seed2d, Wavenumber.(0.0, reverse(kz2d[1:j0d])); mode=:L)).omega
-ω2d = vcat(reverse(ω2db), ω2df[2:end])
+ω2d = solve(DispersionProblem(plasma2, Seed(1.0e-4 - 0.478im, Wavenumber(0.0, 0.85)), Wavenumber.(0.0, kz2d); mode=:L)).omega
 
-## μ=10 propagating: continue forward/backward from a robust k∥=0.3 seed (fresh
-## near-marginal seeds below k∥≈0.3 make Muller wander to the mirror root).
+## μ=10 propagating: from a robust k∥=0.3 seed
 kz10 = collect(0.1:0.05:4.5)
-j10 = findfirst(==(0.3), kz10)
-seed10 = complex(0.155, -1.0e-4)
-ω10f = solve(DispersionProblem(plasma10, seed10, Wavenumber.(0.0, kz10[j10:end]); mode=:L)).omega
-ω10b = solve(DispersionProblem(plasma10, seed10, Wavenumber.(0.0, reverse(kz10[1:j10])); mode=:L)).omega
-ω10 = vcat(reverse(ω10b), ω10f[2:end])
+ω10 = solve(DispersionProblem(plasma10, Seed(0.155 - 1.0e-4im, Wavenumber(0.0, 0.3)), Wavenumber.(0.0, kz10); mode=:L)).omega
 
-## μ=10 aperiodic family. Starting near its minimum lets adaptive continuation
-## stay on the axis through the close pass with the propagating root.
+## μ=10 aperiodic family. Anchoring near its minimum (k∥=3.9) lets adaptive
+## continuation stay on the axis through the close pass with the propagating root.
 kap10 = collect(0.05:0.05:4.5)
-jap10 = findfirst(==(3.9), kap10)
-ωap10f = solve(DispersionProblem(plasma10, -2.73im, Wavenumber.(0.0, kap10[jap10:end]); mode=:L)).omega
-ωap10b = solve(DispersionProblem(plasma10, -2.73im, Wavenumber.(0.0, reverse(kap10[1:jap10])); mode=:L)).omega
-γap10 = imag.(vcat(reverse(ωap10b), ωap10f[2:end]))
+ωap10 = solve(DispersionProblem(plasma10, Seed(-2.73im, Wavenumber(0.0, 3.9)), Wavenumber.(0.0, kap10); mode=:L)).omega
 
 ## μ=2 A/IC light-line continuation (direct trace on the continued L-mode):
 ## stays slightly superluminal (ωr/k∥ → 1.04) with slowly recovering damping.
 kz2c = collect(1.9:0.1:3.0)
 ω2c = solve(DispersionProblem(plasma2, ω2p[end], Wavenumber.(0.0, kz2c); mode=:L)).omega
-aic_cont = hcat(kz2c, real.(ω2c), imag.(ω2c))
 
 # ## O-modes
 #
@@ -127,46 +109,28 @@ fig5 = (; zip((:aic_wr2, :aic_gm2, :o_wr2, :aic_wr10, :aic_gm10, :o_wr10),
 
 blu, red = Makie.wong_colors()[1], Makie.wong_colors()[6]
 fig = Figure(size=(860, 720))
-axr2m = Axis(
-    fig[1, 1]; ylabel="ωr / |Ω|",
-    title="β = 1.0 (μ = 2)", limits=(0, 3, -0.09, 3.2)
-)
+axr2m = Axis(fig[1, 1]; ylabel="ωr / |Ω|", title="β = 1.0 (μ = 2)", limits=(0, 3, -0.09, 3.2))
 axi2m = Axis(fig[1, 2]; ylabel="γ / |Ω|", title="damping", limits=(0, 3, -4, 0.3))
-axr10 = Axis(
-    fig[2, 1]; xlabel="k∥ c / |Ω|", ylabel="ωr / |Ω|",
-    title="β = 0.2 (μ = 10)", limits=(0, 4.5, -0.09, 3.2)
-)
+axr10 = Axis(fig[2, 1]; xlabel="k∥ c / |Ω|", ylabel="ωr / |Ω|", title="β = 0.2 (μ = 10)", limits=(0, 4.5, -0.09, 3.2))
 axi10 = Axis(fig[2, 2]; xlabel="k∥ c / |Ω|", ylabel="γ / |Ω|", limits=(0, 4.5, -6.6, 0.4))
 
-## μ=2 row
-lines!(axr2m, kz2p, real.(ω2p); color=blu, linewidth=2.5, label="A/IC")
-lines!(axi2m, kz2p, imag.(ω2p); color=blu, linewidth=2.5)
-lines!(axr2m, aic_cont[:, 1], aic_cont[:, 2]; color=blu, linewidth=2.0, linestyle=:dash, label="A/IC continued")
-lines!(axi2m, aic_cont[:, 1], aic_cont[:, 3]; color=blu, linewidth=2.0, linestyle=:dash)
-lines!(axr2m, kz2d, zero(kz2d); color=blu, linewidth=2.5, linestyle=:dot, label="aperiodic")
-lines!(axi2m, kz2d, imag.(ω2d); color=blu, linewidth=2.5, linestyle=:dot)
-lines!(axr2m, kzo, ωo2; color=blu, linewidth=2.5, linestyle=:dashdot, label="O-mode")
-lines!(axi2m, kzo, zero(kzo); color=blu, linewidth=2.5, linestyle=:dashdot)
-for (m, ax) in ((fig5.aic_wr2, axr2m), (fig5.o_wr2, axr2m), (fig5.aic_gm2, axi2m))
-    scatter!(ax, m[:, 1], m[:, 2]; color=(blu, 0.75), marker=:xcross, markersize=8)
+function plotrow!((axr, axi), branches, (ko, ωo), refs, color, xmax)
+    for (k, ω, linestyle, label, linewidth) in branches
+        lines!(axr, k, real.(ω); color, linewidth, linestyle, label)
+        lines!(axi, k, imag.(ω); color, linewidth, linestyle)
+    end
+    lines!(axr, ko, ωo; color, linewidth=2.5, linestyle=:dashdot, label="O-mode")
+    for (m, ax) in zip(refs, (axr, axr, axi))
+        scatter!(ax, m[:, 1], m[:, 2]; color=(color, 0.75), marker=:xcross, markersize=8)
+    end
+    lines!(axr, 0:xmax, 0:xmax; color=(:black, 0.3), linestyle=:dash, label="ω = k∥")
+    hlines!(axi, [0.0]; color=(:black, 0.3), linestyle=:dash)
+    axislegend(axr; position=:lt, framevisible=false, labelsize=9, nbanks=2)
 end
-lines!(axr2m, 0:3, 0:3; color=(:black, 0.3), linestyle=:dash, label="ω = k∥")
-hlines!(axi2m, [0.0]; color=(:black, 0.3), linestyle=:dash)
-axislegend(axr2m; position=:lt, framevisible=false, labelsize=9, nbanks=2)
-
-## μ=10 row
-lines!(axr10, kz10, real.(ω10); color=red, linewidth=2.5, label="A/IC")
-lines!(axi10, kz10, imag.(ω10); color=red, linewidth=2.5)
-lines!(axr10, kap10, zero(kap10); color=red, linewidth=2.5, linestyle=:dot, label="aperiodic")
-lines!(axi10, kap10, γap10; color=red, linewidth=2.5, linestyle=:dot)
-lines!(axr10, kzo10, ωo10; color=red, linewidth=2.5, linestyle=:dashdot, label="O-mode")
-lines!(axi10, kzo10, zero(kzo10); color=red, linewidth=2.5, linestyle=:dashdot)
-for (m, ax) in ((fig5.aic_wr10, axr10), (fig5.o_wr10, axr10), (fig5.aic_gm10, axi10))
-    scatter!(ax, m[:, 1], m[:, 2]; color=(red, 0.75), marker=:xcross, markersize=8)
-end
-lines!(axr10, 0:4, 0:4; color=(:black, 0.3), linestyle=:dash, label="ω = k∥")
-hlines!(axi10, [0.0]; color=(:black, 0.3), linestyle=:dash)
-axislegend(axr10; position=:lt, framevisible=false, labelsize=9, nbanks=2)
+plotrow!((axr2m, axi2m), ((kz2p, ω2p, :solid, "A/IC", 2.5), (kz2c, ω2c, :dash, "A/IC continued", 2.0),
+        (kz2d, ω2d, :dot, "aperiodic", 2.5)), (kzo, ωo2), (fig5.aic_wr2, fig5.o_wr2, fig5.aic_gm2), blu, 3)
+plotrow!((axr10, axi10), ((kz10, ω10, :solid, "A/IC", 2.5), (kap10, ωap10, :dot, "aperiodic", 2.5)),
+    (kzo10, ωo10), (fig5.aic_wr10, fig5.o_wr10, fig5.aic_gm10), red, 4)
 fig
 
 # ## Root families

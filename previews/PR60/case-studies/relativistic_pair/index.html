@@ -4,58 +4,40 @@ using DelimitedFiles
 using CairoMakie</code></pre><h2 id="Plasma-setup"><a class="docs-heading-anchor" href="#Plasma-setup">Plasma setup</a><a id="Plasma-setup-1"></a><a class="docs-heading-anchor-permalink" href="#Plasma-setup" title="Permalink"></a></h2><p>Normalized to <code>|Ω| = 1</code>; <code>Π² = ωp²/Ω² = 1</code> per species; momenta in <code>mc</code>, <code>k</code> in <code>Ω/c</code>. <code>MaxwellJuttner(μ)</code> feeds the relativistic closed-form tensor. Equal masses and opposite charges make R/L degenerate, so the parallel branch is a single Alfvén-like mode and every transverse root of the full determinant is a <em>double</em> zero.</p><pre><code class="language-julia hljs">pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
 plasma2 = pair(MaxwellJuttner(mu=2.0))    ## β = 1.0
 plasma10 = pair(MaxwellJuttner(mu=10.0))  ## β = 0.2
-kp = 0.001</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.001</code></pre><h2 id="Branch-continuation"><a class="docs-heading-anchor" href="#Branch-continuation">Branch continuation</a><a id="Branch-continuation-1"></a><a class="docs-heading-anchor-permalink" href="#Branch-continuation" title="Permalink"></a></h2><pre><code class="language-julia hljs"># μ=2 propagating (A/IC): forward from the ALPS k∥=0.1 seed, backward to 0.05,
-# up to the last subluminal point k∥=1.85 (crosses ωr = k∥c near 1.9).
-alps_seed = 3.9621e-2 - 2.644e-6im
+kp = 0.001</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.001</code></pre><h2 id="Branch-continuation"><a class="docs-heading-anchor" href="#Branch-continuation">Branch continuation</a><a id="Branch-continuation-1"></a><a class="docs-heading-anchor-permalink" href="#Branch-continuation" title="Permalink"></a></h2><pre><code class="language-julia hljs"># μ=2 propagating (A/IC): from the ALPS k∥=0.1 seed down to 0.05 and up to the
+# last subluminal point k∥=1.85 (crosses ωr = k∥c near 1.9).
 kz2p = collect(0.05:0.05:1.85)
-j0 = findfirst(==(0.1), kz2p)
-seed2 = alps_seed
-ω2pf = solve(DispersionProblem(plasma2, seed2, Wavenumber.(0.0, kz2p[j0:end]); mode=:L)).omega
-ω2pb = solve(DispersionProblem(plasma2, seed2, Wavenumber.(0.0, reverse(kz2p[1:j0])); mode=:L)).omega
-ω2p = vcat(reverse(ω2pb), ω2pf[2:end])
+ω2p = solve(DispersionProblem(plasma2, Seed(3.9621e-2 - 2.644e-6im, Wavenumber(0.0, 0.1)), Wavenumber.(0.0, kz2p); mode=:L)).omega
 
 # μ=2 purely imaginary (aperiodic) family, both ways from k∥=0.85.
 kz2d = collect(0.05:0.05:3.0)
-j0d = findfirst(==(0.85), kz2d)
-seed2d = complex(1.0e-4, -0.478)
-ω2df = solve(DispersionProblem(plasma2, seed2d, Wavenumber.(0.0, kz2d[j0d:end]); mode=:L)).omega
-ω2db = solve(DispersionProblem(plasma2, seed2d, Wavenumber.(0.0, reverse(kz2d[1:j0d])); mode=:L)).omega
-ω2d = vcat(reverse(ω2db), ω2df[2:end])
+ω2d = solve(DispersionProblem(plasma2, Seed(1.0e-4 - 0.478im, Wavenumber(0.0, 0.85)), Wavenumber.(0.0, kz2d); mode=:L)).omega
 
-# μ=10 propagating: continue forward/backward from a robust k∥=0.3 seed (fresh
-# near-marginal seeds below k∥≈0.3 make Muller wander to the mirror root).
+# μ=10 propagating: from a robust k∥=0.3 seed
 kz10 = collect(0.1:0.05:4.5)
-j10 = findfirst(==(0.3), kz10)
-seed10 = complex(0.155, -1.0e-4)
-ω10f = solve(DispersionProblem(plasma10, seed10, Wavenumber.(0.0, kz10[j10:end]); mode=:L)).omega
-ω10b = solve(DispersionProblem(plasma10, seed10, Wavenumber.(0.0, reverse(kz10[1:j10])); mode=:L)).omega
-ω10 = vcat(reverse(ω10b), ω10f[2:end])
+ω10 = solve(DispersionProblem(plasma10, Seed(0.155 - 1.0e-4im, Wavenumber(0.0, 0.3)), Wavenumber.(0.0, kz10); mode=:L)).omega
 
-# μ=10 aperiodic family. Starting near its minimum lets adaptive continuation
-# stay on the axis through the close pass with the propagating root.
+# μ=10 aperiodic family. Anchoring near its minimum (k∥=3.9) lets adaptive
+# continuation stay on the axis through the close pass with the propagating root.
 kap10 = collect(0.05:0.05:4.5)
-jap10 = findfirst(==(3.9), kap10)
-ωap10f = solve(DispersionProblem(plasma10, -2.73im, Wavenumber.(0.0, kap10[jap10:end]); mode=:L)).omega
-ωap10b = solve(DispersionProblem(plasma10, -2.73im, Wavenumber.(0.0, reverse(kap10[1:jap10])); mode=:L)).omega
-γap10 = imag.(vcat(reverse(ωap10b), ωap10f[2:end]))
+ωap10 = solve(DispersionProblem(plasma10, Seed(-2.73im, Wavenumber(0.0, 3.9)), Wavenumber.(0.0, kap10); mode=:L)).omega
 
 # μ=2 A/IC light-line continuation (direct trace on the continued L-mode):
 # stays slightly superluminal (ωr/k∥ → 1.04) with slowly recovering damping.
 kz2c = collect(1.9:0.1:3.0)
-ω2c = solve(DispersionProblem(plasma2, ω2p[end], Wavenumber.(0.0, kz2c); mode=:L)).omega
-aic_cont = hcat(kz2c, real.(ω2c), imag.(ω2c))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">12×3 Matrix{Float64}:
- 1.9  1.89877  -0.478125
- 2.0  2.01352  -0.475941
- 2.1  2.12748  -0.473675
- 2.2  2.24077  -0.471335
- 2.3  2.35348  -0.46893
- 2.4  2.46568  -0.466465
- 2.5  2.57742  -0.463944
- 2.6  2.68876  -0.461368
- 2.7  2.79975  -0.45874
- 2.8  2.9104   -0.456061
- 2.9  3.02077  -0.453332
- 3.0  3.13085  -0.450555</code></pre><h2 id="O-modes"><a class="docs-heading-anchor" href="#O-modes">O-modes</a><a id="O-modes-1"></a><a class="docs-heading-anchor-permalink" href="#O-modes" title="Permalink"></a></h2><p>Superluminal (<code>ωr &gt; k∥</code>): the O-mode is near-marginal (<code>γ ≈ 0</code>), and the continued sheet below the axis is exponentially far from the physical boundary value near marginal superluminal <code>ω</code> (<a href="../../relativistic.typ">continuation note</a>), so we locate it on the real axis as the <code>|det 𝒟| → 0</code> minimum via the <code>CoupledVDF</code> path, continued in <code>k∥</code>. Momentum bounds follow the thermal spread (<code>±15 mc</code> at <code>μ = 2</code>, <code>±5 mc</code> at <code>μ = 10</code>).</p><pre><code class="language-julia hljs">using VlasovMaxwellDispersion: DispersionFunction
+ω2c = solve(DispersionProblem(plasma2, ω2p[end], Wavenumber.(0.0, kz2c); mode=:L)).omega</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">12-element Vector{ComplexF64}:
+ 1.8987727117626516 - 0.47812488658849706im
+    2.0135192677388 - 0.4759414619775823im
+  2.127481574998269 - 0.47367456769109384im
+ 2.2407715102933903 - 0.47133503018953504im
+ 2.3534785229174795 - 0.4689302275901265im
+ 2.4656750908737792 - 0.46646524900790637im
+  2.577420632185137 - 0.4639436497257536im
+  2.688764366000525 - 0.46136795235154865im
+ 2.7997474430163294 - 0.458739984413441im
+  2.910404557003012 - 0.4560611084271678im
+  3.020765181066994 - 0.45333238000611376im
+  3.130854528058421 - 0.4505546570829967im</code></pre><h2 id="O-modes"><a class="docs-heading-anchor" href="#O-modes">O-modes</a><a id="O-modes-1"></a><a class="docs-heading-anchor-permalink" href="#O-modes" title="Permalink"></a></h2><p>Superluminal (<code>ωr &gt; k∥</code>): the O-mode is near-marginal (<code>γ ≈ 0</code>), and the continued sheet below the axis is exponentially far from the physical boundary value near marginal superluminal <code>ω</code> (<a href="../../relativistic.typ">continuation note</a>), so we locate it on the real axis as the <code>|det 𝒟| → 0</code> minimum via the <code>CoupledVDF</code> path, continued in <code>k∥</code>. Momentum bounds follow the thermal spread (<code>±15 mc</code> at <code>μ = 2</code>, <code>±5 mc</code> at <code>μ = 10</code>).</p><pre><code class="language-julia hljs">using VlasovMaxwellDispersion: DispersionFunction
 plasmaC2 = pair(CoupledVDF(MaxwellJuttner(2.0); para=(-15.0, 15.0), perp=15.0, regime=Relativistic()))
 plasmaC10 = pair(CoupledVDF(MaxwellJuttner(10.0); para=(-5.0, 5.0), perp=5.0, regime=Relativistic()))
 function omode(plasmaC, kzs, wr0)
@@ -84,47 +66,29 @@ ref = readdlm(joinpath(@__DIR__, &quot;relativistic_pair_verscharen18.tsv&quot;)
 fig5 = (; zip((:aic_wr2, :aic_gm2, :o_wr2, :aic_wr10, :aic_gm10, :o_wr10),
     (ref[ref[:, 1] .== i, 2:3] for i in 1:6))...)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(aic_wr2 = [0.15 0.04; 0.25 0.044; … ; 2.5 0.0; 3.0 0.0], aic_gm2 = [0.35 -0.09; 0.45 -0.09; … ; 2.65 -3.0; 2.95 -3.9], o_wr2 = [0.05 1.09; 0.35 1.14; … ; 2.45 2.65; 2.75 2.93], aic_wr10 = [0.25 0.177; 0.45 0.234; … ; 2.65 0.044; 2.85 0.0], aic_gm10 = [0.85 -0.099; 1.05 -0.16; … ; 2.85 -1.499; 2.95 -1.581], o_wr10 = [0.05 1.511; 0.35 1.537; … ; 2.35 2.758; 2.65 2.971])</code></pre><h2 id="Figure-5-reproduction"><a class="docs-heading-anchor" href="#Figure-5-reproduction">Figure 5 reproduction</a><a id="Figure-5-reproduction-1"></a><a class="docs-heading-anchor-permalink" href="#Figure-5-reproduction" title="Permalink"></a></h2><p>One row per temperature. Line style identifies the root family: solid A/IC propagating (dashed past the light line: corrected-continuation segments), dash-dot O-mode, dotted aperiodic (shown over the <em>full</em> <code>k∥</code> range). Crosses: digitized Fig. 5. The styles do not connect the distinct propagating and purely imaginary families.</p><pre><code class="language-julia hljs">blu, red = Makie.wong_colors()[1], Makie.wong_colors()[6]
 fig = Figure(size=(860, 720))
-axr2m = Axis(
-    fig[1, 1]; ylabel=&quot;ωr / |Ω|&quot;,
-    title=&quot;β = 1.0 (μ = 2)&quot;, limits=(0, 3, -0.09, 3.2)
-)
+axr2m = Axis(fig[1, 1]; ylabel=&quot;ωr / |Ω|&quot;, title=&quot;β = 1.0 (μ = 2)&quot;, limits=(0, 3, -0.09, 3.2))
 axi2m = Axis(fig[1, 2]; ylabel=&quot;γ / |Ω|&quot;, title=&quot;damping&quot;, limits=(0, 3, -4, 0.3))
-axr10 = Axis(
-    fig[2, 1]; xlabel=&quot;k∥ c / |Ω|&quot;, ylabel=&quot;ωr / |Ω|&quot;,
-    title=&quot;β = 0.2 (μ = 10)&quot;, limits=(0, 4.5, -0.09, 3.2)
-)
+axr10 = Axis(fig[2, 1]; xlabel=&quot;k∥ c / |Ω|&quot;, ylabel=&quot;ωr / |Ω|&quot;, title=&quot;β = 0.2 (μ = 10)&quot;, limits=(0, 4.5, -0.09, 3.2))
 axi10 = Axis(fig[2, 2]; xlabel=&quot;k∥ c / |Ω|&quot;, ylabel=&quot;γ / |Ω|&quot;, limits=(0, 4.5, -6.6, 0.4))
 
-# μ=2 row
-lines!(axr2m, kz2p, real.(ω2p); color=blu, linewidth=2.5, label=&quot;A/IC&quot;)
-lines!(axi2m, kz2p, imag.(ω2p); color=blu, linewidth=2.5)
-lines!(axr2m, aic_cont[:, 1], aic_cont[:, 2]; color=blu, linewidth=2.0, linestyle=:dash, label=&quot;A/IC continued&quot;)
-lines!(axi2m, aic_cont[:, 1], aic_cont[:, 3]; color=blu, linewidth=2.0, linestyle=:dash)
-lines!(axr2m, kz2d, zero(kz2d); color=blu, linewidth=2.5, linestyle=:dot, label=&quot;aperiodic&quot;)
-lines!(axi2m, kz2d, imag.(ω2d); color=blu, linewidth=2.5, linestyle=:dot)
-lines!(axr2m, kzo, ωo2; color=blu, linewidth=2.5, linestyle=:dashdot, label=&quot;O-mode&quot;)
-lines!(axi2m, kzo, zero(kzo); color=blu, linewidth=2.5, linestyle=:dashdot)
-for (m, ax) in ((fig5.aic_wr2, axr2m), (fig5.o_wr2, axr2m), (fig5.aic_gm2, axi2m))
-    scatter!(ax, m[:, 1], m[:, 2]; color=(blu, 0.75), marker=:xcross, markersize=8)
+function plotrow!((axr, axi), branches, (ko, ωo), refs, color, xmax)
+    for (k, ω, linestyle, label, linewidth) in branches
+        lines!(axr, k, real.(ω); color, linewidth, linestyle, label)
+        lines!(axi, k, imag.(ω); color, linewidth, linestyle)
+    end
+    lines!(axr, ko, ωo; color, linewidth=2.5, linestyle=:dashdot, label=&quot;O-mode&quot;)
+    for (m, ax) in zip(refs, (axr, axr, axi))
+        scatter!(ax, m[:, 1], m[:, 2]; color=(color, 0.75), marker=:xcross, markersize=8)
+    end
+    lines!(axr, 0:xmax, 0:xmax; color=(:black, 0.3), linestyle=:dash, label=&quot;ω = k∥&quot;)
+    hlines!(axi, [0.0]; color=(:black, 0.3), linestyle=:dash)
+    axislegend(axr; position=:lt, framevisible=false, labelsize=9, nbanks=2)
 end
-lines!(axr2m, 0:3, 0:3; color=(:black, 0.3), linestyle=:dash, label=&quot;ω = k∥&quot;)
-hlines!(axi2m, [0.0]; color=(:black, 0.3), linestyle=:dash)
-axislegend(axr2m; position=:lt, framevisible=false, labelsize=9, nbanks=2)
-
-# μ=10 row
-lines!(axr10, kz10, real.(ω10); color=red, linewidth=2.5, label=&quot;A/IC&quot;)
-lines!(axi10, kz10, imag.(ω10); color=red, linewidth=2.5)
-lines!(axr10, kap10, zero(kap10); color=red, linewidth=2.5, linestyle=:dot, label=&quot;aperiodic&quot;)
-lines!(axi10, kap10, γap10; color=red, linewidth=2.5, linestyle=:dot)
-lines!(axr10, kzo10, ωo10; color=red, linewidth=2.5, linestyle=:dashdot, label=&quot;O-mode&quot;)
-lines!(axi10, kzo10, zero(kzo10); color=red, linewidth=2.5, linestyle=:dashdot)
-for (m, ax) in ((fig5.aic_wr10, axr10), (fig5.o_wr10, axr10), (fig5.aic_gm10, axi10))
-    scatter!(ax, m[:, 1], m[:, 2]; color=(red, 0.75), marker=:xcross, markersize=8)
-end
-lines!(axr10, 0:4, 0:4; color=(:black, 0.3), linestyle=:dash, label=&quot;ω = k∥&quot;)
-hlines!(axi10, [0.0]; color=(:black, 0.3), linestyle=:dash)
-axislegend(axr10; position=:lt, framevisible=false, labelsize=9, nbanks=2)
-fig</code></pre><img src="d4deb33a.png" alt="Example block output"/><h2 id="Root-families"><a class="docs-heading-anchor" href="#Root-families">Root families</a><a id="Root-families-1"></a><a class="docs-heading-anchor-permalink" href="#Root-families" title="Permalink"></a></h2><p>The transverse dispersion relation carries two families that never merge (closest approach near <code>k∥ ≈ 0.85</code>):</p><table><tr><th style="text-align: right">family</th><th style="text-align: right"><code>μ = 2</code></th><th style="text-align: right"><code>μ = 10</code></th></tr><tr><td style="text-align: right"><strong>propagating A/IC</strong></td><td style="text-align: right"><code>ωr</code> rises, <code>γ</code> saturates at `</td><td style="text-align: right">γ</td></tr><tr><td style="text-align: right"><strong>aperiodic</strong> (<code>ωr=0</code>)</td><td style="text-align: right">at <em>every</em> <code>k∥</code>; <code>γ→−1.271=−4/π</code> as <code>k∥→0</code>, `</td><td style="text-align: right">γ</td></tr></table><h2 id="Why-the-A/IC-branch-saturates"><a class="docs-heading-anchor" href="#Why-the-A/IC-branch-saturates">Why the A/IC branch saturates</a><a id="Why-the-A/IC-branch-saturates-1"></a><a class="docs-heading-anchor-permalink" href="#Why-the-A/IC-branch-saturates" title="Permalink"></a></h2><p>Relativistic particles have compact velocity support, <code>|v∥| &lt; c</code>. The Doppler shift is therefore bounded by <code>k∥c</code>, unlike a Maxwellian&#39;s unbounded resonant velocities. For a real superluminal boundary frequency, cyclotron resonance is possible only inside the band</p><p class="math-container">\[\omega_r^2-k_\parallel^2c^2 \lesssim \Omega^2.\]</p><p>This constraint explains the large-<code>k∥</code> topology:</p><ul><li>bounded Doppler shifts and resonance broadening let the A/IC damping saturate near <code>|γ| ≈ Ω/2</code> instead of growing until the wave overdamps;</li><li>the branch approaches and crosses the light line near <code>k∥ ≈ 1.9</code>, while resonant particles move to the exponentially sparse Jüttner tail;</li><li>damping then recovers slowly as the resonant Lorentz factors increase; the real-frequency band edge organizes the limiting resonance geometry but does not impose a sharp cutoff on a damped root.</li></ul><p>Relativistic mass spread also changes the zero-<code>k</code> limit: <code>Ω → Ω/γ_L</code> smears the cyclotron line over <code>(0, Ω]</code>, giving the separate aperiodic family finite damping even without Doppler broadening.</p><p>The published A/IC descent is instead produced by a non-holomorphic continuation. See the <a href="https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/blob/main/experiments/lopez-anomalous-zone/report.typ">investigation report</a> for its diagnosis and corrected López formula.</p><h2 id="Degeneration-to-the-Maxwellian-limit"><a class="docs-heading-anchor" href="#Degeneration-to-the-Maxwellian-limit">Degeneration to the Maxwellian limit</a><a id="Degeneration-to-the-Maxwellian-limit-1"></a><a class="docs-heading-anchor-permalink" href="#Degeneration-to-the-Maxwellian-limit" title="Permalink"></a></h2><p>Cooling <code>μ = 2 → 25</code> (<code>vth/c = √(2/μ) = 1 → 0.28</code>) makes the Maxwell–Jüttner A/IC branch approach its Maxwellian counterpart pointwise. The topology remains different: every Maxwellian branch eventually descends and merges onto the imaginary axis, while every finite-temperature Maxwell–Jüttner branch eventually turns toward the light line.</p><pre><code class="language-julia hljs">kzt = collect(0.1:0.05:4.5)
+plotrow!((axr2m, axi2m), ((kz2p, ω2p, :solid, &quot;A/IC&quot;, 2.5), (kz2c, ω2c, :dash, &quot;A/IC continued&quot;, 2.0),
+        (kz2d, ω2d, :dot, &quot;aperiodic&quot;, 2.5)), (kzo, ωo2), (fig5.aic_wr2, fig5.o_wr2, fig5.aic_gm2), blu, 3)
+plotrow!((axr10, axi10), ((kz10, ω10, :solid, &quot;A/IC&quot;, 2.5), (kap10, ωap10, :dot, &quot;aperiodic&quot;, 2.5)),
+    (kzo10, ωo10), (fig5.aic_wr10, fig5.o_wr10, fig5.aic_gm10), red, 4)
+fig</code></pre><img src="b15f6718.png" alt="Example block output"/><h2 id="Root-families"><a class="docs-heading-anchor" href="#Root-families">Root families</a><a id="Root-families-1"></a><a class="docs-heading-anchor-permalink" href="#Root-families" title="Permalink"></a></h2><p>The transverse dispersion relation carries two families that never merge (closest approach near <code>k∥ ≈ 0.85</code>):</p><table><tr><th style="text-align: right">family</th><th style="text-align: right"><code>μ = 2</code></th><th style="text-align: right"><code>μ = 10</code></th></tr><tr><td style="text-align: right"><strong>propagating A/IC</strong></td><td style="text-align: right"><code>ωr</code> rises, <code>γ</code> saturates at `</td><td style="text-align: right">γ</td></tr><tr><td style="text-align: right"><strong>aperiodic</strong> (<code>ωr=0</code>)</td><td style="text-align: right">at <em>every</em> <code>k∥</code>; <code>γ→−1.271=−4/π</code> as <code>k∥→0</code>, `</td><td style="text-align: right">γ</td></tr></table><h2 id="Why-the-A/IC-branch-saturates"><a class="docs-heading-anchor" href="#Why-the-A/IC-branch-saturates">Why the A/IC branch saturates</a><a id="Why-the-A/IC-branch-saturates-1"></a><a class="docs-heading-anchor-permalink" href="#Why-the-A/IC-branch-saturates" title="Permalink"></a></h2><p>Relativistic particles have compact velocity support, <code>|v∥| &lt; c</code>. The Doppler shift is therefore bounded by <code>k∥c</code>, unlike a Maxwellian&#39;s unbounded resonant velocities. For a real superluminal boundary frequency, cyclotron resonance is possible only inside the band</p><p class="math-container">\[\omega_r^2-k_\parallel^2c^2 \lesssim \Omega^2.\]</p><p>This constraint explains the large-<code>k∥</code> topology:</p><ul><li>bounded Doppler shifts and resonance broadening let the A/IC damping saturate near <code>|γ| ≈ Ω/2</code> instead of growing until the wave overdamps;</li><li>the branch approaches and crosses the light line near <code>k∥ ≈ 1.9</code>, while resonant particles move to the exponentially sparse Jüttner tail;</li><li>damping then recovers slowly as the resonant Lorentz factors increase; the real-frequency band edge organizes the limiting resonance geometry but does not impose a sharp cutoff on a damped root.</li></ul><p>Relativistic mass spread also changes the zero-<code>k</code> limit: <code>Ω → Ω/γ_L</code> smears the cyclotron line over <code>(0, Ω]</code>, giving the separate aperiodic family finite damping even without Doppler broadening.</p><p>The published A/IC descent is instead produced by a non-holomorphic continuation. See the <a href="https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/blob/main/experiments/lopez-anomalous-zone/report.typ">investigation report</a> for its diagnosis and corrected López formula.</p><h2 id="Degeneration-to-the-Maxwellian-limit"><a class="docs-heading-anchor" href="#Degeneration-to-the-Maxwellian-limit">Degeneration to the Maxwellian limit</a><a id="Degeneration-to-the-Maxwellian-limit-1"></a><a class="docs-heading-anchor-permalink" href="#Degeneration-to-the-Maxwellian-limit" title="Permalink"></a></h2><p>Cooling <code>μ = 2 → 25</code> (<code>vth/c = √(2/μ) = 1 → 0.28</code>) makes the Maxwell–Jüttner A/IC branch approach its Maxwellian counterpart pointwise. The topology remains different: every Maxwellian branch eventually descends and merges onto the imaginary axis, while every finite-temperature Maxwell–Jüttner branch eventually turns toward the light line.</p><pre><code class="language-julia hljs">kzt = collect(0.1:0.05:4.5)
 ks = Wavenumber.(0.0, kzt)
 mus = (2.0, 5.0, 10.0, 25.0)
 ωmj = [solve(DispersionProblem(pair(MaxwellJuttner(mu=μ)), 0.04 - 1.0e-4im, ks; mode=:L)).omega for μ in mus]
@@ -148,4 +112,4 @@ for (μ, ωj, ωx, color) in zip(mus, ωmj, ωmx, cols)
 end
 lines!(axtr, 0:4, 0:4; color=(:black, 0.3), linestyle=:dash, label=&quot;ω = k∥&quot;)
 axislegend(axtr; position=:lt, framevisible=false, labelsize=9)
-figtrend</code></pre><img src="14b4d4a2.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../proton_shell_Min15/">« Quasi-perpendicular instability — proton shell (Min &amp; Liu 2015)</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 21 July 2026 16:17">Tuesday 21 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+figtrend</code></pre><img src="14b4d4a2.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../proton_shell_Min15/">« Quasi-perpendicular instability — proton shell (Min &amp; Liu 2015)</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 22 July 2026 03:40">Wednesday 22 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
