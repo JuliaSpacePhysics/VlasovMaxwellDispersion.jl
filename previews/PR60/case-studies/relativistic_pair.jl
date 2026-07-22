@@ -59,7 +59,7 @@ kap10 = collect(0.05:0.05:4.5)
 ## μ=2 A/IC light-line continuation (direct trace on the continued L-mode):
 ## stays slightly superluminal (ωr/k∥ → 1.04) with slowly recovering damping.
 kz2c = collect(1.9:0.1:3.0)
-ω2c = solve(DispersionProblem(plasma2, ω2p[end], Wavenumber.(0.0, kz2c); mode=:L)).omega
+ω2c = solve(DispersionProblem(plasma2, ω2p[end], Wavenumber.(0.0, kz2c); mode=:L)).omega;
 
 # ## O-modes
 #
@@ -140,8 +140,8 @@ fig
 #
 # | family | `μ = 2` | `μ = 10` |
 # |---|---|---|
-# | **propagating A/IC** | `ωr` rises, `γ` saturates at `|γ| ≈ Ω/2` (`−0.488` min near `k∥≈1.2`), then chases the light line, crossing near `k∥≈1.9` | `γ` tracks digitized red to `≲0.2` through `k∥=3`; `ωr` rises past the published `≈0.44` peak |
-# | **aperiodic** (`ωr=0`) | at *every* `k∥`; `γ→−1.271=−4/π` as `k∥→0`, `|γ|` min `0.478` at `k∥≈0.86`, `→−3.75` at `k∥=3` | at *every* `k∥`, far deeper: `γ→−6.366=−20/π` at `k∥→0`, `|γ|` min `≈2.73` at `k∥≈3.9` (below the Fig. 5 frame until `k∥≈3.05`) |
+# | **propagating A/IC** | `ωr` rises, `γ` saturates at `γ ≈ -Ω/2`, then chases the light line, crossing near `k∥≈1.9` | `ωr` rises past the published `≈0.44` peak |
+# | **aperiodic** | `ωr=0` at *every* `k∥`; `γ→−1.271=−4/π` as `k∥→0` | at *every* `k∥`, far deeper: `γ→−6.366=−20/π` at `k∥→0` |
 #
 # ## Why the A/IC branch saturates
 #
@@ -153,6 +153,9 @@ fig
 # ```math
 # \omega_r^2-k_\parallel^2c^2 \lesssim \Omega^2.
 # ```
+#
+# While for "nonrelativistic" particles, cyclotron damping grows without limit
+# and overdamps the mode.
 #
 # This constraint explains the large-`k∥` topology:
 #
@@ -166,7 +169,8 @@ fig
 #
 # Relativistic mass spread also changes the zero-`k` limit: `Ω → Ω/γ_L` smears
 # the cyclotron line over `(0, Ω]`, giving the separate aperiodic family finite
-# damping even without Doppler broadening.
+# damping even without Doppler broadening. Nonrelativistically, the resonance is
+# sharp and zero-$k$ collisionless damping of this mode is impossible.
 #
 # The published A/IC descent is instead produced by a non-holomorphic
 # continuation. See the [investigation report](https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/blob/main/experiments/lopez-anomalous-zone/report.typ) for its diagnosis and corrected López formula.
@@ -183,7 +187,7 @@ kzt = collect(0.1:0.05:4.5)
 ks = Wavenumber.(0.0, kzt)
 mus = (2.0, 5.0, 10.0, 25.0)
 ωmj = [solve(DispersionProblem(pair(MaxwellJuttner(mu=μ)), 0.04 - 1.0e-4im, ks; mode=:L)).omega for μ in mus]
-ωmx = [solve(DispersionProblem(pair(Maxwellian(sqrt(2 / μ))), 0.04 - 1.0e-4im, ks; mode=:L)).omega for μ in mus]
+ωmx = [solve(DispersionProblem(pair(Maxwellian(sqrt(2 / μ))), 0.04 - 1.0e-4im, ks; mode=:L)).omega for μ in mus];
 
 # At `μ = 25` the curves agree through `k∥ ≈ 3.5`; cooling postpones the
 # relativistic turn to larger `k∥`, but never removes it.
