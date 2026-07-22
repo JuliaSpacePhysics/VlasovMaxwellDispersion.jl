@@ -80,13 +80,13 @@ fig
 # ## Seedless survey
 #
 # The same branches, discovered *without* initial points: a
-# `GlobalDispersionProblem` over an `ω` box and a `kρ` scan finds all roots of
+# `DispersionProblem` over an `ω` box and a `kρ` scan finds all roots of
 # `det 𝒟 = 0` at once. `region` is the `ω` search box (in units of `ωce`);
 # `geom` sweeps `k` at fixed `θ`, spanning `kρ ∈ [0.005, 0.3]`.
 
 region = (0.005 - 0.16im, 3.05 + 0.02im)
 geom = AngleSweep(k = (0.05 / vtp * 0.1, 0.3 / vtp), theta = θ)
-prob = GlobalDispersionProblem(plasma, region, geom)
+prob = DispersionProblem(plasma, region, geom)
 sol = solve(prob)
 
 # `dispersion_diagram` plots the surveyed branches: `Re ω(kρ)` and `Im ω(kρ)`,

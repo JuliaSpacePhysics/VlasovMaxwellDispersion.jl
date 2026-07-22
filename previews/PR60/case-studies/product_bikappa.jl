@@ -50,7 +50,7 @@ vA = B0 / sqrt(mu0 * n * mp)
 kunit = c0 / vA                        # k·dᵢ → k c/ωcp
 region = (-0.1 - 0.25im, 0.5 + 0.12im)
 geom = AngleSweep(k = (0.01, 0.5) .* kunit, theta = deg2rad(45))
-sol = solve(GlobalDispersionProblem(plasma, region, geom))
+sol = solve(DispersionProblem(plasma, region, geom))
 
 # ## Verification against PlasmaBO
 #
@@ -134,7 +134,7 @@ sols = map(κs) do κ
         NormalizedSpecies(me / mp, Pi2p, vdf(vthp, vthp, κ)),
         NormalizedSpecies(-1.0, Pi2e, vdf(vthez, vthep, κ)),
     )
-    solve(GlobalDispersionProblem(plasma, region, geom))
+    solve(DispersionProblem(plasma, region, geom))
 end
 
 # ## Verification against PlasmaBO

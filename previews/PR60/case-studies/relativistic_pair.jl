@@ -1,4 +1,4 @@
-# # Relativistic pair plasma — validation vs López (2014) & Verscharen (2018)
+# # Relativistic pair plasma (López 2014 & Verscharen 2018)
 #
 # A hot electron–positron pair plasma with isotropic **Maxwell–Jüttner** momentum
 # distribution `μ = mc²/T = 2Π²/β∥`, at two temperatures: `β = 1` (`μ = 2`)

@@ -48,7 +48,7 @@ plasma = (
 kunit = wpe / wce                      # k·λₑ → k c/ωce
 region = (-1.0 - 1.5im, 10.0 + 0.6im)
 geom = AngleSweep(k = (0.3, 35.0) .* kunit, theta = deg2rad(40))
-sol = solve(GlobalDispersionProblem(plasma, region, geom))
+sol = solve(DispersionProblem(plasma, region, geom))
 
 # ## Verification against BO/ALPS
 #
