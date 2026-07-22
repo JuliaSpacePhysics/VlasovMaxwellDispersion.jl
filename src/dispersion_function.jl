@@ -78,18 +78,14 @@ end
 
 _hadamard(D) = prod(norm(D[i, :]) for i in 1:3)
 
-function DispersionFunction(prob::DispersionProblem)
-    s = _hadamard(dispersion_tensor(prob.plasma, prob.omega0, prob.k; closure=prob.closure))
+function DispersionFunction(prob::DispersionProblem{<:Seed})
+    s = _hadamard(dispersion_tensor(prob.plasma, prob.target.omega0, prob.k; closure=prob.closure))
     scale = isfinite(s) && s > 0 ? s^_scalepow(prob.mode) : one(s)
     return DispersionFunction(
         prob.plasma, prob.k;
         closure=prob.closure, deflate=false, scale, mode=prob.mode
     )
 end
-DispersionFunction(prob::GlobalDispersionProblem, k) =
+DispersionFunction(prob::DispersionProblem{<:Region}, k) =
     DispersionFunction(prob.plasma, k; closure=prob.closure, mode=prob.mode)
 
-@inline Base.getproperty(prob::AbstractDispersionProblem, s::Symbol) =
-    s === :f ? DispersionFunction(prob) : getfield(prob, s)
-Base.propertynames(prob::AbstractDispersionProblem) =
-    (fieldnames(typeof(prob))..., :f)

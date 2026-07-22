@@ -18,7 +18,7 @@ alg = Muller()
 sol = solve(DispersionProblem(pl, 1.2 - 0.1im, k), alg)             # seeded root (Langmuir+Landau)
 ω   = sol.omega
 
-gsol = solve(GlobalDispersionProblem(pl, (0.5 - 0.6im, 2.5 + 0.1im), k))  # all roots in a box
+gsol = solve(DispersionProblem(pl, (0.5 - 0.6im, 2.5 + 0.1im), k))  # all roots in a box
 roots = gsol.roots
 
 ks   = [Wavenumber(0.0, kz) for kz in 0.3:0.05:1.0]
@@ -91,10 +91,9 @@ plasma = (NormalizedSpecies(e, B0, Proton()), NormalizedSpecies(p, B0, Proton())
 
 Specialized VDFs include: Cold fluid `ColdVDF`, (bi-)Maxwellian, drifting, ring `Maxwellian` / `GaussianRing`, Maxwell–Jüttner (relativistic) `MaxwellJuttner`.
 
-Solvers follow the `CommonSolve.solve(problem, algorithm)` interface: a
-`DispersionProblem`/`GlobalDispersionProblem` (seeded / seedless survey) solved by
-`Muller` (default) / `GRPF` (`RootsAndPoles.jl`) / `Continuation`. `solve` returns a
-`DispersionSolution` (`.omega`, `.retcode`).
+Solvers follow the `CommonSolve.solve(problem, algorithm)` interface: a `DispersionProblem` (
+seeded / seedless survey) solved by `Muller` (default) / `GRPF` (`RootsAndPoles.jl`) / `Continuation`. 
+`solve` returns a `DispersionSolution` (`.omega`, `.retcode`).
 
 Two closures for the orbit integral are available (`derivation.md` §3), passed as
 the `closure=` keyword of `solve`:

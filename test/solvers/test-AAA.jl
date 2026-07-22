@@ -29,7 +29,7 @@ end
         NormalizedSpecies(1 / 1836.15, 10.0 / 1836.15, ColdVDF()),
     )
     region = (0.05 - 0.05im, 1.2 + 0.05im)
-    prob = GlobalDispersionProblem(cold, region, CartesianSweep(; kz = (0.3, 3.0)))
+    prob = GlobalDispersionProblem(cold, region, CartesianSweep(; kz=(0.3, 3.0)))
 
     sp = solve(prob, AAA())
     @test sp.retcode == ReturnCode.Success
@@ -60,13 +60,13 @@ end
     # k-independent Langmuir mode at ω = ωpe = √10.005 ≈ 3.163.
     # The σ_min/σ_max residual stays ~ε (asserted below).
     region = (0.05 - 0.05im, 4.5 + 0.05im)
-    prob = GlobalDispersionProblem(cold, region, CartesianSweep(; kz = range(0.3, 3.0, length = 9)))
+    prob = GlobalDispersionProblem(cold, region, CartesianSweep(; kz=range(0.3, 3.0, length=9)))
     sa = solve(prob, AAA())
     sg_exact = solve(prob, GRPF())
     ll, ur = region
     margin = 0.15 * (ur - ll)
     padded = (ll - margin, ur + margin)
-    sg_padded = solve(GlobalDispersionProblem(cold, padded, prob.geometry), GRPF())
+    sg_padded = solve(GlobalDispersionProblem(cold, padded, prob.k), GRPF())
     @test sa.retcode == sg_exact.retcode == sg_padded.retcode == ReturnCode.Success
     @test length(sa.roots) == 4
 
@@ -98,7 +98,7 @@ end
     )
     region = (1.0e-4 - 0.05im, 3.0 + 0.01im)
     # Sweep resolution is the geometry's: an explicit k grid replaces any solver knob.
-    geom = AngleSweep(k = range(0.02, 2.0, length = 31), theta = 0.001)
+    geom = AngleSweep(k=range(0.02, 2.0, length=31), theta=0.001)
     sol = solve(GlobalDispersionProblem(plasma, region, geom), AAA())
     @test sol.retcode == ReturnCode.Success
     @test any(b -> maximum(abs, filter(isfinite, b.omega)) < 3.0e-3, sol.roots)
@@ -118,7 +118,7 @@ end
     # Kinetic species ⇒ ω²χ → 0 at ω=0 ⇒ det(ω²𝒟) has a zero pinned at the
     # origin. The raw residual CANNOT reject it (it also vanishes as ω → 0) — only
     # the geometric |ω| gate can.
-    vdf = ProductBiKappa(vth_para = 0.1, vth_perp = 0.1, kappa_para = 1, kappa_perp = 200.0)
+    vdf = ProductBiKappa(vth_para=0.1, vth_perp=0.1, kappa_para=1, kappa_perp=200.0)
     plasma = (NormalizedSpecies(-1.0, 300.0, vdf),)
     k = Wavenumber(0.5, 1.0)
     @test abs(det(wave_dispersion_tensor(plasma, 1.0e-5 + 0im, k))) < 1.0e-4
@@ -143,7 +143,7 @@ end
     prob = GlobalDispersionProblem(plasma, (-0.08 - 0.03im, 0.08 + 0.03im), Wavenumber(0.0, 2.0))
 
     # Tight degree cap fails to reach `tol` => may be missing roots
-    sol = solve(prob, AAA(; max_degree = 2))
+    sol = solve(prob, AAA(; max_degree=2))
     @test sol.retcode == ReturnCode.Saturated
     @test !successful_retcode(sol)
     @test successful_retcode(solve(prob, AAA()))

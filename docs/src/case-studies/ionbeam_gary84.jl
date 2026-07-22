@@ -43,7 +43,7 @@ end
 region = (0.0 - 0.1im, 0.45 + 0.2im)
 geom = CartesianSweep(kz = (0.001:0.002:0.2) ./ vm)
 v0s = (0.0, 10.0, 20.0, 30.0)
-sols = [solve(GlobalDispersionProblem(gary_plasma(v0), region, geom)) for v0 in v0s]
+sols = [solve(DispersionProblem(gary_plasma(v0), region, geom)) for v0 in v0s]
 
 # ## Verification against PlasmaBO
 #

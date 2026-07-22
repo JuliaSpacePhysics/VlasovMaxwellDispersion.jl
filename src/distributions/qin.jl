@@ -53,7 +53,7 @@ function _newberger_rel(d, ω, Ω, kz, a, qs::BoxQuad)
     plo, phi = d.para
     qlo, qhi = d.perp
     ν = imag(ω)
-    σsgn = sign(kz)
+    sgnkz = sign(kz)
     # window over every integer a(p∥) crossed on the box (either sign of kz, Ω, Re ω)
     pmax = maximum(abs, d.para)
     γmax = sqrt(1 + pmax^2 + qhi^2)
@@ -73,10 +73,10 @@ function _newberger_rel(d, ω, Ω, kz, a, qs::BoxQuad)
         lgsum = zero(AType)
         for n in nlo:nhi
             nΩ = n * Ω
-            Wof = (u, γ) -> (σof(u, γ) * (ω * γ + kz * u + nΩ)) .* _T_n_bare(n, z, u, q)
+            Wof = (u, γ) -> (σof(u, γ) * (ω * γ + kz * u + nΩ)) .* _T_n_bare_x(n, z, u, q)
             (p1, c1), (p2, c2) = _Dn_poles(ω, kz, nΩ, m2)
             for (p, cc) in ((p1, c1), (p2, c2))
-                r, lg = _peel_residue(p, cc, Wof, γof, ν, plo, phi, σsgn)
+                r, lg = _peel_residue(p, cc, Wof, γof, ν, plo, phi, sgnkz)
                 (isfinite(p) && any(!iszero, r)) || continue
                 push!(poles, (p, (2π * Ω) .* r))
                 lgsum = lgsum .+ (2π * Ω) .* lg
@@ -121,7 +121,7 @@ end
     for (i, (n, ζ)) in enumerate(zip(ns, ζs))
         dfpe, dfpa = d.dgrad(w, ζ)
         U = dfpe + kzω * (w * dfpa - ζ * dfpe)
-        ρs[i] = (prefactor * U) .* _T_n_bare(n, z, ζ, w)
+        ρs[i] = (prefactor * U) .* _T_n_bare_x(n, z, ζ, w)
     end
     return ρs
 end
@@ -141,9 +141,8 @@ end
 end
 
 # harmonic tensor 𝓣_n = p⊥²·T_n (R≡p⊥·Rₙ, Jw≡p⊥·Jₙ′, Rₙ≡(n/z)Jₙ=½(J_{n−1}+J_{n+1})
-@inline function _T_n_bare(n, z, u, w)
-    Jm, Jp = besselj(n - 1, z), besselj(n + 1, z)
-    Jn = besselj(n, z)
+@inline function _T_n_bare_x(n, z, u, w)
+    Jm, Jp, Jn = besseljx(n - 1, z), besseljx(n + 1, z), besseljx(n, z)
     R = w * (Jm + Jp) / 2          # p⊥·Rₙ, regular
     Jw = w * (Jm - Jp) / 2         # p⊥·Jₙ′
     uJn = u * Jn

@@ -1,5 +1,3 @@
-abstract type AbstractDispersionProblem end
-
 # Orbit-integral evaluator (derivation.md §3), passed as the `closure` keyword of contribution/solve.
 abstract type IntegralClosure end
 struct HarmonicSum <: IntegralClosure end
@@ -11,6 +9,25 @@ struct Relativistic <: Regime end
 
 # ── Swept manifold in k-space
 abstract type ParameterGeometry end
+
+"""
+    Seed(omega0, at=nothing)
+
+A single root near `omega0` where optional `at` anchors it to a wavenumber.
+"""
+struct Seed{W,K}
+    omega0::W
+    at::K
+end
+Seed(omega0) = Seed(omega0, nothing)
+Base.getindex(s::Seed, args...) = Base.getindex(s.omega0, args...)
+
+struct Region{B}
+    box::B
+end
+
+Base.iterate(r::Region, state = 1) = iterate(r.box, state)
+Base.getindex(r::Region, i) = r.box[i]
 
 """
     Wavenumber(kperp, kz)

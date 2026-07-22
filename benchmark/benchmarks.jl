@@ -79,7 +79,7 @@ let g = SUITE["Nonrelativistic/lowrank"]
         plan = plan_contribution(s, k)
         g["evaluate/$name"] = CAV.@benchmarkable $plan(1.3 - 0.02im)
     end
-    prob = GlobalDispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), Wavenumber(2.0, 1.0))
+    prob = DispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), Wavenumber(2.0, 1.0))
     g["global_solve/moderate"] = CAV.@benchmarkable solve($prob)
 end
 
@@ -130,6 +130,6 @@ end
 
 let g = SUITE["global_solve"]
     s = NormalizedSpecies(-1.0, 1.0, Maxwellian(vth_para = 0.9, vth_perp = 1.2))
-    prob = GlobalDispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), Wavenumber(0.01, 0.5))
+    prob = DispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), Wavenumber(0.01, 0.5))
     g["Default/fixed_k"] = CAV.@benchmarkable solve($prob)
 end

@@ -3,62 +3,58 @@
 abstract type AbstractDispersionProblem end
 
 """
-    DispersionProblem(plasma, omega0, geometry; closure=HarmonicSum(), mode=:det)
+    DispersionProblem(plasma, target, k; closure=HarmonicSum(), mode=:det)
 
-Refine a seeded mode of `det(𝒟(plasma,ω,k))=0`. A [`Wavenumber`](@ref) `geometry`
-selects point refinement. An ordered wavenumber collection, or a geometry selects
-[`Continuation`](@ref) along that path.
+Chase zeros of `det(𝒟(plasma,ω,k))=0`. `target` selects *which* roots:
+
+- [`Seed`](@ref)`(ω, at=nothing)` / a number `ω` — refine/track one branch
+- `Region((lowerleft, upperright))` / a tuple — survey every branch in the ω box.
+
+`k` sets the wavenumber domain: a [`Wavenumber`](@ref) (point), an ordered wavenumber
+collection (path), or a parameter sweep ([`AngleSweep`](@ref) `(|k|, θ)` 
+or [`CartesianSweep`](@ref) `(k⊥, k∥)`).
 
 `mode` selects the [`TensorReduction`](@ref) whose zeros are chased (`:det` default).
+
+`solve` returns [`DispersionSolution`](@ref) for `Seed`, or [`SurveySolution`](@ref)
+of all [`DispersionBranch`](@ref)es for `Region` — each an `m`-manifold `ω*(p)` over
+the `m` swept axes of `k` (point/curve/surface for `m` = 0/1/2).
 """
-struct DispersionProblem{P,K,T,C,M} <: AbstractDispersionProblem
+struct DispersionProblem{T,K,P,C,M} <: AbstractDispersionProblem
     plasma::P
-    omega0::T
+    target::T
     k::K
     closure::C
     mode::M
 end
-DispersionProblem(plasma, omega0, geometry; closure=HarmonicSum(), mode=FullDet()) =
-    DispersionProblem(plasma, omega0, geometry, closure, TensorReduction(mode))
+DispersionProblem(plasma, target, k; closure=HarmonicSum(), mode=FullDet()) =
+    DispersionProblem(plasma, _target(target), k, closure, TensorReduction(mode))
 
-
-"""
-    GlobalDispersionProblem(plasma, region, geometry; closure=HarmonicSum(), mode=:det)
-
-Find *all* root branches of `det(𝒟)` in the complex ω box
-`region=(lowerleft, upperright)` as the k-space `geometry` sweeps its parameters.
-A branch is an `m`-manifold `ω*(p)` where `m` is the geometry's swept dimension:
-a point (`m=0`), curve (`m=1`), surface (`m=2`), ….
-
-`geometry` can be:
-- a [`Wavenumber`](@ref) — fixed k, `m=0`;
-- an [`AngleSweep`](@ref) `(|k|, θ)` or [`CartesianSweep`](@ref) `(k⊥, k∥)`
-
-`mode` selects the [`TensorReduction`](@ref) to survey.
-"""
-struct GlobalDispersionProblem{P,B,G,C,M} <: AbstractDispersionProblem
-    plasma::P
-    region::B
-    geometry::G
-    closure::C
-    mode::M
+function Base.getproperty(prob::DispersionProblem, sym::Symbol)
+    sym === :omega0 && return prob.target.omega0
+    sym === :f && return DispersionFunction(prob)
+    return getfield(prob, sym)
 end
-GlobalDispersionProblem(plasma, region, geometry; closure=HarmonicSum(), mode=FullDet()) =
-    GlobalDispersionProblem(plasma, region, geometry, closure, TensorReduction(mode))
+
+_target(x) = x
+_target(omega::Number) = Seed(omega)
+_target(region::Tuple) = Region(region)
+
+const GlobalDispersionProblem = DispersionProblem
 
 prepare(prob::DispersionProblem; kw...) = DispersionProblem(
-    prepare(prob.plasma, prob.closure; kw...), prob.omega0, prob.k, prob.closure, prob.mode)
-prepare(prob::GlobalDispersionProblem; kw...) = GlobalDispersionProblem(
-    prepare(prob.plasma, prob.closure; kw...), prob.region, prob.geometry, prob.closure, prob.mode)
+    prepare(prob.plasma, prob.closure; kw...), prob.target, prob.k, prob.closure, prob.mode)
 
-_realtype(p::GlobalDispersionProblem) =
-    promote_type(_realtype(p.region), _realtype(p.geometry))
+_realtype(p::DispersionProblem{<:Region}) =
+    promote_type(_realtype(p.target.box), _realtype(p.k))
 
 
 struct SolveStats{T}
     nevals::Int # number of evaluations
     time::T # solving time in seconds
 end
+
+Base.:+(a::SolveStats, b::SolveStats) = SolveStats(a.nevals + b.nevals, a.time + b.time)
 
 
 module ReturnCode

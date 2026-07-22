@@ -49,7 +49,7 @@ export Separable, ⊗, Gaussian, GyroRing
 export IntegralClosure, HarmonicSum, Newberger, prepare
 export contribution, plan_contribution, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
 export DispersionFunction
-export DispersionProblem, GlobalDispersionProblem, ReturnCode
+export DispersionProblem, GlobalDispersionProblem, Seed, Region, ReturnCode
 export Muller, GRPF, Continuation, AAA, DispersionSolution
 export AngleSweep, CartesianSweep
 export SurveySolution, DispersionBranch, SolveStats, dispersion_diagram

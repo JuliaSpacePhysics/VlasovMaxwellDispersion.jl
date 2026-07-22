@@ -28,6 +28,34 @@
 end
 
 
+@testitem "track fans out both ways from an anchored seed" begin
+    using VlasovMaxwellDispersion: ReturnCode
+    plasma = NormalizedSpecies(0.0, 0.0, ColdVDF())  # vacuum branch ω = kz
+    kzs = collect(0.3:0.05:1.0)
+    ks = Wavenumber.(0.0, kzs)
+    j = findfirst(==(0.6), kzs)
+
+    fwd = solve(DispersionProblem(plasma, 0.6 + 0im, ks[j:end])).omega
+    bwd = solve(DispersionProblem(plasma, 0.6 + 0im, reverse(ks[1:j]))).omega
+    manual = vcat(reverse(bwd), fwd[2:end])
+
+    sol = solve(DispersionProblem(plasma, Seed(0.6 + 0im, Wavenumber(0.0, 0.6)), ks))
+    @test sol.retcode == ReturnCode.Success
+    @test length(sol.omega) == length(kzs)
+    @test sol.omega ≈ kzs rtol = 1.0e-5
+    @test sol.omega == manual                     # exact same stitch, one call
+    @test all(isfinite, sol.resid)
+
+    # anchor need not sit exactly on a node — nearest point wins
+    @test solve(DispersionProblem(plasma, Seed(0.6 + 0im, Wavenumber(0.0, 0.58)), ks)).omega == manual
+    # anchor at the first point ⇒ plain forward track
+    @test solve(DispersionProblem(plasma, Seed(0.3 + 0im, Wavenumber(0.0, 0.3)), ks)).omega ≈ kzs rtol = 1.0e-5
+    # works over a swept geometry too
+    @test solve(DispersionProblem(plasma, Seed(0.6 + 0im, Wavenumber(0.0, 0.6)),
+                                  CartesianSweep(kz=(0.3, 1.0)))).retcode == ReturnCode.Success
+end
+
+
 @testitem "track subdivides across Gary84 v0=10 branch transition" begin
     mp_me = 1836.15267343
     vA_c = 1.0e-4

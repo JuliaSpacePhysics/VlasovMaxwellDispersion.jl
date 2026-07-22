@@ -267,7 +267,7 @@ All six distinct entries draw on the five parallel moments
 $\{M^0_F,M^1_F,M^2_F,M^0_T,M^1_T\}$ at the slice $p_\perp$ and the six symmetric
 Bessel bilinears of the regular triple $\{R_n,J_n',J_n\}$ at $z=k_\perp p_\perp/\Omega$.
 
-For relativistic f₀ see [relativistic.md](relativistic.md).
+For relativistic f₀ see the [relativistic continuation note](src/relativistic.typ).
 
 ### 5.2 Non-relativistic Separable `f₀=f∥·f⊥`
 

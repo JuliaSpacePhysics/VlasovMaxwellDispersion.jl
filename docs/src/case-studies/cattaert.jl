@@ -45,9 +45,7 @@ i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 ttrack = @elapsed ωs = map(1:4) do ib
     rows = ref[ref[:, 2] .== ib, :]
     seed = complex(rows[i0, 3], rows[i0, 4])
-    fwd = solve(DispersionProblem(plasma, seed, ks[i0:end]))
-    bwd = solve(DispersionProblem(plasma, seed, reverse(ks[1:i0])))
-    ω = vcat(reverse(bwd.omega), fwd.omega[2:end])
+    ω = solve(DispersionProblem(plasma, Seed(seed, ks[i0]), ks)).omega  # fans out both ways from kρ≈0.1
     ωref = complex.(rows[:, 3], rows[:, 4])
     dre = abs.(abs.(real.(ω)) .- abs.(real.(ωref)))
     dim = abs.(imag.(ω) .- imag.(ωref))
@@ -82,13 +80,13 @@ fig
 # ## Seedless survey
 #
 # The same branches, discovered *without* initial points: a
-# `GlobalDispersionProblem` over an `ω` box and a `kρ` scan finds all roots of
+# `DispersionProblem` over an `ω` box and a `kρ` scan finds all roots of
 # `det 𝒟 = 0` at once. `region` is the `ω` search box (in units of `ωce`);
 # `geom` sweeps `k` at fixed `θ`, spanning `kρ ∈ [0.005, 0.3]`.
 
 region = (0.005 - 0.16im, 3.05 + 0.02im)
 geom = AngleSweep(k = (0.05 / vtp * 0.1, 0.3 / vtp), theta = θ)
-prob = GlobalDispersionProblem(plasma, region, geom)
+prob = DispersionProblem(plasma, region, geom)
 sol = solve(prob)
 
 # `dispersion_diagram` plots the surveyed branches: `Re ω(kρ)` and `Im ω(kρ)`,
