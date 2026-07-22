@@ -112,8 +112,8 @@ The contour starts at the entering root of $q_n^2 = 0$:
 
 $
   gamma_(0n) = (n^2 Omega^2 + k_parallel^2) /
-  (n Omega omega + k_parallel Delta_n)
-  = (n Omega omega - k_parallel Delta_n) /
+  (n Omega omega + |k_parallel| Delta_n)
+  = (n Omega omega - |k_parallel| Delta_n) /
   (omega^2 - k_parallel^2),
   quad
   Delta_n = sqrt(n^2 Omega^2 + k_parallel^2 - omega^2).
@@ -216,34 +216,14 @@ $
   wedge between the cut angles; the cyclotron-resonant harmonic may need a
   dogleg with sign flips at cut crossings. Certified to $10^(-8)"–"10^(-10)$
   against the corrected López closed form.
-- *Oblique $k_perp <= 0.3|Omega|$:* expansion about $R_0$ in $k_perp^2$
-  (trig-polynomial assembler over parallel primitives $J(nu, j, q)$, order $M
-  <= 3$, per-$J$ `rtol` scaling). Truncation $approx (C k_perp^2 \/
-    Omega^2)^(M+1)$, $C approx 5"–"10$.
+- *Oblique ($k_perp != 0$):*  transported residue contour
 
-#block(inset: 8pt, fill: rgb("fff4f0"))[
-  *Cliff-weighted validity.* The expansion's
-  effective constant multiplies the *cliff strength* of its $|j| >= 2$
-  primitives. At strong-cliff points (shallow damping deep in-band, e.g. $mu
-  = 2$, $omega = 0.7 - 0.1i$, $k_parallel = 0.5$) those primitives reach
-  $e^(28)$ and the series diverges from its first oblique term ($|chi_"exp"|
-  = 10^9$ at $k_perp = 0.02$ vs the parallel value $8 times 10^4$ — it does
-  not limit to its own $k_perp = 0$ value). At the certified fixtures (A/IC
-  regime) the cliff is weak and the $0.3|Omega|$ radius is real.
-]
+= Why oblique continuation changes representation
 
-= The same bound in every representation
-
-The domain boundary is a property of the sheet, not of the harmonic representation. The same obstruction appears as:
-
-1. *Time domain.* $chi = integral_0^oo e^(i omega t) C(t) dif t$: damping
-  demands a contour tilted upward forever, while the gyration phase confines
-  $C$ to a strip $|"Im" t| lt.tilde log(mu Omega \/ k_perp) \/ Omega$. No
-  contour does both.
-2. *$k_perp^2$ Taylor series* about the parallel problem: coefficients are
-  finite, but the $|j| >= 2$ time-harmonic primitives carry monodromy growing
-  exponentially at shallow damping — an asymptotic series with
-// *cliff-weighted* radius (§#ref(<mj-fast>, supplement: none)).
+In the time-domain form $chi = integral_0^oo e^(i omega t) C(t) dif t$,
+damping demands a contour tilted upward forever, while the gyration phase
+confines $C$ to a strip $|"Im" t| lt.tilde log(mu Omega \/ k_perp) \/ Omega$.
+No contour does both.
 
 At $k_perp != 0$ the monodromy content of this sheet is an
 infinite reorganizing ladder. Every finite evaluator is exact where its
