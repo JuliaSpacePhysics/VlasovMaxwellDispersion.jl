@@ -1,10 +1,11 @@
-#import "@preview/cetz:0.4.2"
+#set document(title: [Relativistic response and continuation])
 #set page(paper: "a4", margin: (x: 20mm, y: 20mm), numbering: "1")
 #set text(size: 10pt)
 #set par(justify: true)
 #set heading(numbering: "1.1")
 
-#text(16pt)[*Relativistic response and continuation*]
+#let showable(it) = context if target() == "html" { html.frame(it) } else { it }
+#context if target() != "html" { text(16pt, weight: "bold", document.title) }
 
 = Overview
 
@@ -57,9 +58,7 @@ Singular $g$ also requires continuation to record the winding.
 
 
 #figure(
-  {
-    include "assets/relativistic-continuation-contour.typ"
-  },
+  showable(include "assets/relativistic-continuation-contour.typ"),
   caption: [
     After $omega$ moves off the axis: the endpoint continues holomorphically
     to complex $y_0 (omega)$, and $Gamma(omega)$ is any path from

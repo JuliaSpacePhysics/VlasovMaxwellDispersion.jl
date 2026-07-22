@@ -1,11 +1,11 @@
 # # Relativistic pair plasma — validation vs López (2014) & Verscharen (2018)
 #
 # A hot electron–positron pair plasma with isotropic **Maxwell–Jüttner** momentum
-# distribution `μ = mc²/T = 2Π²/β∥`, at two temperatures: `β = 1` (`μ = 2`, blue)
-# and `β = 0.2` (`μ = 10`, red). We reproduce Fig. 5 of
-# Verscharen (2018, JPP, 10.1017/S0022377818000739) / López (2014, PoP,
-# 10.1063/1.4894679) and the tabulated
-# [ALPS](https://github.com/danielver02/ALPS).
+# distribution `μ = mc²/T = 2Π²/β∥`, at two temperatures: `β = 1` (`μ = 2`)
+# and `β = 0.2` (`μ = 10`). 
+
+# Reference: López (2014, PoP, 10.1063/1.4894679) and Verscharen (Fig. 5, 2018, 
+# JPP, 10.1017/S0022377818000739)
 #
 # **Verdict.** Published damping and O-modes are reproduced. The A/IC `ωr`
 # descent is a continuation artifact; the physical root turns toward the light
@@ -33,7 +33,7 @@ using CairoMakie
 pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
 plasma2 = pair(MaxwellJuttner(mu=2.0))    ## β = 1.0
 plasma10 = pair(MaxwellJuttner(mu=10.0))  ## β = 0.2
-kp = 0.001
+kp = 0.001;
 
 # ## Branch continuation
 #
@@ -65,7 +65,7 @@ kz2c = collect(1.9:0.1:3.0)
 #
 # Superluminal (`ωr > k∥`): the O-mode is near-marginal (`γ ≈ 0`), and the
 # continued sheet below the axis is exponentially far from the physical
-# boundary value near marginal superluminal `ω` ([continuation note](../relativistic.typ)), so we
+# boundary value near marginal superluminal `ω` ([continuation note](../relativistic.md)), so we
 # locate it on the real axis as the `|det 𝒟| → 0` minimum via the `CoupledVDF`
 # path, continued in `k∥`. Momentum bounds follow the thermal spread (`±15 mc` at
 # `μ = 2`, `±5 mc` at `μ = 10`).
@@ -99,13 +99,14 @@ ref = readdlm(joinpath(@__DIR__, "relativistic_pair_verscharen18.tsv"); comments
 fig5 = (; zip((:aic_wr2, :aic_gm2, :o_wr2, :aic_wr10, :aic_gm10, :o_wr10),
     (ref[ref[:, 1] .== i, 2:3] for i in 1:6))...)
 
-# ## Figure 5 reproduction
+# ## Root families
 #
-# One row per temperature. Line style identifies the root family: solid A/IC
-# propagating (dashed past the light line: corrected-continuation segments),
-# dash-dot O-mode, dotted aperiodic (shown over the *full* `k∥` range). Crosses:
-# digitized Fig. 5. The styles do not connect the distinct propagating and
-# purely imaginary families.
+# The transverse dispersion relation carries two families that never merge (closest approach near `k∥ ≈ 0.85`):
+#
+# | family | `μ = 2` | `μ = 10` |
+# |---|---|---|
+# | **propagating A/IC** | `ωr` rises, `γ` saturates at `γ ≈ -Ω/2`, then chases the light line, crossing near `k∥≈1.9` | `ωr` rises past the published `≈0.44` peak |
+# | **aperiodic** | `ωr=0` at *every* `k∥`; `γ→−1.271=−4/π` as `k∥→0` | at *every* `k∥`, far deeper: `γ→−6.366=−20/π` at `k∥→0` |
 
 blu, red = Makie.wong_colors()[1], Makie.wong_colors()[6]
 fig = Figure(size=(860, 720))
@@ -133,16 +134,8 @@ plotrow!((axr10, axi10), ((kz10, ω10, :solid, "A/IC", 2.5), (kap10, ωap10, :do
     (kzo10, ωo10), (fig5.aic_wr10, fig5.o_wr10, fig5.aic_gm10), red, 4)
 fig
 
-# ## Root families
-#
-# The transverse dispersion relation carries two families that never merge
-# (closest approach near `k∥ ≈ 0.85`):
-#
-# | family | `μ = 2` | `μ = 10` |
-# |---|---|---|
-# | **propagating A/IC** | `ωr` rises, `γ` saturates at `γ ≈ -Ω/2`, then chases the light line, crossing near `k∥≈1.9` | `ωr` rises past the published `≈0.44` peak |
-# | **aperiodic** | `ωr=0` at *every* `k∥`; `γ→−1.271=−4/π` as `k∥→0` | at *every* `k∥`, far deeper: `γ→−6.366=−20/π` at `k∥→0` |
-#
+# A/IC propagating (solid or dashed if past the light line), O-mode (dash-dot), aperiodic (dotted). Crosses are results from ALPS.
+
 # ## Why the A/IC branch saturates
 #
 # Relativistic particles have compact velocity support, `|v∥| < c`. The Doppler
@@ -173,7 +166,7 @@ fig
 # sharp and zero-$k$ collisionless damping of this mode is impossible.
 #
 # The published A/IC descent is instead produced by a non-holomorphic
-# continuation. See the [investigation report](https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/blob/main/experiments/lopez-anomalous-zone/report.typ) for its diagnosis and corrected López formula.
+# continuation. See the [investigation report](../lopez-anomalous-zone.md) for its diagnosis and corrected López formula.
 
 # ## Degeneration to the Maxwellian limit
 #
