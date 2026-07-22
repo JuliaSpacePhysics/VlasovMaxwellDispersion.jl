@@ -51,7 +51,7 @@ sols = map(κs) do κ
         NormalizedSpecies(1.0, Pi2p, vdf_p),
         NormalizedSpecies(-mp / me, Pi2e, Maxwellian(vthe)),
     )
-    solve(GlobalDispersionProblem(plasma, region, geom))
+    solve(DispersionProblem(plasma, region, geom))
 end
 
 # ## Verification against PlasmaBO
