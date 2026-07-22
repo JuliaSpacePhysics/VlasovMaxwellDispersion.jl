@@ -19,13 +19,13 @@ using CairoMakie
 
 vA_c = 1.0e-4                      # vA/c
 mratio = 1836.152673               # mp/me
-Pi2 = 1 / vA_c^2                   # (ωpp(ne)/ωcp)²
 vthm = vA_c                        # core: √(2qT_m/mp)/c = vA/c at β_m = 1
 vm = vthm / sqrt(2)                # Gary's vm = √(qT_m/mp); k is scanned in ωcp/vm
 
 # Current-free drifting pair: the core takes `−(n_b/n_e)·v₀`, the beam the rest.
 
 function gary_plasma(v0_vm)
+    Pi2 = 1 / vA_c^2                   # (ωpp(ne)/ωcp)²
     v0 = v0_vm * vm
     v0m = -0.01 * v0
     main = NormalizedSpecies(1.0, 0.99Pi2, Maxwellian(; vth_para = vthm, vd = v0m))
