@@ -1,24 +1,11 @@
 using VlasovMaxwellDispersion
-using TestItemRunner
+using ReTestItems
 
-@run_package_tests verbose = true
+const NW = parse(Int, get(ENV, "TEST_NWORKERS", "0"))
 
-@testitem "besselj_ladder vs SpecialFunctions" begin
-    include("test-bessel-ladder.jl")
-end
-@testitem "cold dispersion vs Stix" begin
-    include("test-cold-stix.jl")
-end
-@testitem "SciML interop" begin
-    include("test-sciml-interop.jl")
-end
-@testitem "Linking" begin
-    include("test-link.jl")
-end
-
-@testitem "Aqua" begin
-    using Aqua
-    using VlasovMaxwellDispersion
-
-    Aqua.test_all(VlasovMaxwellDispersion)
+if NW == 0
+    runtests(VlasovMaxwellDispersion; nworkers=0, testitem_timeout=1800)
+else
+    runtests(ti -> !(:latency in ti.tags), VlasovMaxwellDispersion; nworkers=NW, testitem_timeout=1800)
+    runtests(ti -> (:latency in ti.tags), VlasovMaxwellDispersion; nworkers=0, testitem_timeout=1800)
 end
