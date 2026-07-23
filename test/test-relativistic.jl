@@ -104,18 +104,18 @@ end
 # oblique k⊥. Math: docs/src/relativistic.typ.
 @testitem "MaxwellJuttner superluminal continuation: transported residue cycles" begin
     using LinearAlgebra: norm
-    using VlasovMaxwellDispersion: _mj_cycle_contribution, NormalizedSpecies
-    μ = 2.0
+    using VlasovMaxwellDispersion: _mj_cycle_contribution
+    let μ = 2.0
     mj = MaxwellJuttner(mu=μ)
     sp = NormalizedSpecies(1.0, 1.0, mj)
     rel(A, B) = norm(A - B) / norm(B)
     # subluminal damped: cycles reduce to the certified (p⊥,p∥) Landau rule
-    @test rel(_mj_cycle_contribution(mj, sp, 0.3 - 0.05im, Wavenumber(0.7, 0.4)),
-        contribution(sp, 0.3 - 0.05im, Wavenumber(0.7, 0.4))) < 1.0e-3
+    @test _mj_cycle_contribution(mj, sp, 0.3 - 0.05im, Wavenumber(0.7, 0.4)) ≈
+        contribution(sp, 0.3 - 0.05im, Wavenumber(0.7, 0.4)) rtol = 1.0e-3
     # parallel superluminal: cycles reproduce the certified Swanson continuation
     for (kz, ω) in ((0.5, 0.7 - 0.1im), (0.5, 0.7 - 0.4im), (2.5, 2.5766 - 0.4536im))
-        @test rel(_mj_cycle_contribution(mj, sp, ω, Wavenumber(0.0, kz)),
-            contribution(sp, ω, Wavenumber(0.0, kz))) < 1.0e-4
+        @test _mj_cycle_contribution(mj, sp, ω, Wavenumber(0.0, kz)) ≈
+            contribution(sp, ω, Wavenumber(0.0, kz)) rtol = 1.0e-4
     end
     ω, kz = 2.5766 - 0.4536im, 2.5
     # Oblique light-line seam continuity (|Δ| ∝ δ) and holomorphy.
@@ -133,6 +133,7 @@ end
     sol = solve(DispersionProblem(pair2, 2.5766 - 0.4536im, Wavenumber(0.5, 2.5)))
     @test sol.resid < 1.0e-10
     @test abs(sol.omega - (2.549295 - 0.4004106im)) < 1.0e-3
+    end
 end
 
 # Generic residue cycles: any relativistic CoupledVDF with an analytic

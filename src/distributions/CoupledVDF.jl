@@ -120,13 +120,6 @@ function _coupled_X0(d, ω, Ω, a, ns, b2s; rtol, norm)
     end[1]
 end
 
-# Relativistic harmonic sum, sliced in (p⊥, p∥) — docs/src/relativistic.typ.
-# Resonance D_n(p∥) = ωγ − k∥p∥ − nΩ, γ = √(1+p⊥²+p∥²), rationalizes to two simple
-# poles: D_n·D̃_n = A(p∥−p₊)(p∥−p₋), D̃_n = ωγ + k∥p∥ + nΩ, A = ω²−k∥² (the D̃_n zero is
-# a ghost carrying null residue). Poles reach the real p∥ axis only at Im ω = 0, and
-# |p∥| = P endpoints sit where f₀ ≈ 0 (no rim terms). f₀ must be evaluable at complex
-# p∥. Validated vs Maxwell–Jüttner (Swanson) to ~1e-5 down to Im ω = −0.15 at μ = 2.
-#
 # `path` picks the damped continuation (docs/src/relativistic.typ):
 #   :landau — straight box + classic Landau residues; holomorphic per ω half-plane.
 #   :cycles — box (Landau off) + transported residue cycles; needs coords = :energy.

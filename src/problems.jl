@@ -98,27 +98,12 @@ struct DispersionSolution{T,R,S,Pr,A}
     alg::A
 end
 
-
-"""
-Dispersion branch for parameter sweep. 
-For a fixed wavevector, `omega`, `k`, and `resid` are scalars. 
-Otherwise they are arrays shaped like the parameter grid.
-Missing branch points are `NaN` in `omega` and `resid`.
-"""
-struct DispersionBranch{W,K,R}
-    omega::W
-    k::K
-    resid::R
-end
-
-Base.length(b::DispersionBranch) = length(b.omega)
-Base.iterate(b::DispersionBranch, args...) = iterate(b.omega, args...)
-Base.getindex(b::DispersionBranch, args...) = getindex(b.omega, args...)
-
 """
     SurveySolution
 
-A collection of discovered [`DispersionBranch`](@ref)es.
+A vector of discovered [`DispersionBranch`](@ref)es: `sol[i]` is the `i`-th
+branch, `filter(isgrowing, sol)` keeps the unstable ones. Each branch spans the full
+`k` grid (missing points are `NaN`).
 """
 struct SurveySolution{BR,S,Pr,A} <: AbstractVector{BR}
     roots::Vector{BR}

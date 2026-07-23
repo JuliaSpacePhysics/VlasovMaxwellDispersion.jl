@@ -24,6 +24,7 @@ include("derivatives.jl")
 include("erased.jl")
 include("Bessel.jl")
 include("types.jl")
+include("branch.jl")
 include("reduction.jl")
 include("problems.jl")
 include("integrals.jl")
@@ -52,9 +53,11 @@ export DispersionFunction
 export DispersionProblem, GlobalDispersionProblem, Seed, Region, ReturnCode
 export Muller, GRPF, Continuation, AAA, DispersionSolution
 export AngleSweep, CartesianSweep
-export SurveySolution, DispersionBranch, SolveStats, dispersion_diagram
+export SurveySolution, DispersionBranch, SolveStats, isgrowing
+export dispersion_diagram!, dispersion_diagram
 export NonnegBSpline, BicubicHermite, fit_grid
 
+function dispersion_diagram! end
 function dispersion_diagram end
 
 include("precompile.jl")

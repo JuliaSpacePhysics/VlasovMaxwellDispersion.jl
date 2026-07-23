@@ -1,7 +1,6 @@
 @testitem "BiKappa ≡ CoupledVDF (integer + non-integer κ)" begin
-    ω = 1.2 - 0.05im
-
     function test_contribution(κ, kz)
+        ω = 1.2 - 0.05im
         k = Wavenumber(0.4, kz)
         vdf = BiKappa(vth_para = 0.9, vth_perp = 1.2, kappa = κ)
         cpl = NormalizedSpecies(-1.0, 0.7, CoupledVDF(vdf; para = (-30.0, 30.0), perp = 30.0))
