@@ -1,428 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Product bi-kappa instabilities — firehose &amp; whistler · VlasovMaxwellDispersion.jl</title><meta name="title" content="Product bi-kappa instabilities — firehose &amp; whistler · VlasovMaxwellDispersion.jl"/><meta property="og:title" content="Product bi-kappa instabilities — firehose &amp; whistler · VlasovMaxwellDispersion.jl"/><meta property="twitter:title" content="Product bi-kappa instabilities — firehose &amp; whistler · VlasovMaxwellDispersion.jl"/><meta name="description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="og:description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="twitter:description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="og:url" content="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/case-studies/product_bikappa/"/><meta property="twitter:url" content="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/case-studies/product_bikappa/"/><link rel="canonical" href="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/case-studies/product_bikappa/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body>
-<!-- NAVBAR START -->
-<style>
-    html {
-        scroll-padding-top: calc(55px + 1rem);
-    }
-
-    /* Documenter css tweaks */
-    .docs-sidebar {
-        margin-top: 3.75rem;
-    }
-
-    #documenter {
-        margin-top: 3.75rem;
-    }
-
-    .docs-version-selector {
-        margin-bottom: 60px !important;
-    }
-
-    @media screen and (max-width: 1056px) {
-        .docs-version-selector {
-            margin-bottom: 60px !important;
-        }
-
-        .docs-sidebar {
-            margin-top: 0 !important;
-        }
-    }
-    /* Documenter css tweaks ends here */
-
-    :root {
-        --heading-color: white;
-        --item-color: rgb(165, 165, 165);
-        --primary-bg: #f8f9fa;  /* Light gray to match Quarto's default navbar */
-        --navbar-text: #212529;  /* Dark text color for better contrast */
-        --hover-color: #e9ecef;  /* Slightly darker gray for hover state */
-        --deprecated-bg: #ff4d4d;
-        --deprecated-text: white;
-    }
-
-    .ext-navigation {
-        position: fixed;
-        height: 3.75rem;
-        top: 0;
-        width: 100%;
-        background-color: var(--primary-bg);
-        color: var(--navbar-text);
-        z-index: 1000;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        display: flex;
-        align-items: center;
-        padding: 0 1.0625rem;
-        transition: transform 0.3s;
-    }
-
-    .ext-navbar-logo {
-        margin-left: 0.625rem;
-    }
-
-    .ext-nav-links {
-        display: flex;
-        align-items: center;
-        list-style-type: none;
-        margin: 0;
-        padding: 0;
-        flex-grow: 1;
-    }
-
-    .ext-nav-links li {
-        margin-left: 1rem !important;
-    }
-
-    .ext-nav-link {
-        color: var(--navbar-text) !important;
-        text-decoration: none;
-        font-size: 1.0625rem !important;
-        transition: color 0.2s ease;
-        cursor: pointer;
-    }
-
-    .ext-nav-link:hover,
-    .ext-navbar-item-single a:hover {
-        color: var(--hover-color) !important;
-        text-decoration: none !important;
-    }
-    
-    .ext-navigation a {
-        text-decoration: none !important;
-    }
-
-    .ext-navbar-item-single a {
-        color: var(--navbar-text) !important;
-    }
-
-    .ext-menu-toggle {
-        display: none;
-        font-size: 1.5rem;
-        color: white;
-        cursor: pointer;
-    }
-
-    .ext-dropdown {
-        display: none;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-        grid-template-rows: auto auto auto;
-        padding: 1.875rem;
-        position: absolute;
-        width: 100%;
-        left: 0;
-        background-color: var(--primary-bg);
-        line-height: 1.875rem;
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-        transform: translateY(-0.625rem);
-    }
-
-    #library-handler::after {
-        content: "▼";
-        font-size: 0.6875rem;
-        margin-left: 0.3125rem;
-        transition: transform 0.3s ease-in-out;
-    }
-
-    #library-handler.open::after {
-        content: "▲";
-    }
-
-    .ext-dropdown.show {
-        display: grid;
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    .ext-dropdown ul {
-        height: auto;
-        width: 12.5rem;
-        margin-bottom: 1.25rem;
-    }
-
-    .ext-dropdown ul li {
-        text-align: left;
-        display: flex;
-        align-items: center;
-    }
-
-    .navbar-sub-item {
-        list-style: none;
-    }
-
-    .ext-dropdown ul a li {
-        color: var(--item-color);
-        width: 15.625rem;
-        border-radius: 3px;
-        padding: 0.125rem 0.625rem;
-        transition: background-color 0.2s ease;
-        text-decoration: none !important;
-    }
-
-    .ext-dropdown ul a li:hover {
-        background-color: rgba(107, 107, 107, 0.5);
-    }
-
-    .ext-dropdown-item-heading {
-        /* color: var(--heading-color); */
-        text-align: center;
-    }
-
-    .deprecated-badge {
-        background-color: var(--deprecated-bg);
-        color: var(--deprecated-text);
-        font-size: 0.75rem;
-        padding: 0.125rem 0.375rem;
-        border-radius: 3px;
-        margin-left: 0.5rem;
-        line-height: 1;
-    }
-
-    /* Responsive styling */
-    @media (max-width: 966px) {
-        .ext-dropdown {
-            grid-template-columns: 1fr 1fr 1fr;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .ext-nav-links {
-            display: none;
-            flex-direction: column;
-            width: 100%;
-            background-color: var(--primary-bg);
-            position: absolute;
-            top: 3.75rem;
-            left: 0;
-            padding: 0.625rem 0;
-            height: auto;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgb(141, 141, 141) grey;
-        }
-
-        .ext-nav-links.show {
-            display: flex;
-        }
-
-        .ext-nav-links li {
-            margin: 0.625rem 0;
-            text-align: center;
-        }
-
-        .ext-menu-toggle {
-            display: block;
-            margin-left: auto;
-        }
-
-        .ext-navigation.hide {
-            transform: translateY(-3.75rem);
-        }
-
-        .ext-dropdown {
-            place-content: center;
-            text-align: center;
-            grid-template-columns: 1fr;
-            line-height: 1.25rem;
-            padding: 0.625rem;
-        }
-
-        .ext-dropdown ul {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 0.3125rem;
-        }
-
-        .ext-dropdown ul li {
-            text-align: center;
-            /* justify-content: center; */
-        }
-
-        .ext-dropdown ul a li {
-            width: 100%;
-        }
-
-        .ext-dropdown ul a li:hover {
-            background-color: var(--primary-bg);
-            /* color: #fff; */
-        }
-
-        /* Modified scroll bar */
-        .ext-nav-links::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .ext-nav-links::-webkit-scrollbar-track {
-            box-shadow: inset 0 0 5px grey;
-        }
-
-        .ext-nav-links::-webkit-scrollbar-thumb {
-            background: rgb(141, 141, 141);
-            border-radius: 3px;
-        }
-
-        .ext-nav-links::-webkit-scrollbar-thumb:hover {
-            background: #9b9b9b;
-        }
-    }
-</style>
-<nav class="ext-navigation">
-    <a href="https://juliaspacephysics.github.io"></a>
-    <a style="color: #212529 !important; font-size: 21.25px !important; margin-left: 10px;" href="https://juliaspacephysics.github.io">JuliaSpacePhysics</a>
-    <ul class="ext-nav-links">
-        <li>
-            <p class="ext-nav-link" id="library-handler">Ecosystem</p>
-            <div class="ext-dropdown" id="ext-dropdown-items">
-                <ul>
-                    <li class="ext-dropdown-item-heading">Core</li>
-                    <a href="https://juliaspacephysics.github.io/SPEDAS.jl"><li>SPEDAS.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/SpaceDataModel.jl"><li>SpaceDataModel.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/GeoCotrans.jl"><li>GeoCotrans.jl</li></a>
-                    <a href="https://henry2004y.github.io/TestParticle.jl/"><li>TestParticle.jl</li></a>
-                </ul>
-                <ul>
-                    <li class="ext-dropdown-item-heading">Data</li>
-                    <a href="https://juliaspacephysics.github.io/CDFDatasets.jl/"><li>CDFDatasets.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/CDAWeb.jl/"><li>CDAWeb.jl</li></a>
-                    <a href="https://sciqlop.github.io/Speasy.jl/"><li>Speasy.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/HAPIClient.jl/"><li>HAPIClient.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/Madrigal.jl/"><li>Madrigal.jl</li></a>
-                    <a href="https://github.com/JuliaSpacePhysics/PySPEDAS.jl"><li>PySPEDAS.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/SunPy.jl/"><li>SunPy.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/CommonDataFormat.jl/"><li>CommonDataFormat.jl</li></a>
-                </ul>
-                <ul>
-                    <li class="ext-dropdown-item-heading">Domain</li>
-                    <a href="https://juliaspacephysics.github.io/SpaceWeather.jl"><li>SpaceWeather.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/SolarEnergeticParticle.jl"><li>SolarEnergeticParticle.jl (Helio)</li></a>
-                    <a href="https://juliaspacephysics.github.io/GeoAACGM.jl"><li>GeoAACGM.jl (ITM)</li></a>
-                    <a href="https://juliaspacephysics.github.io/IRBEM.jl"><li>IRBEM.jl (Magnetosphere)</li></a>
-                    <a href="https://juliaspacephysics.github.io/TsyganenkoModels.jl"><li>TsyganenkoModels.jl (Magnetosphere)</li></a>
-                </ul>
-                <!-- Enable when more mission-specific packages are available -->
-                <ul>
-                    <li class="ext-dropdown-item-heading">Mission-specific</li>
-                    <a href="https://juliaspacephysics.github.io/EISCATData.jl"><li>EISCATData.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/ELFINData.jl"><li>ELFINData.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/DMSPData.jl"><li>DMSPData.jl</li></a>
-                </ul>
-               
-                <ul>
-                    <li class="ext-dropdown-item-heading">General Analysis</li>
-                    <a href="https://juliaplasma.github.io/PlasmaFormulary.jl"><li>JuliaPlasma/PlasmaFormulary.jl</li></a>
-                    <a href="https://juliaplasma.github.io/ChargedParticles.jl"><li>JuliaPlasma/ChargedParticles.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/VelocityDistributionFunctions.jl"><li>VelocityDistributionFunctions.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/PlasmaWaves.jl"><li>PlasmaWaves.jl</li></a>
-                    <a href="https://juliaspacephysics.github.io/PlasmaBO.jl"><li>PlasmaBO.jl</li></a>
-                    <a href="https://github.com/JuliaSpacePhysics/SpacePhysicsMakie.jl"><li>SpacePhysicsMakie.jl</li></a>
-                </ul>
-            </div>
-        </li>
-        <li><a href="https://juliaspacephysics.github.io/tutorials/">Tutorials</a></li>
-    </ul>
-    <a href="https://github.com/JuliaSpacePhysics">
-        <svg width="32px" height="32px" viewBox="-8.2 -8.2 36.40 36.40" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#000000">
-            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-            <g id="SVGRepo_iconCarrier">
-                <title>github [#142]</title>
-                <desc>JuliaSpacePhysics</desc>
-                <defs></defs>
-                <g id="Page-1" stroke-width="0.0002" fill="none" fill-rule="evenodd">
-                    <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -7559.000000)" fill="#ffffff">
-                        <g id="icons" transform="translate(56.000000, 160.000000)">
-                            <path
-                                d="M94,7399 C99.523,7399 104,7403.59 104,7409.253 C104,7413.782 101.138,7417.624 97.167,7418.981 C96.66,7419.082 96.48,7418.762 96.48,7418.489 C96.48,7418.151 96.492,7417.047 96.492,7415.675 C96.492,7414.719 96.172,7414.095 95.813,7413.777 C98.04,7413.523 100.38,7412.656 100.38,7408.718 C100.38,7407.598 99.992,7406.684 99.35,7405.966 C99.454,7405.707 99.797,7404.664 99.252,7403.252 C99.252,7403.252 98.414,7402.977 96.505,7404.303 C95.706,7404.076 94.85,7403.962 94,7403.958 C93.15,7403.962 92.295,7404.076 91.497,7404.303 C89.586,7402.977 88.746,7403.252 88.746,7403.252 C88.203,7404.664 88.546,7405.707 88.649,7405.966 C88.01,7406.684 87.619,7407.598 87.619,7408.718 C87.619,7412.646 89.954,7413.526 92.175,7413.785 C91.889,7414.041 91.63,7414.493 91.54,7415.156 C90.97,7415.418 89.522,7415.871 88.63,7414.304 C88.63,7414.304 88.101,7413.319 87.097,7413.247 C87.097,7413.247 86.122,7413.234 87.029,7413.87 C87.029,7413.87 87.684,7414.185 88.139,7415.37 C88.139,7415.37 88.726,7417.2 91.508,7416.58 C91.513,7417.437 91.522,7418.245 91.522,7418.489 C91.522,7418.76 91.338,7419.077 90.839,7418.982 C86.865,7417.627 84,7413.783 84,7409.253 C84,7403.59 88.478,7399 94,7399"
-                                id="github-[#142]">
-                            </path>
-                        </g>
-                    </g>
-                </g>
-            </g>
-        </svg>
-    </a>
-    <span class="ext-menu-toggle">&#9776;</span>
-</nav>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const menuToggle = document.querySelector(".ext-menu-toggle");
-        const navLinks = document.querySelector(".ext-nav-links");
-        const nav = document.querySelector(".ext-navigation");
-        const navigationHandler = document.getElementById("library-handler");
-        const navigationItemsContainer =
-            document.getElementById("ext-dropdown-items");
-        let lastScrollY = window.scrollY;
-
-        function setAppropriateHeight() {
-            if (window.innerWidth <= 768) {
-                const viewportHeight = window.innerHeight;
-                const navHeight = nav.offsetHeight;
-                navLinks.style.maxHeight = `${viewportHeight - navHeight}px`;
-                navLinks.style.overflowY = "auto";
-            } else {
-                navLinks.style.maxHeight = "";
-                navLinks.style.overflowY = "";
-            }
-        }
-
-        // Toggle main menu for mobile
-        menuToggle.addEventListener("click", () => {
-            navLinks.classList.toggle("show");
-            if (navLinks.classList.contains("show")) {
-                setAppropriateHeight();
-                // Ensure the dropdown is hidden when menu is first opened
-                navigationItemsContainer.style.display = "none";
-                navigationItemsContainer.classList.remove("show");
-            }
-        });
-
-        // Close menus if clicked outside
-        document.addEventListener("click", (event) => {
-            if (
-                !navLinks.contains(event.target) &&
-                !menuToggle.contains(event.target)
-            ) {
-                navLinks.classList.remove("show");
-                navigationItemsContainer.classList.remove("show");
-                navigationHandler.classList.remove("open");
-            }
-        });
-
-        // Hide navigation bar on scroll down in mobile view
-        window.addEventListener("scroll", () => {
-            if (window.innerWidth <= 768) {
-                nav.classList.toggle("hide", window.scrollY > lastScrollY);
-                lastScrollY = window.scrollY;
-            }
-        });
-
-        // Library API script
-        navigationHandler.addEventListener("click", (event) => {
-            event.preventDefault(); // Prevent default action of the link
-            if (navigationItemsContainer.classList.contains("show")) {
-                navigationItemsContainer.classList.remove("show");
-                navigationHandler.classList.remove("open");
-                setTimeout(() => {
-                    navigationItemsContainer.style.display = "none";
-                }, 500); // Match the timeout to the CSS transition duration
-            } else {
-                navigationItemsContainer.style.display = "grid";
-                navigationHandler.classList.add("open");
-                setTimeout(() => {
-                    navigationItemsContainer.classList.add("show");
-                }, 10); // Delay to ensure the display change takes effect before adding class
-            }
-            setAppropriateHeight(); // Recalculate height when dropdown changes
-        });
-
-        // Handle window resize
-        window.addEventListener("resize", setAppropriateHeight);
-
-        // Initial setup
-        setAppropriateHeight();
-    });
-</script>
-<!-- NAVBAR END -->
-<div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">VlasovMaxwellDispersion.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">VlasovMaxwellDispersion.jl</a></li><li><a class="tocitem" href="../../api/">API Reference</a></li><li><a class="tocitem" href="../../coupled-vdf/">Coupled VDFs: choosing a representation</a></li><li><a class="tocitem" href="../../lowrank-susceptibility/">Compressing general coupled VDF with Adaptive Cross Approximation (ACA)</a></li><li><a class="tocitem" href="../../reduction/">Mode reduction</a></li><li><a class="tocitem" href="../../relativistic/">Relativistic response and continuation</a></li><li><span class="tocitem">Case studies</span><ul><li><a class="tocitem" href="../bo_case1_kappa_firehose/">Oblique proton firehose — coupled bi-kappa protons (Guo et al. 2026, Case 1)</a></li><li><a class="tocitem" href="../bo_case3_electron_ringbeam/">Oblique electron ring-beam instability (Guo et al. 2025, Case 3)</a></li><li><a class="tocitem" href="../cattaert/">Kappa-Maxwellian Plasma — Cattaert 2007</a></li><li><a class="tocitem" href="../ionbeam_gary84/">Ion beam instabilities (Gary et al. 1984)</a></li><li class="is-active"><a class="tocitem" href>Product bi-kappa instabilities — firehose &amp; whistler</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#1.-Firehose-—-bi-kappa-protons-(Astfalk-2017)"><span>1. Firehose — bi-kappa protons (Astfalk 2017)</span></a></li><li><a class="tocitem" href="#Verification-against-PlasmaBO"><span>Verification against PlasmaBO</span></a></li><li><a class="tocitem" href="#Dispersion-diagram"><span>Dispersion diagram</span></a></li><li class="toplevel"><a class="tocitem" href="#2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)"><span>2. Parallel whistler — product-bi-kappa electrons (Guo et al. 2026, Case 2)</span></a></li><li><a class="tocitem" href="#Verification-against-PlasmaBO-2"><span>Verification against PlasmaBO</span></a></li><li><a class="tocitem" href="#Dispersion-diagram-—-paper-Fig.-2"><span>Dispersion diagram — paper Fig. 2</span></a></li></ul></li><li><a class="tocitem" href="../proton_shell_Min15/">Quasi-perpendicular instability — proton shell (Min &amp; Liu 2015)</a></li><li><a class="tocitem" href="../relativistic_pair/">Relativistic pair plasma (López 2014 &amp; Verscharen 2018)</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Case studies</a></li><li class="is-active"><a href>Product bi-kappa instabilities — firehose &amp; whistler</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Product bi-kappa instabilities — firehose &amp; whistler</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/blob/main/docs/src/case-studies/product_bikappa.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Product-bi-kappa-instabilities-—-firehose-and-whistler"><a class="docs-heading-anchor" href="#Product-bi-kappa-instabilities-—-firehose-and-whistler">Product bi-kappa instabilities — firehose &amp; whistler</a><a id="Product-bi-kappa-instabilities-—-firehose-and-whistler-1"></a><a class="docs-heading-anchor-permalink" href="#Product-bi-kappa-instabilities-—-firehose-and-whistler" title="Permalink"></a></h1><p>Two benchmarks for VMD&#39;s <em>product</em> bi-kappa VDF <code>f ∝ [1 + v∥²/(κc∥²)]^{-(κ+1)}·[1 + v⊥²/(κc⊥²)]^{-(κ+1)}</code>:</p><ol><li>the proton parallel <strong>firehose</strong> (<code>T∥ &gt; T⟂</code>), after the <a href="https://juliaspacephysics.github.io/PlasmaBO.jl/dev/firehose_Astfalk17/">PlasmaBO.jl case</a> (Astfalk &amp; Verscharen 2017);</li><li>the parallel electron <strong>whistler</strong> (<code>T⟂ &gt; T∥</code>), Case 2 of the BO/ALPS solver comparison <a href="https://arxiv.org/abs/2606.14439">arXiv:2606.14439</a> (Guo et al. 2026).</li></ol><p>Both map onto VMD&#39;s temperature-preserving <code>θ</code> convention, so raw <code>vth = √(2qT/m)</code> reproduces the same distribution as the reference codes.</p><pre><code class="language-julia hljs">using VlasovMaxwellDispersion
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Product bi-kappa instabilities — firehose &amp; whistler · VlasovMaxwellDispersion.jl</title><meta name="title" content="Product bi-kappa instabilities — firehose &amp; whistler · VlasovMaxwellDispersion.jl"/><meta property="og:title" content="Product bi-kappa instabilities — firehose &amp; whistler · VlasovMaxwellDispersion.jl"/><meta property="twitter:title" content="Product bi-kappa instabilities — firehose &amp; whistler · VlasovMaxwellDispersion.jl"/><meta name="description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="og:description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="twitter:description" content="Documentation for VlasovMaxwellDispersion.jl."/><meta property="og:url" content="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/case-studies/product_bikappa/"/><meta property="twitter:url" content="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/case-studies/product_bikappa/"/><link rel="canonical" href="https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl/case-studies/product_bikappa/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">VlasovMaxwellDispersion.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">VlasovMaxwellDispersion.jl</a></li><li><a class="tocitem" href="../../api/">API Reference</a></li><li><a class="tocitem" href="../../coupled-vdf/">Coupled VDFs: choosing a representation</a></li><li><a class="tocitem" href="../../lowrank-susceptibility/">Compressing general coupled VDF with Adaptive Cross Approximation (ACA)</a></li><li><a class="tocitem" href="../../reduction/">Mode reduction</a></li><li><a class="tocitem" href="../../relativistic/">Relativistic response and continuation</a></li><li><span class="tocitem">Case studies</span><ul><li><a class="tocitem" href="../bo_case1_kappa_firehose/">Oblique proton firehose — coupled bi-kappa protons</a></li><li><a class="tocitem" href="../bo_case3_electron_ringbeam/">Oblique electron ring-beam instability</a></li><li><a class="tocitem" href="../cattaert/">Kappa-Maxwellian Plasma — Cattaert 2007</a></li><li><a class="tocitem" href="../core_beam/">Ion cyclotron waves from a proton core-beam</a></li><li><a class="tocitem" href="../ice_alpha/">Ion cyclotron emission — alpha ring-beam (Warwick et al. 2018)</a></li><li><a class="tocitem" href="../ionbeam_gary84/">Ion beam instabilities (Gary et al. 1984)</a></li><li class="is-active"><a class="tocitem" href>Product bi-kappa instabilities — firehose &amp; whistler</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#1.-Firehose-—-bi-kappa-protons-(Astfalk-2017)"><span>1. Firehose — bi-kappa protons (Astfalk 2017)</span></a></li><li><a class="tocitem" href="#Verification-against-PlasmaBO"><span>Verification against PlasmaBO</span></a></li><li><a class="tocitem" href="#Dispersion-diagram"><span>Dispersion diagram</span></a></li><li class="toplevel"><a class="tocitem" href="#2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)"><span>2. Parallel whistler — product-bi-kappa electrons (Guo et al. 2026, Case 2)</span></a></li><li><a class="tocitem" href="#Verification-against-PlasmaBO-2"><span>Verification against PlasmaBO</span></a></li><li><a class="tocitem" href="#Dispersion-diagram-2"><span>Dispersion diagram</span></a></li></ul></li><li><a class="tocitem" href="../proton_shell_Min15/">Quasi-perpendicular instability — proton shell (Min &amp; Liu 2015)</a></li><li><a class="tocitem" href="../relativistic_pair/">Relativistic pair plasma (López 2014 &amp; Verscharen 2018)</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Case studies</a></li><li class="is-active"><a href>Product bi-kappa instabilities — firehose &amp; whistler</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Product bi-kappa instabilities — firehose &amp; whistler</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/blob/main/docs/src/case-studies/product_bikappa.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Product-bi-kappa-instabilities-—-firehose-and-whistler"><a class="docs-heading-anchor" href="#Product-bi-kappa-instabilities-—-firehose-and-whistler">Product bi-kappa instabilities — firehose &amp; whistler</a><a id="Product-bi-kappa-instabilities-—-firehose-and-whistler-1"></a><a class="docs-heading-anchor-permalink" href="#Product-bi-kappa-instabilities-—-firehose-and-whistler" title="Permalink"></a></h1><p>Two benchmarks for VMD&#39;s <em>product</em> bi-kappa VDF <code>f ∝ [1 + v∥²/(κc∥²)]^{-(κ+1)}·[1 + v⊥²/(κc⊥²)]^{-(κ+1)}</code>:</p><ol><li>the proton parallel <strong>firehose</strong> (<code>T∥ &gt; T⟂</code>), after the <a href="https://juliaspacephysics.github.io/PlasmaBO.jl/dev/firehose_Astfalk17/">PlasmaBO.jl case</a> (Astfalk &amp; Verscharen 2017);</li><li>the parallel electron <strong>whistler</strong> (<code>T⟂ &gt; T∥</code>), Case 2 of the BO/ALPS solver comparison <a href="https://arxiv.org/abs/2606.14439">arXiv:2606.14439</a> (Guo et al. 2026).</li></ol><p>Both map onto VMD&#39;s temperature-preserving <code>θ</code> convention, so raw <code>vth = √(2qT/m)</code> reproduces the same distribution as the reference codes.</p><pre><code class="language-julia hljs">using VlasovMaxwellDispersion
 using DelimitedFiles, Printf
 using CairoMakie
 
@@ -446,7 +23,7 @@ plasma = (
 kunit = c0 / vA                        # k·dᵢ → k c/ωcp
 region = (-0.1 - 0.25im, 0.5 + 0.12im)
 geom = AngleSweep(k = (0.01, 0.5) .* kunit, theta = deg2rad(45))
-sol = solve(DispersionProblem(plasma, region, geom))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SurveySolution(retcode=Success, 19 roots, 30048 evals, 6.6 s)</code></pre><h2 id="Verification-against-PlasmaBO"><a class="docs-heading-anchor" href="#Verification-against-PlasmaBO">Verification against PlasmaBO</a><a id="Verification-against-PlasmaBO-1"></a><a class="docs-heading-anchor-permalink" href="#Verification-against-PlasmaBO" title="Permalink"></a></h2><p>Compare the growth-rate curve: at each reference <code>k</code> with <code>γ_ref &gt; 0.005 ωcp</code>, the largest <code>Im ω</code> over all surveyed roots. The reference (<code>firehose_astfalk17_ref.tsv</code>) is the unstable branch tracked by PlasmaBO&#39;s Hermite–Hermite solver (<code>N = 2</code>, <code>J = 24</code>).</p><pre><code class="language-julia hljs">ref = readdlm(joinpath(@__DIR__, &quot;firehose_astfalk17_ref.tsv&quot;); comments = true)
+sol = solve(DispersionProblem(plasma, region, geom))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SurveySolution(retcode=Success, 19 roots, 29504 evals, 8.1 s)</code></pre><h2 id="Verification-against-PlasmaBO"><a class="docs-heading-anchor" href="#Verification-against-PlasmaBO">Verification against PlasmaBO</a><a id="Verification-against-PlasmaBO-1"></a><a class="docs-heading-anchor-permalink" href="#Verification-against-PlasmaBO" title="Permalink"></a></h2><p>Compare the growth-rate curve: at each reference <code>k</code> with <code>γ_ref &gt; 0.005 ωcp</code>, the largest <code>Im ω</code> over all surveyed roots. The reference (<code>firehose_astfalk17_ref.tsv</code>) is the unstable branch tracked by PlasmaBO&#39;s Hermite–Hermite solver (<code>N = 2</code>, <code>J = 24</code>).</p><pre><code class="language-julia hljs">ref = readdlm(joinpath(@__DIR__, &quot;firehose_astfalk17_ref.tsv&quot;); comments = true)
 kdi(b) = [sqrt(abs2(k)) / kunit for k in b.k]
 Δmax = 0.0
 for r in eachrow(ref)
@@ -458,22 +35,23 @@ for r in eachrow(ref)
     global Δmax = max(Δmax, abs(γ - r[3]))
     @printf(&quot;k·di=%.2f  γ_ref=%.4f  γ_vmd=%.4f  Δ=%.1e\n&quot;, r[1], r[3], γ, abs(γ - r[3]))
 end
-Δmax</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.0036020055574190954</code></pre><p>The curves agree to a few <code>10⁻³ ωcp</code> — the truncation level of the reference&#39;s Hermite–Hermite expansion of a <em>sampled</em> distribution, while VMD evaluates the analytic bi-kappa susceptibility (residuals <code>~10⁻¹²</code>).</p><h2 id="Dispersion-diagram"><a class="docs-heading-anchor" href="#Dispersion-diagram">Dispersion diagram</a><a id="Dispersion-diagram-1"></a><a class="docs-heading-anchor-permalink" href="#Dispersion-diagram" title="Permalink"></a></h2><p>The non-propagating firehose branch (<code>Re ω ≈ 0</code>, <code>Im ω &gt; 0</code> for <code>k·dᵢ ≈ 0.07–0.34</code>) among the damped branches; black dots: PlasmaBO track.</p><pre><code class="language-julia hljs">fig = Figure(size = (700, 620))
+Δmax</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.0036020055574189982</code></pre><p>The curves agree to a few <code>10⁻³ ωcp</code> — the truncation level of the reference&#39;s Hermite–Hermite expansion of a <em>sampled</em> distribution, while VMD evaluates the analytic bi-kappa susceptibility (residuals <code>~10⁻¹²</code>).</p><h2 id="Dispersion-diagram"><a class="docs-heading-anchor" href="#Dispersion-diagram">Dispersion diagram</a><a id="Dispersion-diagram-1"></a><a class="docs-heading-anchor-permalink" href="#Dispersion-diagram" title="Permalink"></a></h2><p>The non-propagating firehose branch (<code>Re ω ≈ 0</code>, <code>Im ω &gt; 0</code> for <code>k·dᵢ ≈ 0.07–0.34</code>) among the damped branches; black dots: PlasmaBO track. At small <code>k</code> the survey also finds a cloud of strongly damped modes that is discovered inconsistently slice to slice, so linking leaves it as short fragments; we draw only branches that persist over a meaningful <code>k</code>-range.</p><pre><code class="language-julia hljs">persists(b) = count(isfinite, b.omega) ≥ length(b.omega) ÷ 4
+
+fig = Figure(size = (700, 620))
 axr = Axis(fig[1, 1]; ylabel = &quot;Re ω / ωcp&quot;, title = &quot;Bi-kappa firehose, θ = 45°&quot;)
 axi = Axis(fig[2, 1]; xlabel = &quot;k dᵢ&quot;, ylabel = &quot;Im ω / ωcp&quot;)
 palette = Makie.wong_colors()
-for (i, b) in enumerate(sol.roots)
+for (i, b) in enumerate(filter(persists, sol))
     col = palette[mod1(i, length(palette))]
     x = kdi(b)
-    p = sortperm(x)
-    lines!(axr, x[p], real.(b.omega)[p]; color = col, linewidth = 2)
-    lines!(axi, x[p], imag.(b.omega)[p]; color = col, linewidth = 2)
+    lines!(axr, x, real.(b.omega); color = col, linewidth = 2)
+    lines!(axi, x, imag.(b.omega); color = col, linewidth = 2)
 end
 scatter!(axr, ref[:, 1], ref[:, 2]; color = :black, markersize = 5)
 scatter!(axi, ref[:, 1], ref[:, 3]; color = :black, markersize = 5)
 hlines!(axi, [0.0]; color = (:black, 0.3), linestyle = :dash)
 ylims!(axi, -0.12, 0.08)
-fig</code></pre><img src="de53eb1c.png" alt="Example block output"/><h1 id="2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)"><a class="docs-heading-anchor" href="#2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)">2. Parallel whistler — product-bi-kappa electrons (Guo et al. 2026, Case 2)</a><a id="2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)" title="Permalink"></a></h1><p>Anisotropic electron product bi-kappa with <code>T⟂e = 4 T∥e</code>, product-bi-kappa protons at <code>T_p = 50 eV</code>, for <code>κ ∈ {3, 7, ∞}</code> (paper Fig. 2). The <code>κ = 3</code> panel is where the paper reports BO&#39;s fitted growth rate deviating from the ALPS/benchmark curves. Normalized to the electron gyrofrequency <code>|ωce|</code>.</p><pre><code class="language-julia hljs">B0 = 1.0e-8; n = 1.0e7
+fig</code></pre><img src="5a17e5f0.png" alt="Example block output"/><h1 id="2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)"><a class="docs-heading-anchor" href="#2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)">2. Parallel whistler — product-bi-kappa electrons (Guo et al. 2026, Case 2)</a><a id="2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Parallel-whistler-—-product-bi-kappa-electrons-(Guo-et-al.-2026,-Case-2)" title="Permalink"></a></h1><p>Anisotropic electron product bi-kappa with <code>T⟂e = 4 T∥e</code>, product-bi-kappa protons at <code>T_p = 50 eV</code>, for <code>κ ∈ {3, 7, ∞}</code> (paper Fig. 2). The <code>κ = 3</code> panel is where the paper reports BO&#39;s fitted growth rate deviating from the ALPS/benchmark curves. Normalized to the electron gyrofrequency <code>|ωce|</code>.</p><pre><code class="language-julia hljs">B0 = 1.0e-8; n = 1.0e7
 Tez = 102.0; Tep = 408.0; Tp = 50.0
 κs = (3.0, 7.0, Inf)
 
@@ -487,7 +65,7 @@ vthp = sqrt(2qe * Tp / mp) / c0
 vdf(vth_para, vth_perp, κ) = isinf(κ) ?
     Maxwellian(; vth_para, vth_perp) :
     ProductBiKappa(; vth_para, vth_perp, kappa_para = κ, kappa_perp = κ)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">vdf (generic function with 1 method)</code></pre><p><code>k∥</code> is swept over <code>k·λₑ ∈ [0.01, 2.8]</code> (<code>λₑ = c/ωpe</code>, the paper&#39;s abscissa); the <code>ω</code> box spans the whistler band <code>0 &lt; Re ω &lt; |ωce|</code> up to the strongly growing peak <code>γ ≳ ωce</code> together with the damped branches around it.</p><pre><code class="language-julia hljs">kunit = sqrt(Pi2e)                     # k·λₑ → k c/|ωce|
-region = (-0.2 - 0.2im, 1.0 + 1.5im)
+region = (-0.2 - 0.5im, 1.0 + 1.5im)
 geom = CartesianSweep(kz = vcat(0.01:0.005:0.3, 0.32:0.02:2.8) .* kunit)
 
 sols = map(κs) do κ
@@ -496,7 +74,7 @@ sols = map(κs) do κ
         NormalizedSpecies(-1.0, Pi2e, vdf(vthez, vthep, κ)),
     )
     solve(DispersionProblem(plasma, region, geom))
-end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(SurveySolution(retcode=Success, 27 roots, 87926 evals, 2.91 s), SurveySolution(retcode=Success, 48 roots, 108682 evals, 4.46 s), SurveySolution(retcode=Success, 77 roots, 97860 evals, 0.9 s))</code></pre><h2 id="Verification-against-PlasmaBO-2"><a class="docs-heading-anchor" href="#Verification-against-PlasmaBO-2">Verification against PlasmaBO</a><a class="docs-heading-anchor-permalink" href="#Verification-against-PlasmaBO-2" title="Permalink"></a></h2><p>The reference (<code>bo_case2_ref.tsv</code>) is the whistler branch tracked with PlasmaBO&#39;s <em>dedicated</em> product-bi-kappa solver <code>BOPBK</code> (<code>N = 2</code>) for <code>κ = 3, 7</code> — the low-κ-capable formulation of Bai et al. 2024, i.e. the paper&#39;s black benchmark curves, not the HH fit that fails at <code>κ = 3</code> — and with the Hermite–Hermite solver for the Maxwellian limit. At each reference <code>k</code> the nearest surveyed root is compared over the whole complex plane.</p><pre><code class="language-julia hljs">ref = readdlm(joinpath(@__DIR__, &quot;bo_case2_ref.tsv&quot;); comments = true)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(SurveySolution(retcode=Saturated, 36 roots, 87852 evals, 3.68 s), SurveySolution(retcode=Success, 53 roots, 113311 evals, 5.09 s), SurveySolution(retcode=Success, 190 roots, 148686 evals, 2.2 s))</code></pre><h2 id="Verification-against-PlasmaBO-2"><a class="docs-heading-anchor" href="#Verification-against-PlasmaBO-2">Verification against PlasmaBO</a><a class="docs-heading-anchor-permalink" href="#Verification-against-PlasmaBO-2" title="Permalink"></a></h2><p>The reference (<code>bo_case2_ref.tsv</code>) is the whistler branch tracked with PlasmaBO&#39;s <em>dedicated</em> product-bi-kappa solver <code>BOPBK</code> (<code>N = 2</code>) for <code>κ = 3, 7</code> — the low-κ-capable formulation of Bai et al. 2024, i.e. the paper&#39;s black benchmark curves, not the HH fit that fails at <code>κ = 3</code> — and with the Hermite–Hermite solver for the Maxwellian limit. At each reference <code>k</code> the nearest surveyed root is compared over the whole complex plane.</p><pre><code class="language-julia hljs">ref = readdlm(joinpath(@__DIR__, &quot;bo_case2_ref.tsv&quot;); comments = true)
 kle(b) = [para(k) / kunit for k in b.k]
 for (κ, sol) in zip(κs, sols)
     rows = ref[ref[:, 4] .== κ, :]
@@ -512,18 +90,16 @@ for (κ, sol) in zip(κs, sols)
     end
     @printf(&quot;κ=%-3s max |ω_vmd - ω_ref| = %.1e ωce\n&quot;, isinf(κ) ? &quot;∞&quot; : string(round(Int, κ)), Δmax)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr33"><span class="sgr1">┌ Warning: </span></span>Assignment to `Δmax` in soft scope is ambiguous because a global variable by the same name exists: `Δmax` will be treated as a new local. Disambiguate by using `local Δmax` to suppress this warning or `global Δmax` to assign to the existing global variable.
-<span class="sgr33"><span class="sgr1">└ </span></span><span class="sgr90">@ product_bikappa.md:172</span>
+<span class="sgr33"><span class="sgr1">└ </span></span><span class="sgr90">@ product_bikappa.md:180</span>
 κ=3   max |ω_vmd - ω_ref| = 3.9e-07 ωce
 κ=7   max |ω_vmd - ω_ref| = 7.9e-07 ωce
-κ=∞   max |ω_vmd - ω_ref| = 5.6e-07 ωce</code></pre><p>Both codes evaluate the analytic product-bi-kappa susceptibility for this parallel geometry, so the growing branch agrees to <code>~10⁻⁶ ωce</code> — far below the visual thickness of the paper&#39;s curves.</p><div class="admonition is-info" id="Convention-discrepancy-in-the-paper&#39;s-κ-3-panel-88a627277e74fb5c"><header class="admonition-header">Convention discrepancy in the paper&#39;s κ = 3 panel<a class="admonition-anchor" href="#Convention-discrepancy-in-the-paper&#39;s-κ-3-panel-88a627277e74fb5c" title="Permalink"></a></header><div class="admonition-body"><p>With the paper&#39;s <em>written</em> thermal speeds <code>c∥ = √(2kT∥/m·(1−1/2κ))</code>, <code>c⊥ = √(2kT⊥/m·(1−1/κ))</code> (used here and by PlasmaBO), the κ = 3 branch crosses <code>γ = 0</code> at <code>k·λₑ ≈ 2.1</code>. The paper&#39;s Fig. 2(b) instead crosses at <code>≈ 2.45</code>, which VMD reproduces only with <em>raw</em> <code>θ∥,⊥ = √(2kT/m)</code> (no κ correction — evidently the convention of the plotted Bai 2024 benchmark). At κ = 7 and ∞ the correction is within the curve width, so only the κ = 3 panel differs visibly.</p></div></div><h2 id="Dispersion-diagram-—-paper-Fig.-2"><a class="docs-heading-anchor" href="#Dispersion-diagram-—-paper-Fig.-2">Dispersion diagram — paper Fig. 2</a><a id="Dispersion-diagram-—-paper-Fig.-2-1"></a><a class="docs-heading-anchor-permalink" href="#Dispersion-diagram-—-paper-Fig.-2" title="Permalink"></a></h2><p>Left <code>Re ω</code>, right <code>γ</code>, rows <code>κ = 3, 7, ∞</code>; black dots: PlasmaBO track. Only branches with a growing mode (<code>max Im ω &gt; 0</code>) are drawn. The whistler grows for <code>k·λₑ ≈ 0.15–2</code> with peak <code>γ ≈ 1.08, 0.99, 0.92 |ωce|</code> at <code>k·λₑ ≈ 0.9</code> for <code>κ = 3, 7, ∞</code> — larger and at slightly larger <code>k</code> for smaller κ, matching the ALPS/benchmark curves (Fig. 2 b/d/f).</p><pre><code class="language-julia hljs">isgrowing(b) = maximum((imag(ω) for ω in b if isfinite(ω)); init = -Inf) &gt; 1e-3
-
-fig = Figure(size = (850, 780))
+κ=∞   max |ω_vmd - ω_ref| = 5.6e-07 ωce</code></pre><p>Both codes evaluate the analytic product-bi-kappa susceptibility for this parallel geometry, so the growing branch agrees to <code>~10⁻⁶ ωce</code> — far below the visual thickness of the paper&#39;s curves.</p><div class="admonition is-info" id="Convention-discrepancy-in-the-paper&#39;s-κ-3-panel-88a627277e74fb5c"><header class="admonition-header">Convention discrepancy in the paper&#39;s κ = 3 panel<a class="admonition-anchor" href="#Convention-discrepancy-in-the-paper&#39;s-κ-3-panel-88a627277e74fb5c" title="Permalink"></a></header><div class="admonition-body"><p>With the paper&#39;s <em>written</em> thermal speeds <code>c∥ = √(2kT∥/m·(1−1/2κ))</code>, <code>c⊥ = √(2kT⊥/m·(1−1/κ))</code> (used here and by PlasmaBO), the κ = 3 branch crosses <code>γ = 0</code> at <code>k·λₑ ≈ 2.1</code>. The paper&#39;s Fig. 2(b) instead crosses at <code>≈ 2.45</code>, which VMD reproduces only with <em>raw</em> <code>θ∥,⊥ = √(2kT/m)</code> (no κ correction — evidently the convention of the plotted Bai 2024 benchmark). At κ = 7 and ∞ the correction is within the curve width, so only the κ = 3 panel differs visibly.</p></div></div><h2 id="Dispersion-diagram-2"><a class="docs-heading-anchor" href="#Dispersion-diagram-2">Dispersion diagram</a><a class="docs-heading-anchor-permalink" href="#Dispersion-diagram-2" title="Permalink"></a></h2><p>Left <code>Re ω</code>, right <code>γ</code>, rows <code>κ = 3, 7, ∞</code>; black dots: PlasmaBO track. Only branches with a growing mode (<code>max Im ω &gt; 0</code>) are drawn. The whistler grows for <code>k·λₑ ≈ 0.15–2</code> with peak <code>γ</code> larger and at slightly larger <code>k</code> for smaller κ.</p><pre><code class="language-julia hljs">fig = Figure(size = (850, 780))
 for (i, (κ, sol)) in enumerate(zip(κs, sols))
     lab = isinf(κ) ? &quot;κ = ∞&quot; : &quot;κ = $(round(Int, κ))&quot;
     axr = Axis(fig[i, 1]; ylabel = &quot;Re ω / |ωce|&quot;, title = lab, xlabel = i == 3 ? &quot;k λₑ&quot; : &quot;&quot;)
     axi = Axis(fig[i, 2]; ylabel = &quot;γ / |ωce|&quot;, title = lab, xlabel = i == 3 ? &quot;k λₑ&quot; : &quot;&quot;)
     for branch in sol
-        isgrowing(branch) || continue
+        isgrowing(branch, 0.01) || continue
         x = kle(branch)
         p = sortperm(x)
         lines!(axr, x[p], real.(branch.omega)[p]; color = :royalblue, linewidth = 2)
@@ -536,4 +112,4 @@ for (i, (κ, sol)) in enumerate(zip(κs, sols))
     xlims!(axr, 0, 2.6); xlims!(axi, 0, 2.6)
     ylims!(axr, 0, 1); ylims!(axi, -0.3, 1.5)
 end
-fig</code></pre><img src="2bc16e1e.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../ionbeam_gary84/">« Ion beam instabilities (Gary et al. 1984)</a><a class="docs-footer-nextpage" href="../proton_shell_Min15/">Quasi-perpendicular instability — proton shell (Min &amp; Liu 2015) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 22 July 2026 11:30">Wednesday 22 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+fig</code></pre><img src="6d508339.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../ionbeam_gary84/">« Ion beam instabilities (Gary et al. 1984)</a><a class="docs-footer-nextpage" href="../proton_shell_Min15/">Quasi-perpendicular instability — proton shell (Min &amp; Liu 2015) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 23 July 2026 03:20">Thursday 23 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
