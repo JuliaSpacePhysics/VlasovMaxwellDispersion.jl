@@ -48,7 +48,7 @@ plasma = (
 
 kunit = wpe / wce                      # k·λₑ → k c/ωce
 region = (-1.0 - 1.5im, 10.0 + 0.6im)
-geom = AngleSweep(k=range(0.3, 35.0, 100) .* kunit, theta=deg2rad(40))
+geom = AngleSweep(k=range(0.5, 35.0, 128) .* kunit, theta=deg2rad(40))
 sol = solve(DispersionProblem(plasma, region, geom))
 
 # The survey resolves three growing branches. Here we compare their peak growth rates and the wavenumbers of those peaks.
@@ -64,4 +64,4 @@ for b in growing
 end
 
 # ## Dispersion diagram
-dispersion_diagram(growing; figure=(size=(300, 500),))
+dispersion_diagram(growing)

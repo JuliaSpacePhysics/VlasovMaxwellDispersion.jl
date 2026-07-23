@@ -45,8 +45,7 @@ plasma = (
 
 # ## Seedless survey
 #
-# Parallel propagation, `k·λₚ ∈ [0.02, 1]` with `λₚ = c/ωpp` built from the
-# *total* proton density.
+# Parallel propagation, `k·λₚ ∈ [0.02, 1]`.
 
 kunit = sqrt(Pi2(ne, mp))              # k·λₚ → k c/ωcp
 region = (-0.55 - 0.1im, 0.55 + 0.06im)
@@ -56,9 +55,11 @@ sol = solve(DispersionProblem(plasma, region, geom))
 
 
 # ## Dispersion diagram
-#
+grow_sol = filter(isgrowing, sol)
 fig = Figure(size=(850, 320))
 axr = Axis(fig[1, 1]; xlabel="k λₚ", ylabel=L"ω_r / Ω_{cp}")
 axi = Axis(fig[1, 2]; xlabel="k λₚ", ylabel=L"γ / Ω_{cp}")
-dispersion_diagram!((axr, axi), filter(isgrowing, sol))
+dispersion_diagram!((axr, axi), grow_sol)
+@assert length(grow_sol) == 2 #hide
+@assert all(x -> abs(x[1]) < 2e-2, grow_sol) #hide
 fig

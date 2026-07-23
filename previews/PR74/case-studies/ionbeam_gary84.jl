@@ -10,8 +10,7 @@
 # `ω` box and `k` sweep at every drift, no per-case seeds.
 #
 # The setup is fully dimensionless: `ω` in `ωcp`, `k` in `ωcp/c`, speeds in `c`.
-# With `β_m = 1` the core thermal speed `√(2qT_m/m_p)` *equals* `vA`, and
-# `(ωpp/ωcp)² = (c/vA)²`.
+# With `β_m = 1` the core thermal speed `√(2qT_m/m_p)` *equals* `vA`.
 
 using VlasovMaxwellDispersion
 using DelimitedFiles, Printf
@@ -28,35 +27,33 @@ function gary_plasma(v0_vm)
     Pi2 = 1 / vA_c^2                   # (ωpp(ne)/ωcp)²
     v0 = v0_vm * vm
     v0m = -0.01 * v0
-    main = NormalizedSpecies(1.0, 0.99Pi2, Maxwellian(; vth_para = vthm, vd = v0m))
-    beam = NormalizedSpecies(1.0, 0.01Pi2, Maxwellian(; vth_para = sqrt(10) * vthm, vd = v0m + v0))
-    elec = NormalizedSpecies(-mratio, mratio * Pi2, Maxwellian(; vth_para = sqrt(mratio) * vthm))
+    main = NormalizedSpecies(1.0, 0.99Pi2, Maxwellian(; vth_para=vthm, vd=v0m))
+    beam = NormalizedSpecies(1.0, 0.01Pi2, Maxwellian(; vth_para=sqrt(10) * vthm, vd=v0m + v0))
+    elec = NormalizedSpecies(-mratio, mratio * Pi2, Maxwellian(; vth_para=sqrt(mratio) * vthm))
     return (main, beam, elec)
 end
 
 # ## Seedless surveys at four drift speeds
 #
-# One `ω` box and `k∥` sweep serves all four panels — the growing beam mode, the
-# stable magnetosonic branch it detaches from, and the second weakly damped
-# branch are found together.
+# One `ω` box and `k∥` sweep serves all four panels.
 
 region = (0.0 - 0.1im, 0.45 + 0.2im)
-geom = CartesianSweep(kz = (0.001:0.002:0.2) ./ vm)
+geom = CartesianSweep(kz=(0.001:0.002:0.2) ./ vm)
 v0s = (0.0, 10.0, 20.0, 30.0)
 sols = [solve(DispersionProblem(gary_plasma(v0), region, geom)) for v0 in v0s]
 
 # ## Verification against PlasmaBO
 #
-# For every reference point (191 per drift speed) the distance to the nearest
+# For every reference point the distance to the nearest
 # surveyed root at matching `k`, plus the peak growth rates.
 
-ref = readdlm(joinpath(@__DIR__, "ionbeam_gary84_ref.tsv"); comments = true)
+ref = readdlm(joinpath(@__DIR__, "ionbeam_gary84_ref.tsv"); comments=true)
 for (v0, sol) in zip(v0s, sols)
     rows = ref[isapprox.(ref[:, 1], v0), :]
     ds = map(eachrow(rows)) do r
         best = Inf
         for b in sol.roots, (k, ω) in zip(b.k, b.omega)
-            abs(para(k) * vm - r[2]) < 0.002 || continue
+            isfinite(ω) && abs(para(k) * vm - r[2]) < 0.002 || continue
             best = min(best, abs(ω - complex(r[3], r[4])))
         end
         best
@@ -68,44 +65,42 @@ for (v0, sol) in zip(v0s, sols)
     )
 end
 
-# Median deviations sit at `~10⁻³ ωcp` (the reference's `N = 3` harmonic
-# truncation) and the peak growth rates match to `2×10⁻⁴ ωcp`. The few
-# unmatched points are reference samples where PlasmaBO's nearest-eigenvalue
-# track hops branch near the marginal points.
 
 # ## Fig. 1 — growth and real frequency vs `k`
 #
 # Solid: surveyed branches (blue `Re ω`, red `Im ω`). Black dots: PlasmaBO
 # track. The `v₀ = 0` panel shows the stable magnetosonic wave; with drift the
 # beam-resonant mode detaches and grows.
+#
+# At small `k` the survey also finds a ladder of strongly damped (`|γ| ~ ω`) proton-cyclotron modes. 
+# We draw only the weakly damped and growing branches (`γ > -0.05 ωcp` everywhere).
 
-fig = Figure(size = (900, 620))
-for (i, (v0, sol)) in enumerate(zip(v0s, sols))
+weakly_damped(b) = minimum((imag(ω) for ω in b.omega if isfinite(ω)); init=0.0) > -0.05
+
+clean_sols = map(sol -> filter(weakly_damped, sol), sols)
+
+fig = Figure(size=(900, 620))
+for (i, (v0, sol)) in enumerate(zip(v0s, clean_sols))
     row, col = fldmod1(i, 2)
     ax = Axis(
-        fig[row, col]; title = "v₀ = $(round(Int, v0)) vₘ",
-        xlabel = row == 2 ? "k vₘ / ωcp" : "", ylabel = col == 1 ? "ω / ωcp" : ""
+        fig[row, col]; title="v₀ = $(round(Int, v0)) vₘ",
+        xlabel=row == 2 ? L"k vₘ / ω_{cp}" : "", ylabel=col == 1 ? L"ω / ω_{cp}" : ""
     )
     for b in sol.roots
         x = [para(k) * vm for k in b.k]
-        p = sortperm(x)
-        lines!(ax, x[p], real.(b.omega)[p]; color = :royalblue, linewidth = 2)
-        lines!(ax, x[p], imag.(b.omega)[p]; color = :orangered, linewidth = 2)
+        lines!(ax, x, real.(b.omega); color=:royalblue, linewidth=2)
+        lines!(ax, x, imag.(b.omega); color=:orangered, linewidth=2)
     end
     rows = ref[isapprox.(ref[:, 1], v0), :][1:5:end, :]
-    scatter!(ax, rows[:, 2], rows[:, 3]; color = :black, markersize = 5)
-    scatter!(ax, rows[:, 2], rows[:, 4]; color = :black, markersize = 5)
+    scatter!(ax, rows[:, 2], rows[:, 3]; color=:black, markersize=5)
+    scatter!(ax, rows[:, 2], rows[:, 4]; color=:black, markersize=5)
     xlims!(ax, 0, 0.2)
     ylims!(ax, -0.05, 0.4)
 end
 Legend(
     fig[3, 1:2],
-    [LineElement(color = :royalblue, linewidth = 2), LineElement(color = :orangered, linewidth = 2)],
-    ["Re ω / ωcp", "Im ω / ωcp"]; orientation = :horizontal, framevisible = false
+    [LineElement(color=:royalblue, linewidth=2), LineElement(color=:orangered, linewidth=2)],
+    [L"ω_r / ω_{cp}", L"γ / ω_{cp}"]; orientation=:horizontal, framevisible=false
 )
+@assert length.(clean_sols) == [1, 1, 2, 2] #hide
 fig
-
-#
-# The short segments crowding the lower-left corner are *real* roots:
-# a ladder of strongly damped (`|γ| ~ ω`) proton-cyclotron/Landau modes
-# at small `k`. Branch linking fragments the fast-moving ladder.

@@ -81,17 +81,21 @@ end
 #
 # The non-propagating firehose branch (`Re ω ≈ 0`, `Im ω > 0` for
 # `k·dᵢ ≈ 0.07–0.34`) among the damped branches; black dots: PlasmaBO track.
+# At small `k` the survey also finds a cloud of strongly damped modes that is
+# discovered inconsistently slice to slice, so linking leaves it as short
+# fragments; we draw only branches that persist over a meaningful `k`-range.
+
+persists(b) = count(isfinite, b.omega) ≥ length(b.omega) ÷ 4
 
 fig = Figure(size = (700, 620))
 axr = Axis(fig[1, 1]; ylabel = "Re ω / ωcp", title = "Bi-kappa firehose, θ = 45°")
 axi = Axis(fig[2, 1]; xlabel = "k dᵢ", ylabel = "Im ω / ωcp")
 palette = Makie.wong_colors()
-for (i, b) in enumerate(sol.roots)
+for (i, b) in enumerate(filter(persists, sol))
     col = palette[mod1(i, length(palette))]
     x = kdi(b)
-    p = sortperm(x)
-    lines!(axr, x[p], real.(b.omega)[p]; color = col, linewidth = 2)
-    lines!(axi, x[p], imag.(b.omega)[p]; color = col, linewidth = 2)
+    lines!(axr, x, real.(b.omega); color = col, linewidth = 2)
+    lines!(axi, x, imag.(b.omega); color = col, linewidth = 2)
 end
 scatter!(axr, ref[:, 1], ref[:, 2]; color = :black, markersize = 5)
 scatter!(axi, ref[:, 1], ref[:, 3]; color = :black, markersize = 5)
@@ -126,7 +130,7 @@ vdf(vth_para, vth_perp, κ) = isinf(κ) ?
 # growing peak `γ ≳ ωce` together with the damped branches around it.
 
 kunit = sqrt(Pi2e)                     # k·λₑ → k c/|ωce|
-region = (-0.2 - 0.2im, 1.0 + 1.5im)
+region = (-0.2 - 0.5im, 1.0 + 1.5im)
 geom = CartesianSweep(kz = vcat(0.01:0.005:0.3, 0.32:0.02:2.8) .* kunit)
 
 sols = map(κs) do κ
@@ -182,15 +186,13 @@ end
 # branches with a growing mode (`max Im ω > 0`) are drawn. The whistler grows
 # for `k·λₑ ≈ 0.15–2` with peak `γ` larger and at slightly larger `k` for smaller κ.
 
-isgrowing(b) = maximum((imag(ω) for ω in b if isfinite(ω)); init = -Inf) > 1e-3
-
 fig = Figure(size = (850, 780))
 for (i, (κ, sol)) in enumerate(zip(κs, sols))
     lab = isinf(κ) ? "κ = ∞" : "κ = $(round(Int, κ))"
     axr = Axis(fig[i, 1]; ylabel = "Re ω / |ωce|", title = lab, xlabel = i == 3 ? "k λₑ" : "")
     axi = Axis(fig[i, 2]; ylabel = "γ / |ωce|", title = lab, xlabel = i == 3 ? "k λₑ" : "")
     for branch in sol
-        isgrowing(branch) || continue
+        isgrowing(branch, 0.01) || continue
         x = kle(branch)
         p = sortperm(x)
         lines!(axr, x[p], real.(branch.omega)[p]; color = :royalblue, linewidth = 2)
