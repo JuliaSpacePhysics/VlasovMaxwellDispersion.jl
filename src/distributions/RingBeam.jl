@@ -19,27 +19,23 @@ end
 
 
 struct GaussianRingCtx{T}
-    β::T
     vr::T
     p::T             # 1/vth²
     P::Vector{T}     # parabolic-cylinder moment table 𝓔ₖ
-    Pnorm::T         # 𝓔₁ (perp normaliser)
     Lcap::Int
     nmax::Int
-    tol::T
 end
 
 # Drifted perp Gaussian → Route-A table (the magnitude ring). `vd` is the perp shift vr.
 function perp_setup(d::Gaussian{<:Any, <:Real}, β)
-    iszero(d.vd) && return Gaussian(d.vth)                   # no shift → plain Gaussian
-    vr = d.vd
-    p = 1 / d.vth^2
+    iszero(d.vd) && return perp_setup(Gaussian(d.vth), β)
+    vr, p = promote(d.vd, 1 / d.vth^2)
     mwin = nmax_bessel((β * vr)^2 / 2)                       # ~Λr harmonic/series reach
     nλ = nmax_bessel((d.vth^2 / 2) * β^2)
     nmax = nλ + mwin + 2
     Lcap = nλ + mwin + 8
     P = _paracyl_moments(vr, p, 2 * (nmax + 1) + 2 * Lcap + 4)
-    return GaussianRingCtx(β, vr, p, P, P[2], Lcap, nmax, 1.0e-8)
+    return GaussianRingCtx(vr, p, P, Lcap, nmax)
 end
 nmax_harm(c::GaussianRingCtx, β) = c.nmax
 
@@ -97,9 +93,10 @@ end
     return _symmat(R², RJd, RJ, Jd², JdJ, J²)
 end
 
-@inline function perp_moments(c::GaussianRingCtx, n, _β)
-    β, vr, p, P, Pnorm, Lcap, tol = c.β, c.vr, c.p, c.P, c.Pnorm, c.Lcap, c.tol
-    sm(q, μ, ν) = _jj_moment(q, μ, ν, β, P, Lcap, tol) / Pnorm
+@inline function perp_moments(c::GaussianRingCtx, n, β)
+    vr, p, P, Lcap = c.vr, c.p, c.P, c.Lcap
+    tol = oftype(p, 1.0e-8)
+    sm(q, μ, ν) = _jj_moment(q, μ, ν, β, P, Lcap, tol) / P[2]
     sd(q, μ, ν) = 2p * (vr * sm(q, μ, ν) - sm(q + 1, μ, ν))    # ∂F slice via f⊥′
     P∂ = _ring_perp_tensor(sd, n, 0)                          # ∂F slice: base power q0=0
     PF = _ring_perp_tensor(sm, n, 1)                          # F slice : base power q0=1

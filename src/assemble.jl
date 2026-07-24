@@ -32,10 +32,16 @@ end
 
 @inline function _perp_Bessel_bilinear(n, a, px)
     z = a * px
+    if iszero(n)
+        J0, J1 = besselj(0, z), besselj(1, z)
+        b2 = -px * J1
+        return SA[zero(z), zero(z), b2 * b2, zero(z), b2 * J0, J0 * J0]
+    end
     Jm, Jp = besselj(n - 1, z), besselj(n + 1, z)
-    b1 = px * (Jm + Jp) / 2
+    Rn = (Jm + Jp) / 2
+    b1 = px * Rn
     b2 = px * (Jm - Jp) / 2
-    b3 = besselj(n, z)
+    b3 = z * Rn / n
     return SA[b1 * b1, b1 * b2, b2 * b2, b1 * b3, b2 * b3, b3 * b3]
 end
 

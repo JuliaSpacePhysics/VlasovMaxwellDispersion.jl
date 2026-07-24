@@ -58,16 +58,15 @@ This also means **you must never run an adaptive quadrature to a tolerance tight
 
 ## The four representations
 
-### Closed form — [`Maxwellian`](@ref), [`Kappa`](@ref), [`BiKappa`](@ref), [`SeparableVDF`](@ref)
+### Separable families — [`Maxwellian`](@ref), [`ProductBiKappa`](@ref), [`SeparableVDF`](@ref)
 
-The parallel Cauchy moments close analytically (`Z` for Gaussians, a hypergeometric
-`Hₘ` for kappas).
+The parallel Cauchy moments close analytically for Gaussian and kappa factors; arbitrary
+[`SeparableVDF`](@ref) factors use a Landau quadrature. Perpendicular Bessel moments are
+cached once per fixed `k`.
 
-- **Pro:** exact, correct at any `Im ω` the function is analytic at.
-- **Con:** only for the family. And note the closed form still re-runs its perpendicular
-  quadrature at every `ω` — at quasi-perpendicular propagation `LowRankVDF` beats
-  `BiKappa`'s own closed form by ~29× (41 µs vs 1197 µs at `k=(8, 0.1)`), simply because
-  it hoists that integral into the plan.
+- **Pro:** correct within the configured truncation and quadrature tolerance at any `Im ω`
+  where the factors are analytic.
+- **Con:** only for distributions that factor as `f⊥(p⊥)f∥(p∥)`.
 
 ### [`CoupledVDF`](@ref) — adaptive 2-D quadrature
 
@@ -161,7 +160,7 @@ so no continuation exists at all beyond `|Im ω| < |k∥|·√a∥`.
 
 | situation | use |
 |---|---|
-| `f₀` is in a closed-form family | that family — `Maxwellian`, `Kappa`, `BiKappa` |
+| `f₀` is in a closed-form family | that family — `Maxwellian`, `ProductBiKappa`, `BiKappa` |
 | `f₀` factors | [`SeparableVDF`](@ref) |
 | coupled analytic `f₀`, want speed (surveys) | [`LowRankVDF`](@ref) |
 | coupled analytic `f₀`, want a certified reference | [`CoupledVDF`](@ref) |

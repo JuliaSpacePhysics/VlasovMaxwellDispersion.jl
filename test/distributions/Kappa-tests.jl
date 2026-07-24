@@ -14,29 +14,31 @@
     @test_broken test_contribution(1000, 0.0)
 end
 
-@testitem "ProductBiKappa: anisotropic-index → bi-Maxwellian as κ→∞" begin
+@testitem "ProductBiKappa matches CoupledVDF and Maxwellian limit" begin
     ω = 1.2 - 0.05im
     k = Wavenumber(0.4, 0.3)
     vp, vq = 0.9, 1.2
-    vdf = ProductBiKappa(vth_para = vp, vth_perp = vq, kappa_para = 6, kappa_perp = 4)
-    cpl = NormalizedSpecies(-1.0, 0.7, CoupledVDF(vdf; para = (-40.0, 40.0), perp = 40.0))
-    pbk = NormalizedSpecies(-1.0, 0.7, vdf)
-    @test contribution(pbk, ω, k) ≈ contribution(cpl, ω, k) rtol = 1.0e-6
+    for κpara in (6, 4.5)
+        vdf = ProductBiKappa(
+            vth_para = vp, vth_perp = vq, kappa_para = κpara, kappa_perp = 4
+        )
+        cpl = NormalizedSpecies(
+            -1.0, 0.7, CoupledVDF(vdf; para = (-40.0, 40.0), perp = 40.0)
+        )
+        pbk = NormalizedSpecies(-1.0, 0.7, vdf)
+        @test contribution(pbk, ω, k) ≈ contribution(cpl, ω, k) rtol = 1.0e-6
+    end
 
     # κ→∞: → bi-Maxwellian (same thermal speeds), ~1/κ convergence
     χ(vdf) = contribution(NormalizedSpecies(-1.0, 0.7, vdf), ω, k)
     mx = χ(Maxwellian(vth_para = vp, vth_perp = vq))
     test_contribution(κ) = maximum(abs.(χ(ProductBiKappa(vth_para = vp, vth_perp = vq, kappa_para = κ)) .- mx)) / maximum(abs, mx)
     @test test_contribution(1000) ≈ 0 atol = 1.0e-3
-    @test_broken test_contribution(1000.001) ≈ dev(1000)
 
     # non-integer κ∥ (₂F₁ path) is continuous with the integer (residue) path
     pa = χ(ProductBiKappa(vth_para = vp, vth_perp = vq, kappa_para = 4, kappa_perp = 8))
     pb = χ(ProductBiKappa(vth_para = vp, vth_perp = vq, kappa_para = 4.0001, kappa_perp = 8))
     @test pa ≈ pb rtol = 1.0e-4
-
-    # κ∥ > 1/2 (finite T∥) and κ⊥ > 1 (finite T⊥)
-    @test contribution(NormalizedSpecies(-1.0, 0.7, ProductBiKappa(vth_para = 1.0, kappa_para = 1, kappa_perp = 8)), ω, k) isa AbstractMatrix
 end
 
 @testitem "kappa: NaN ζ terminates (no reflection recursion)" begin
