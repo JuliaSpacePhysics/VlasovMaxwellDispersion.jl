@@ -1,6 +1,6 @@
 # Duck-typed contract (no factor supertypes).
 # A *parallel* factor defines
-#   para_moments(para, ω, kz, nΩ)   -> M = (MF0,MF1,MF2,MT0,MT1)
+#   para_moments(para, Δ, kz)       -> M = (MF0,MF1,MF2,MT0,MT1)
 # A *perpendicular* factor defines
 #   perp_setup(perp, β)           -> prepared   (default: itself; rings/tables override)
 #   nmax_harm(prepared, β)        -> Int        (harmonic cap from the perp scale)
@@ -14,9 +14,7 @@ end
 
 ⊗(perp, para) = Separable(perp, para)
 
-parallel_even(d::Separable) = _factor_even(d.fpara)
-_factor_even(x) = false
-_factor_even(g::Gaussian) = g.vd === nothing || iszero(g.vd)
+parallel_even(d::Separable) = parallel_even(d.fpara)
 (d::Separable)(q, u) = d.fperp(q) * d.fpara(u)
 
 # Analytic 1-D `f` over `[lo,hi]`, with `fdf(x)->(f,f′)`
@@ -26,8 +24,6 @@ struct AnalyticFactor{F, FD, T}
     lo::T
     hi::T
 end
-
-AnalyticFactor{T}(f, fdf) where {T} = AnalyticFactor(f, fdf, zero(T), T(Inf))
 
 (p::AnalyticFactor)(v) = p.f(v)
 
@@ -53,6 +49,26 @@ SeparableVDF(d::Separable; kwargs...) = SeparableVDF(d.fperp, d.fpara; kwargs...
 
 perp_setup(perp, β) = perp
 
+function _plan_perp_moments(perp, β, nmax, rtol)
+    return [perp_moments(perp, n, β) for n in (-nmax):nmax]
+end
+
+_plan_perp_moments(perp::AnalyticFactor, β, nmax, rtol) =
+    _quad_perp_moments(perp.fdf, perp.lo, perp.hi, β, nmax, rtol)
+
+function _quad_perp_moments(fdf, lo, hi, β, nmax, rtol)
+    return map((-nmax):nmax) do n
+        norm(m) = max(maximum(abs, m[1]), maximum(abs, m[2]))
+        m = QuadGK.quadgk(lo, hi; rtol, norm) do v
+            f, df = fdf(v)
+            b = _perp_Bessel_bilinear(n, β, v)
+            K = _symmat(b[1], b[2], b[4], b[3], b[5], b[6])
+            SVector((2π * df) .* K, (2π * v * f) .* K)
+        end[1]
+        return m[1], m[2]
+    end
+end
+
 # Precompute the (ω,k)-independent normalization `n` (∫f=1) and,
 # for AnalyticFactor pairs, ⟨v⊥²⟩ setting the Bessel harmonic cap.
 # Ring/table factors are self-normalized (n=1) with a closed-form cap from their perp context.
@@ -69,60 +85,49 @@ end
 
 contribution(d::Separable, s, ω, k; kw...) = contribution(prepare(d), s, ω, k; kw...)
 
-# Magnetized susceptibility of a separable f = f⊥⊗f∥, summed over cyclotron harmonics.
-function contribution(c::PreparedVDF{<:Separable}, s, ω, k; rtol = 1.0e-8, kwargs...)
+struct SeparablePlan{C, S, M, Z, R}
+    prepared::C
+    species::S
+    moments::M
+    kz::Z
+    rtol::R
+end
+
+plan_contribution(d::Separable, s, k; kw...) =
+    plan_contribution(prepare(d), s, k; kw...)
+
+function plan_contribution(
+        c::PreparedVDF{<:Separable}, s, k; rtol = 1.0e-8, kwargs...
+    )
     d = c.vdf
-    Ω, kz = s.Omega, para(k)
-    β = perp(k) / Ω
+    β = perp(k) / s.Omega
     fperp = perp_setup(d.fperp, β)
-    X = _separable_harmonics(d.fpara, fperp, β, ω, Ω, kz; rtol, nmax = _nmax(c.cache, fperp, β))
+    nmax = _nmax(c.cache, fperp, β)
+    moments = _plan_perp_moments(fperp, β, nmax, rtol)
+    return SeparablePlan(c, s, moments, para(k), rtol)
+end
+
+function (p::SeparablePlan)(ω)
+    c, s, kz = p.prepared, p.species, p.kz
+    Ω = s.Omega
+    nmax = length(p.moments) ÷ 2
+    ns = (-nmax):nmax
+    Ms = _para_moments_all(c.vdf.fpara, ω, kz, Ω, ns; rtol = p.rtol)
+    X = sum(eachindex(p.moments)) do i
+        n = ns[i]
+        P∂, PF = p.moments[i]
+        _chi_mblock(Ms[i], P∂, PF, ω, kz, n * Ω)
+    end
     return _antisymmat((s.Pi2 / (c.cache.n * ω^2)) * X)
 end
+
+# Magnetized susceptibility of a separable f = f⊥⊗f∥, summed over cyclotron harmonics.
+contribution(c::PreparedVDF{<:Separable}, s, ω, k; kw...) =
+    plan_contribution(c, s, k; kw...)(ω)
 
 # Ring/table/Kappa factors supply a closed-form `nmax_harm`; AnalyticFactor uses cached ⟨v⊥²⟩.
 _nmax(_cache, fperp, β) = nmax_harm(fperp, β)
 _nmax(cache, ::AnalyticFactor, β) = nmax_bessel(β^2 * abs(cache.perp²) / 2)
-
-_separable_harmonics(para, perp::AnalyticFactor, args...; kw...) =
-    _separable_harmonics_sum_first(para, perp, args...; kw...)
-
-# Function barrier: `prepared` type is value-dependent
-_separable_harmonics(para, perp, args...; kw...) =
-    _separable_harmonics_sum_last(para, perp, args...; kw...)
-
-function _separable_harmonics_sum_last(para, perp, β, ω, Ω, kz; rtol, nmax)
-    return converge(; nmax, rtol) do n
-        nΩ = n * Ω
-        Δ = ω - nΩ
-        M = para_moments(para, Δ, kz)
-        P∂, PF = perp_moments(perp, n, β)
-        return _chi_mblock(M, P∂, PF, ω, kz, nΩ)
-    end
-end
-
-# Fused single-pass harmonic loop: parallel moments Mₙ are v-independent
-function _separable_harmonics_sum_first(para, perp, β, ω, Ω, kz; rtol, norm = NORM, nmax)
-    ns = -nmax:nmax
-    Ms = _para_moments_all(para, ω, kz, Ω, ns; rtol)
-    M = last(ns) + 1
-    return @no_escape begin
-        Jv = @alloc(typeof(β), M + 1)
-        QuadGK.quadgk(perp.lo, perp.hi; rtol, norm) do v
-            z = β * v
-            fq, dfq = perp.fdf(v)
-            vfq = v * fq
-            besselj_ladder!(Jv, M, z)        # J_0..J_{nmax+1} in one recurrence, signed-indexed
-            sum(enumerate(ns)) do (i, n)
-                Jm, Jn, Jp = _jladder(Jv, n - 1), _jladder(Jv, n), _jladder(Jv, n + 1)
-                # bvec=(v⊥Rn, v⊥Jn′, Jn), Rn=½(J_{n−1}+J_{n+1}); K=bvec⊗bvec shared by ∂F/F slices
-                b1, b2, b3 = v * (Jm + Jp) / 2, v * (Jm - Jp) / 2, Jn
-                K = _symmat(b1^2, b1 * b2, b1 * b3, b2^2, b2 * b3, b3^2)
-                _chi_mblock(Ms[i], (2π * dfq) .* K, (2π * vfq) .* K, ω, kz, n * Ω)
-            end
-        end[1]
-    end
-end
-
 
 _para_moments_all(p, ω, kz, Ω, ns; rtol = 1.0e-8) = map(n -> para_moments(p, ω - n * Ω, kz), ns)
 

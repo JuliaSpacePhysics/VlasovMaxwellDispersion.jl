@@ -9,6 +9,7 @@ struct Gaussian{T, D}
 end
 
 Gaussian(vth) = Gaussian(vth, nothing)
+parallel_even(g::Gaussian) = g.vd === nothing || iszero(g.vd)
 
 # unnormalized 1d density shape
 @inline (g::Gaussian)(v) = exp(-((v - @something(g.vd, zero(g.vth))) / g.vth)^2)
@@ -40,6 +41,3 @@ function para_moments(p::Gaussian, Δ, kz)
     MT1 = (MF1 * vd - MF2) * invth2
     return (MF0, MF1, MF2, MT0, MT1)
 end
-
-# --- perpendicular role, undrifted: Γ_n closed form (drifted form is Route A, RingBeam.jl) ---
-nmax_harm(d::Gaussian{<:Any, Nothing}, β) = nmax_bessel(d.vth^2 / 2 * β^2)

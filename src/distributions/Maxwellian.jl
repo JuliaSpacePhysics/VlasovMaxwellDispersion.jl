@@ -30,15 +30,6 @@ Maxwellian(vth_para) = Maxwellian(; vth_para)
     return P∂, PF
 end
 
-@inline function perp_moments(d::Gaussian{<:Any, Nothing}, n, β)
-    vth²₂ = d.vth^2 / 2
-    λ = vth²₂ * β^2
-    Γm = Gamma_n(n - 1, λ)
-    Γp = n == 0 ? Γm : Gamma_n(n + 1, λ)
-    Γ0 = n == 0 ? Gamma_n(n, λ) : λ / (2n) * (Γm - Γp)
-    return _gauss_perp_moments(Γm, Γ0, Γp, vth²₂, λ, n, β)
-end
-
 # Independent Γ_k(λ) table reuse besselix values across harmonic loop
 struct GaussianPerpCtx{T}
     vth²₂::T
@@ -47,7 +38,7 @@ struct GaussianPerpCtx{T}
     nmax::Int
 end
 function perp_setup(d::Gaussian{<:Any, Nothing}, β)
-    vth²₂ = d.vth^2 / 2
+    vth²₂, β = promote(d.vth^2 / 2, β)
     λ = vth²₂ * β^2
     nmax = nmax_bessel(λ)
     return GaussianPerpCtx(vth²₂, λ, GammaTable(λ, nmax + 1), nmax)  # n+1 reach at outermost harmonic
@@ -91,9 +82,8 @@ end
 # k⊥=0: convolution's n/β factors are singular, but only ⟨v⊥²⟩=vth²+vr² enters χ there →
 # energy-matched Gaussian (plain `Gaussian(vth)` would wrongly drop vr²).
 function perp_setup(d::GyroRing, β)
-    iszero(β) && return Gaussian(sqrt(d.vth^2 + d.vr^2)) # handling a genuine singularity where k⊥=0 collapses the perp gyro-structure
-    σ² = d.vth^2 / 2
-    pr = d.vr
+    iszero(β) && return perp_setup(Gaussian(sqrt(d.vth^2 + d.vr^2)), β)
+    σ², pr, β = promote(d.vth^2 / 2, d.vr, β)
     λ = σ² * β^2
     Λr = β * pr
     mwin = nmax_bessel(Λr^2 / 2)                       # cold-ring convolution window

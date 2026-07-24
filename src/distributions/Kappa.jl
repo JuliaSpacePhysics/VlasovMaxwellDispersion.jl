@@ -176,15 +176,16 @@ function para_moments(p::Kappa, Δ, kz)
     return (pf * aH0, pf * aH1, pf * aH2, tf * aG1, tf * aG2)
 end
 
-# uses the shared fused single-pass loop
-function _separable_harmonics(para, p::Kappa, args...; kw...)
+function _plan_perp_moments(p::Kappa, β, nmax, rtol)
     κ, a = p.kappa, p.a
-    C = κ / (π * a)                          # 2-D normalization
-
-    f = v -> C * (1 + v^2 / a)^(-(κ + 1))
-    fdf = v -> (D = 1 + v^2 / a; (C * D^(-(κ + 1)), -2C * (κ + 1) * v / a * D^(-(κ + 2))))
-    fperp = AnalyticFactor{typeof(a)}(f, fdf)
-    return _separable_harmonics_sum_first(para, fperp, args...; kw...)
+    C = κ / (π * a)
+    fdf = v -> begin
+        D = 1 + v^2 / a
+        F = C * D^(-(κ + 1))
+        return F, -2 * (κ + 1) * v / (a * D) * F
+    end
+    lo = zero(float(a))
+    return _quad_perp_moments(fdf, lo, oftype(lo, Inf), β, nmax, rtol)
 end
 
 # Harmonic cap from ⟨v⊥²⟩ = a/(κ−1); Kappa has no lo/hi for the generic quadrature.
@@ -203,4 +204,4 @@ nmax_harm(p::Kappa, β) = nmax_bessel(β^2 * p.a / (2 * (p.kappa - 1)))
     return S0, S2
 end
 
-_factor_even(::Kappa) = true
+parallel_even(::Kappa) = true
