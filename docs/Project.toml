@@ -6,3 +6,6 @@ Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Typst_jll = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 VlasovMaxwellDispersion = "cdafd680-06b3-5be4-9326-1ea31d308873"
+
+[compat]
+CairoMakie = "0.15.13"
