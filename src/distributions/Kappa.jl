@@ -4,15 +4,15 @@
 
 1-D kappa factor with `a = κ·θ²` → `Gaussian(θ)` as `κ→∞`.
 """
-struct Kappa{T, K}
+struct Kappa{T,K}
     a::T
     kappa::K
 
-    function Kappa(θ::T, κ; check = true) where {T}
+    function Kappa(θ::T, κ; check=true) where {T}
         check && (κ > 0.5 || throw(ArgumentError("Kappa needs κ > 1/2 (finite ⟨v²⟩)")))
         a = κ * θ^2
         κi = isinteger(κ) ? Int(κ) : κ
-        return new{typeof(a), typeof(κi)}(a, κi)
+        return new{typeof(a),typeof(κi)}(a, κi)
     end
 end
 
@@ -29,11 +29,11 @@ and temperature-preserving θ's (`⟨p∥²⟩ = vth_para²/2`, `⟨p⊥²⟩ = 
 
 Note `ProductBiKappa(κ,κ) ≠ BiKappa(κ)`.
 """
-function ProductBiKappa(; vth_para, vth_perp = vth_para, kappa_para, kappa_perp = kappa_para)
+function ProductBiKappa(; vth_para, vth_perp=vth_para, kappa_para, kappa_perp=kappa_para)
     kappa_para > 0.5 || throw(ArgumentError("ProductBiKappa needs κ∥ > 1/2 (finite ⟨p∥²⟩)"))
     kappa_perp > 1 || throw(ArgumentError("ProductBiKappa needs κ⊥ > 1 (finite ⟨p⊥²⟩)"))
     return Kappa(sqrt(1 - 1 / kappa_perp) * vth_perp, kappa_perp) ⊗
-        Kappa(sqrt(1 - 1 / (2kappa_para)) * vth_para, kappa_para)
+           Kappa(sqrt(1 - 1 / (2kappa_para)) * vth_para, kappa_para)
 end
 
 
@@ -77,7 +77,7 @@ end
         S1 = D
         S2 = M >= 2 ? D : zero(D)           # S_{M-2}=Σ_{k≤M-2}: init S₀
         S3 = M >= 3 ? D : zero(D)           # S_{M-3}
-        for k in 1:(M - 1)
+        for k in 1:(M-1)
             D *= (M + k - 1) * w / k
             S1 += D
             k == M - 2 && (S2 = S1)
@@ -93,13 +93,13 @@ end
     return _kappa_Hm_anchored(ζ, a, b, M, σ)
 end
 
-function _kappa_Hm_scaled(ζ, a, b, M::Integer, σ = 1)
+function _kappa_Hm_scaled(ζ, a, b, M::Integer, σ=1)
     β2, iβ, inv2iβ = _kappa_node(a, b)
     return _kappa_Hm_node(ζ, a, b, β2, iβ, inv2iβ, M, σ)
 end
 
 # Start sweep at k* via loggamma so every partial stays ~O(answer).
-function _kappa_Hm_anchored(ζ, a, b, M::Integer, σ = 1)
+function _kappa_Hm_anchored(ζ, a, b, M::Integer, σ=1)
     β2 = a * b
     iβ = im * sqrt(complex(β2))
     twoiβ, dζ = 2iβ, iβ - ζ
@@ -112,7 +112,7 @@ function _kappa_Hm_anchored(ζ, a, b, M::Integer, σ = 1)
     tol = 1.0e-300
     SD1 = Dstar
     D = Dstar
-    for k in (kstar + 1):(M - 1)
+    for k in (kstar+1):(M-1)
         D *= (M + k - 1) * w / k
         SD1 += D
         abs(D) < tol * abs(SD1) && break
@@ -133,7 +133,7 @@ end
 
 # Non-integer M: residue fails at the branch point.
 # H₀ is the Mace–Hellberg kappa-Z, a single Gauss ₂F₁ (Euler integral G&R 3.259.3)
-function _kappa_Hm(ζ, β2, M, σ = 1)
+function _kappa_Hm(ζ, β2, M, σ=1)
     H₀ = _kappa_H0(ζ, β2, M, σ)
     N₀ = sqrt(π) * exp(loggamma(M - 0.5) - loggamma(M)) * β2^((1 - 2M) / 2)
     H₁ = N₀ + ζ * H₀
@@ -141,16 +141,16 @@ function _kappa_Hm(ζ, β2, M, σ = 1)
     return H₀, H₁, H₂
 end
 
-_kappa_Hm_scaled(ζ, a, b, M, σ = 1) = a^M .* _kappa_Hm(ζ, a * b, M, σ)
+_kappa_Hm_scaled(ζ, a, b, M, σ=1) = a^M .* _kappa_Hm(ζ, a * b, M, σ)
 
 # The library's principal ₂F₁ is the direct integral for Im ζ≥0; the direct value for
 # Im ζ<0 is its Schwarz reflection (real kernel). The causal side is σ·Im ζ>0; on the
 # Landau-crossed side continue with the jump σ·2πi·g(ζ), g = (ζ²+β²)^{-M}.
-function _kappa_H0(ζ, β2, M, σ = 1)
+function _kappa_H0(ζ, β2, M, σ=1)
     isfinite(ζ) || return _complex_nan(β2)
     direct = if imag(ζ) >= 0 && !(σ < 0 && imag(ζ) == 0)   # at real ζ take the σ-home limit
         im * sqrt(oftype(β2, π)) * gamma(M + 0.5) / gamma(M + 1) * β2^(-M) *
-            _₂F₁(M, 0.5, M + 1, 1 + ζ^2 / β2)
+        _₂F₁(M, 0.5, M + 1, 1 + ζ^2 / β2)
     else
         conj(_kappa_H0(complex(real(ζ), abs(imag(ζ))), β2, M))
     end
@@ -176,15 +176,15 @@ function para_moments(p::Kappa, Δ, kz)
     return (pf * aH0, pf * aH1, pf * aH2, tf * aG1, tf * aG2)
 end
 
-# uses the shared fused single-pass loop
-function _separable_harmonics(para, p::Kappa, args...; kw...)
+function _plan_perp_moments(p::Kappa, β, nmax; rtol)
     κ, a = p.kappa, p.a
-    C = κ / (π * a)                          # 2-D normalization
-
-    f = v -> C * (1 + v^2 / a)^(-(κ + 1))
-    fdf = v -> (D = 1 + v^2 / a; (C * D^(-(κ + 1)), -2C * (κ + 1) * v / a * D^(-(κ + 2))))
-    fperp = AnalyticFactor{typeof(a)}(f, fdf)
-    return _separable_harmonics_sum_first(para, fperp, args...; kw...)
+    C = κ / (π * a)
+    lo = zero(float(a))
+    return _quad_perp_moments(lo, oftype(lo, Inf), β, nmax; rtol) do v
+        D = 1 + v^2 / a
+        F = C * D^(-(κ + 1))
+        F, -2 * (κ + 1) * v / (a * D) * F
+    end
 end
 
 # Harmonic cap from ⟨v⊥²⟩ = a/(κ−1); Kappa has no lo/hi for the generic quadrature.
@@ -203,4 +203,4 @@ nmax_harm(p::Kappa, β) = nmax_bessel(β^2 * p.a / (2 * (p.kappa - 1)))
     return S0, S2
 end
 
-_factor_even(::Kappa) = true
+parallel_even(::Kappa) = true
