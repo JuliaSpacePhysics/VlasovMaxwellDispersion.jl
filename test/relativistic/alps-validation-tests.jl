@@ -7,7 +7,7 @@
     electron = NormalizedSpecies(-1 / me, 1 / (me * vA^2), Maxwellian(vA / sqrt(me)))
     plasma = (ion, electron)
 
-    data = readdlm(joinpath(@__DIR__, "fixtures/alps/test_kpar_fast.scan_kpara_1.root_1"))
+    data = readdlm(joinpath(@__DIR__, "..", "fixtures", "alps", "test_kpar_fast.scan_kpara_1.root_1"))
     ks = [Wavenumber(row[1] / vA, row[2] / vA) for row in eachrow(data)]
     reference = complex.(data[:, 3], data[:, 4])
 
@@ -26,7 +26,7 @@ end
     electron = NormalizedSpecies(-1.0, 1.0, MaxwellJuttner(2.0))
     plasma = (ion, electron)
 
-    data = readdlm(joinpath(@__DIR__, "fixtures/alps/test_relativistic.scan_kpara_1.root_2"))
+    data = readdlm(joinpath(@__DIR__, "..", "fixtures", "alps", "test_relativistic.scan_kpara_1.root_2"))
     residuals = map(eachrow(data)) do row
         k = Wavenumber(row[1], row[2])
         omega = complex(row[3], row[4])
@@ -51,7 +51,7 @@ end
     g = GridVDF(pperp, ppar, F; rtol = 1.0e-4, regime = Relativistic())
     plasma_grid = (NormalizedSpecies(1.0, 1.0, g), NormalizedSpecies(-1.0, 1.0, g))
 
-    data = readdlm(joinpath(@__DIR__, "fixtures/alps/test_relativistic.scan_kpara_1.root_1"))
+    data = readdlm(joinpath(@__DIR__, "..", "fixtures", "alps", "test_relativistic.scan_kpara_1.root_1"))
 
     # Raw |det D| is inflated ~1/ω⁴ by the curl-curl term at low ω̃ branch, so
     # confirm a genuine root via the scale-invariant sol.resid.
