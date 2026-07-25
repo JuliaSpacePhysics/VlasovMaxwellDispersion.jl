@@ -81,20 +81,25 @@ end
 end
 
 # A real pole landing exactly on a fixed quadrature node is the 0*safe_inv(0)→NaN hazard;
-# and negative gyrofrequency must still trigger Bessel panel refinement at high k⊥.
+# GRAZING one is the harder case (wₗ~1/δ ⇒ Σwₗbₛ and bₛ(ζ)Σwₗ cancel from ~uw/|δ| to O(1),
+# losing eps·uw/|δ|)
 @testitem "LowRankVDF: coincident node and negative-Ω refinement" begin
     g0(v, u) = exp(-(u^2 + v^2))
     kw = (para = (-8.0, 8.0), perp = 6.0)
     cplraw, lrraw = CoupledVDF(g0; kw...), LowRankVDF(g0; kw..., rtol = 1.0e-10)
 
-    # k∥=1 ⇒ ζ_{n=0}=ω; ω = a GL node ⇒ ζ hits that node exactly.
+    # k∥=1 ⇒ ζ_{n=0}=ω; ω = a GL node ⇒ ζ hits that node exactly, ω+ε ⇒ grazes it.
     sc = prepare(NormalizedSpecies(1.0, 1.0, cplraw))
     sl = prepare(NormalizedSpecies(1.0, 1.0, lrraw))
     k = Wavenumber(0.6, 1.0)
     plan = plan_contribution(sl, k)
-    ω = complex(plan.pa.un[7], 0.0)
-    @test all(isfinite, plan(ω))
-    @test plan(ω) ≈ contribution(sc, ω, k) rtol = 1.0e-6
+
+    u★ = plan.pa.un[argmax(abs.(plan.pa.Bv[:, 1]))]
+    for ε in (0.0, 1.0e-16, 1.0e-12, 1.0e-8, 1.0e-4)
+        ω = complex(u★ + ε, 0.0)
+        @test all(isfinite, plan(ω))
+        @test plan(ω) ≈ contribution(sc, ω, k) rtol = 1.0e-6
+    end
 
     # Negative Ω at k⊥=7 (a=−7): refinement must see the Bessel oscillation via |a|.
     snc = prepare(NormalizedSpecies(-1.0, 1.0, cplraw))

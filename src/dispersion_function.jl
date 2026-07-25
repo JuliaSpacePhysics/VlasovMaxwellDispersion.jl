@@ -28,9 +28,9 @@ struct DispersionFunction{L,P,K,C,M,S,R<:TensorReduction}
     mode::R
 end
 
-function DispersionFunction(plasma, k; closure=HarmonicSum(), deflate=true, scale=1.0, mode=FullDet())
+function DispersionFunction(plasma, k; closure=HarmonicSum(), deflate=true, scale=1.0, mode=FullDet(), backend=FixedNodeEval())
     m = check_reduction(mode, plasma, k)
-    plans = map(s -> plan_contribution(s, k; closure), NormalizedPlasma(plasma).species)
+    plans = map(s -> plan_contribution(s, k; closure, backend), NormalizedPlasma(plasma).species)
     return DispersionFunction(plans, plasma, k, closure, _curlcurl(k), scale, deflate, m)
 end
 
@@ -83,9 +83,9 @@ function DispersionFunction(prob::DispersionProblem{<:Seed})
     scale = isfinite(s) && s > 0 ? s^_scalepow(prob.mode) : one(s)
     return DispersionFunction(
         prob.plasma, prob.k;
-        closure=prob.closure, deflate=false, scale, mode=prob.mode
+        closure=prob.closure, deflate=false, scale, mode=prob.mode, backend=prob.backend
     )
 end
 DispersionFunction(prob::DispersionProblem{<:Region}, k) =
-    DispersionFunction(prob.plasma, k; closure=prob.closure, mode=prob.mode)
+    DispersionFunction(prob.plasma, k; closure=prob.closure, mode=prob.mode, backend=prob.backend)
 

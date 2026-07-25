@@ -78,6 +78,30 @@ plan_landau(lims, ζs, side = 1; alg = PeeledGK()) = LandauPlan(alg, lims, ζs, 
 # Peel only while ≲2 digits cancel between g(ζ) and the analytic log term
 @inline _peel(gζ, gscale) = all(isfinite, gζ) && NORM(gζ) ≤ 1.0e2 * gscale
 
+# Nodes within `_NODE_BAND·U` of ζ are EXCLUDED from the fixed-node Cauchy kernel
+# wₗ = uwₗ/(uₗ−ζ). Their terms in Σₗwₗφₗ and in φ(ζ)·Σₗwₗ both reach ~uw/|δ| and must cancel
+# back to O(1), so keeping them loses eps·uw/|δ| — 2% of A₀ at |δ|=1e-16. The caller
+# substitutes the removable limit uwₗ·φ′(ζ) instead (excluded weight returned as `w0`), 
+# The band balances the two: below it cancellation dominates, above it the φ″·|δ| truncation does.
+const _NODE_BAND = 1.0e-8
+
+# → (Σₗwₗ over kept nodes, Σuwₗ over excluded nodes, any excluded)
+function _node_kernel!(w, un, uw, ζ, near)
+    W = zero(ζ)
+    w0 = zero(eltype(uw))
+    hit = false
+    @inbounds for l in eachindex(w)
+        δ = un[l] - ζ
+        if abs(δ) < near
+            w[l] = zero(ζ); w0 += uw[l]; hit = true
+        else
+            w[l] = uw[l] * safe_inv(δ)
+            W += w[l]
+        end
+    end
+    return W, w0, hit
+end
+
 # Initial QuadGK segments split at the Landau-pole real parts inside (lo,hi)
 function _quadgk_pole_segments(ζs, lo, hi)
     bnds = sort!(unique!(push!(clamp.(real.(ζs), lo, hi), lo, hi)))

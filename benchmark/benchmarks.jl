@@ -15,10 +15,10 @@ end
 
 let g = SUITE["separable"]
     vthp, vthq = 0.9, 1.2
-    ssep = prepare(SeparableVDF(
+    ssep = prepare(NormalizedSpecies(-1.0, 1.0, SeparableVDF(
         Maxwellian(vth_para=vthp, vth_perp=vthq);
         para=(-14vthp, 14vthp), perp=14vthq
-    ))
+    )))
     for (name, k) in (("moderate", Wavenumber(1.0, 0.4)), ("many_harmonics", Wavenumber(4.0, 0.1)))
         g["plan/$name"] = CAV.@benchmarkable plan_contribution($ssep, $k)
         plan = plan_contribution(ssep, k)
