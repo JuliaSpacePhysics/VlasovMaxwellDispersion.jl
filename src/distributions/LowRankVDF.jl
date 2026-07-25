@@ -320,24 +320,16 @@ function _lr_cauchy!(A, B, w, d, pa::LowRankPara, ζ, σ)
         end
         return
     end
-    l0 = 0                      # node coinciding with a real ζ: removable, restored per s
-    W = zero(ζ)
-    @inbounds for l in eachindex(w)
-        δ = pa.un[l] - ζ
-        iszero(δ) && (l0 = l)
-        w[l] = iszero(δ) ? zero(ζ) : pa.uw[l] * inv(δ)
-        W += w[l]
-    end
-    w0 = iszero(l0) ? zero(eltype(pa.uw)) : pa.uw[l0]
+    # nodes at — or grazing — a real ζ are dropped as removable and restored per s
+    W, w0, hit = _node_kernel!(w, pa.un, pa.uw, ζ, _NODE_BAND * pa.U)
     # The peel gate only needs the magnitude of φ on the real axis beside ζ, so read it off the
     # node table (bracketing the clamped ζ)
     j = searchsortedfirst(pa.un, clamp(real(ζ), lo, hi))
     j1, j2 = clamp(j - 1, 1, length(pa.un)), clamp(j, 1, length(pa.un))
     @inbounds for s in eachindex(A)
         bζ, dbζ = _bdb(d, s, ζ)
-        # b″(ζ) is the removable value of the bₛ′ integral at that coincidence;
-        # Note only real ζ can land on a fixed node
-        d2 = iszero(l0) ? dbζ : _d2slice(d, s, real(ζ))
+        # b″(ζ) is the removable value of the bₛ′ integral there; only a real ζ gets that close
+        d2 = hit ? _d2slice(d, s, real(ζ)) : dbζ
         sb = max(abs(pa.Bv[j1, s]), abs(pa.Bv[j2, s]))
         sdb = max(abs(pa.dBv[j1, s]), abs(pa.dBv[j2, s]))
         A[s] = _cauchy_near(w, W, w0, pa.Bv, s, bζ, dbζ, ζ, lo, hi, σ, sb)

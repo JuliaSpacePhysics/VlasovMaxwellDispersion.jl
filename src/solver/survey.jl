@@ -40,7 +40,7 @@ function _pointroots(prob, alg, refine, k)
     region = prob.target
     diag = _boxdiag(region)
     gate0 = _in_box(region) ? _origin_gate(alg, diag) : 0.0
-    f0 = DispersionFunction(prob.plasma, k; closure = prob.closure, mode = prob.mode)
+    f0 = DispersionFunction(prob.plasma, k; closure = prob.closure, mode = prob.mode, backend = prob.backend)
     # erase only on the ComplexF64 lattice (one probe eval); exotic eltypes pass through
     iscf = f0((region[1] + region[2]) / 2) isa ComplexF64
     f = iscf ? erase_cf(f0) : f0

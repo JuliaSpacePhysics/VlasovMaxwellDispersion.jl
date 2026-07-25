@@ -3,7 +3,7 @@
 abstract type AbstractDispersionProblem end
 
 """
-    DispersionProblem(plasma, target, k; closure=HarmonicSum(), mode=:det)
+    DispersionProblem(plasma, target, k; closure=HarmonicSum(), mode=:det, backend=FixedNodeEval())
 
 Chase zeros of `det(𝒟(plasma,ω,k))=0`. `target` selects *which* roots:
 
@@ -16,19 +16,24 @@ or [`CartesianSweep`](@ref) `(k⊥, k∥)`).
 
 `mode` selects the [`TensorReduction`](@ref) whose zeros are chased (`:det` default).
 
+`backend` ([`ChiBackend`](@ref)) selects how `χ` is evaluated — [`FixedNodeEval`](@ref)
+(fixed-node per-`k` plan, default) or [`AdaptiveEval`](@ref) (per-ω adaptive
+quadrature).
+
 `solve` returns [`DispersionSolution`](@ref) for `Seed`, or [`SurveySolution`](@ref)
 of all [`DispersionBranch`](@ref)es for `Region` — each an `m`-manifold `ω*(p)` over
 the `m` swept axes of `k` (point/curve/surface for `m` = 0/1/2).
 """
-struct DispersionProblem{T,K,P,C,M} <: AbstractDispersionProblem
+struct DispersionProblem{T,K,P,C,M,B} <: AbstractDispersionProblem
     plasma::P
     target::T
     k::K
     closure::C
     mode::M
+    backend::B
 end
-DispersionProblem(plasma, target, k; closure=HarmonicSum(), mode=FullDet()) =
-    DispersionProblem(plasma, _target(target), k, closure, TensorReduction(mode))
+DispersionProblem(plasma, target, k; closure=HarmonicSum(), mode=FullDet(), backend=FixedNodeEval()) =
+    DispersionProblem(plasma, _target(target), k, closure, TensorReduction(mode), backend)
 
 function Base.getproperty(prob::DispersionProblem, sym::Symbol)
     sym === :omega0 && return prob.target.omega0
@@ -43,7 +48,7 @@ _target(region::Tuple) = Region(region)
 const GlobalDispersionProblem = DispersionProblem
 
 prepare(prob::DispersionProblem; kw...) = DispersionProblem(
-    prepare(prob.plasma, prob.closure; kw...), prob.target, prob.k, prob.closure, prob.mode)
+    prepare(prob.plasma, prob.closure; kw...), prob.target, prob.k, prob.closure, prob.mode, prob.backend)
 
 _realtype(p::DispersionProblem{<:Region}) =
     promote_type(_realtype(p.target.box), _realtype(p.k))

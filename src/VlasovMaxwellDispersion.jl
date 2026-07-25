@@ -36,6 +36,7 @@ include("builders.jl")         # particle-identity + physical-unit Species adapt
 include("assemble.jl")
 include("susceptibility.jl")
 include("dispersion_function.jl")
+include("CoupledPlan.jl")
 include("solve.jl")
 
 export Regime, NonRelativistic, Relativistic
@@ -48,6 +49,7 @@ export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, C
 export BiKappa, ProductBiKappa, Kappa
 export Separable, ⊗, Gaussian, GyroRing
 export IntegralClosure, HarmonicSum, Newberger, prepare
+export ChiBackend, FixedNodeEval, AdaptiveEval
 export contribution, plan_contribution, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
 export DispersionFunction
 export DispersionProblem, GlobalDispersionProblem, Seed, Region, ReturnCode

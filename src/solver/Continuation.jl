@@ -47,7 +47,7 @@ function CommonSolve.solve(prob::DispersionProblem{<:Seed}, alg::Continuation)
     return _splice(bwd, fwd, prob, alg)
 end
 _reseed(prob, ks) =
-    DispersionProblem(prob.plasma, Seed(prob.target.omega0), ks, prob.closure, prob.mode)
+    DispersionProblem(prob.plasma, Seed(prob.target.omega0), ks, prob.closure, prob.mode, prob.backend)
 
 # bwd runs anchor→start over the reversed path; drop its anchor node (fwd owns it).
 function _splice(bwd, fwd, prob, alg)
@@ -107,7 +107,7 @@ end
 
 function _refine(cache, kt, guess)
     (; prob, alg) = cache
-    sol = solve(DispersionProblem(prob.plasma, guess, kt; closure = prob.closure, mode = prob.mode), alg.base)
+    sol = solve(DispersionProblem(prob.plasma, guess, kt; closure = prob.closure, mode = prob.mode, backend = prob.backend), alg.base)
     cache.nevals += sol.stats.nevals
     return sol.omega, sol.resid
 end
