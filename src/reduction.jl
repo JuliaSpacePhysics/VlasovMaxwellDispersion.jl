@@ -67,9 +67,7 @@ function check_reduction(mode, plasma, geometry)
     return m
 end
 
-# Reduction of the tensor to the tracked scalar.
-# Circular convention: with e^{-iωt} and B₀ ∥ ẑ, 
-# the σ=+1 (L) factor — resonant with positive charges
+# Circular sign convention assumes e^{-iωt} and B₀ ∥ ẑ.
 @inline (m::TensorReduction)(M, k) = m(M)
 @inline (::FullDet)(M) = det(M)
 @inline (c::Circular)(M) = M[1, 1] + c.σ * im * M[1, 2]

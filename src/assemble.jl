@@ -20,11 +20,11 @@ end
 @inline _In_block(Δm, c, bvec, px, ω, kz, nΩ) =
     _In_assemble((2π * c) .* _In_forms(Δm, px, ω, kz), bvec, nΩ, ω)
 
-# Materialize the antisymmetric-paire
+# 3×3 from 6 stored entries; the xy/yz pair enters antisymmetrically, xz symmetrically.
 @inline _antisymmat(t) =
     @SMatrix [t[1] t[2] t[3]; -t[2] t[4] -t[5]; t[3] t[5] t[6]]
 
-# Symmetric 3×3 from its 6 distinct entries (row-major upper triangle).
+# Row-major upper triangle.
 @inline _symmat(a11, a12, a13, a22, a23, a33) =
     @SMatrix [a11 a12 a13; a12 a22 a23; a13 a23 a33]
 

@@ -12,7 +12,6 @@ function _lpole_term(ζ, lo, hi, side, peeled)
     end
 end
 
-# ---- 1-D quadrature schemes
 abstract type QuadScheme end
 
 struct GaussLegendre{NW} <: QuadScheme
@@ -36,6 +35,17 @@ AdaptiveGK(; kw...) = AdaptiveGK(NamedTuple(kw))
 end
 quad(f, s::AdaptiveGK, lo, hi) = QuadGK.quadgk(f, lo, hi; s.kw...)[1]
 
+# Composite Gauss–Legendre nodes/weights over the panels `pan`, from the reference
+# rule `(xg, wg) === QuadGK.gauss(order)`. The fixed-node plans build their grids here.
+function gl_nodes(pan, xg, wg, ::Type{T} = float(eltype(pan))) where {T}
+    xs = T[]; ws = T[]
+    for p in 1:(length(pan) - 1)
+        mid, half = (pan[p] + pan[p + 1]) / 2, (pan[p + 1] - pan[p]) / 2
+        append!(xs, mid .+ half .* xg); append!(ws, half .* wg)
+    end
+    return xs, ws
+end
+
 # Two composable 1-D schemes for a 2-D box integral (outer × inner).
 struct BoxQuad{O <: QuadScheme, I <: QuadScheme}
     outer::O
@@ -43,7 +53,6 @@ struct BoxQuad{O <: QuadScheme, I <: QuadScheme}
 end
 
 
-# ---- Landau-causal Cauchy integral
 # ∫ g(v)/(v−ζ) dv with the Landau prescription
 # σ = sign(k∥) orients the contour: the causal (Im ω > 0) side is `σ·Im ζ > 0`
 # residue `σ·2πi·g(ζ)` is the Landau continuation onto the damped side.
@@ -152,7 +161,7 @@ function _landau(::PeeledGK, g, lims, ζs::AbstractVector, side; kw...)
     return I
 end
 
-# ---- Parallel-stage primitive: the harmonic-ladder Landau reduction.
+# Parallel-stage primitive: the harmonic-ladder Landau reduction.
 # At one perp node p⊥=v with Bessel bilinears `b2s`, a `LandauAlg` computes
 #   X(v) = Σᵢ _In_assemble(ℒ[_In_forms∘g](ζᵢ), b2s[i], nᵢΩ, ω),
 # with ℒ[h](ζ) = ∫ h(u)/(u−ζ) du. This is the backend seam — a `plan_ladder`

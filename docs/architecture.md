@@ -15,6 +15,7 @@ closed form).
 |---|---|---|
 | `Regime` | `NonRelativistic` / `Relativistic` | active coordinates, `γ`, pole map |
 | `IntegralClosure` | `HarmonicSum` / `Newberger` | harmonic truncation vs. closed-orbit `T(a,z)`; damping via Landau contour vs. residue extraction |
+| `ChiBackend` | `FixedNodeEval` / `AdaptiveEval` | whether a per-`k` plan hoists the ω-independent work onto fixed nodes, or the adaptive quadrature re-runs at every ω |
 
 Specializations are trait combinations: 
 - Maxwellian/Cold = `Analytic+Separable+NonRel+HarmonicSum`
@@ -33,10 +34,9 @@ Three reference solvers in `external/` serve as ground truth for tests:
 
 Plus analytic anchors with no external dep: Stix cold R/L/O/X, Maxwellian→cold limit, Langmuir+Landau vs the `Z`-function dispersion, electrostatic limit.
 
-Acceleration learned from the references:
+## The per-`k` plan layer
 
-1. *Velocity integral* — replace nested adaptive QuadGK with precompute-once:
-   either MPDES-style **project `f₀`→2-D piecewise-poly then closed-form per cell**
-   (`projection.jl`+`hilbert_pwpoly.jl` all exist; analytic in ω,
-   AD-clean) or ALPS-style **fixed-grid Simpson + precomputed Bessel weights**.
-   This fixes the cost that dominates even at small `k⊥ρ`.
+The nested adaptive QuadGK over `(p⊥, p∥)` dominates even at small `k⊥ρ`, and at fixed
+`k` the ONLY ω-dependence is the Landau pole `ζₙ=(ω−nΩ)/k∥`. So every kinetic path splits
+into a `plan_contribution(species, k)` that hoists the ω-independent work, and a
+`plan(ω)` that is cheap arithmetic. Two accelerations from the references, both wired:

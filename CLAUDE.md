@@ -1,9 +1,6 @@
 # CLAUDE.md
 
-## Agent memory
-
-In-repo persistent memory (project knowledge) is at `.claude/memory/`: one fact per file with frontmatter, `MEMORY.md` as index. 
-Read index before starting work; save/update/link memories there.
+Keep in-repo memory (project knowledge) at `.claude/memory/`: `MEMORY.md` as index.
 
 ## Development status
 
@@ -15,5 +12,8 @@ Under active development, not yet stable.
 
 ## Layout & workflow
 
-- Tests are `@testitem`s: `julia --project=test -e 'using TestItemRunner;
+Tests are `@testitem`s under `test/{distributions,solvers,kernels,relativistic}/`
+
+- Focused: `julia --project=test -e 'using TestItemRunner;
   TestItemRunner.run_tests(pwd(); filter = ti -> occursin(r"...", ti.name))'`.
+- `test/standalone/` deliberately kept out of the suite

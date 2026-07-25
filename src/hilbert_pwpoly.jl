@@ -1,4 +1,4 @@
-# --- Parallel Hilbert primitive H∥ for a piecewise-polynomial g ---
+# Parallel Hilbert primitive H∥ for a piecewise-polynomial g.
 # H∥[g](ζ) = ∫ g(v)/(v − ζ) dv with g piecewise-poly on a v-grid. Each cell
 # [v_i, v_{i+1}] with poly p(v)=Σ c_k v^{k-1} integrates in closed form: divide
 # p(v) by (v−ζ) → p(v)=q(v)(v−ζ)+p(ζ), so
@@ -12,27 +12,20 @@
 Closed-form `∫_{vl}^{vr} p(v)/(v − ζ) dv` for one cell, `p(v) = Σ_k coeffs[k] v^{k-1}`
 (monomial basis, ascending degree). Exact for all complex `ζ` (including off-axis
 and, by limit, on the real axis away from `[vl,vr]`).
-
-Synthetic division gives `p(v) = q(v)(v−ζ) + p(ζ)`; `∫q` is a plain polynomial
-integral and `p(ζ)·log((vr−ζ)/(vl−ζ))` carries the branch cut as one complex log
-of the ratio — the branch-cut invariant (spec §1).
 """
 @inline function cell_hilbert(coeffs, vl, vr, ζ)
     m = length(coeffs)
     T = complex(promote_type(eltype(coeffs), typeof(float(vl)), typeof(float(vr)), typeof(ζ)))
-    # Synthetic division of p by (v−ζ): quotient q has degree m-2, ascending in
-    # qhi..qlo built top-down; p(ζ) is the final remainder (Horner on ζ).
-    pζ = zero(T) + coeffs[m]          # running Horner value = current quotient coeff
-    poly = zero(T)                    # ∫ q over the cell, accumulated by Horner-in-v
-    # Walk quotient coeffs from highest (q_{m-2}) down to q_0. After processing
-    # quotient coeff of degree d (=q value before update), its monomial v^d
-    # contributes (vr^{d+1}-vl^{d+1})/(d+1) to ∫q. We integrate as we descend.
+    # One descending pass does both halves of p = q(v−ζ) + p(ζ): the Horner value is the
+    # degree-d quotient coefficient before its update, so ∫q accumulates as we descend.
+    pζ = zero(T) + coeffs[m]
+    poly = zero(T)
     for k in (m - 1):-1:1
-        d = k - 1                     # degree of this quotient coefficient = pζ
+        d = k - 1
         poly += pζ * (vr^(d + 1) - vl^(d + 1)) / (d + 1)
-        pζ = coeffs[k] + ζ * pζ       # Horner step → remainder/next quotient coeff
+        pζ = coeffs[k] + ζ * pζ
     end
-    # pζ now holds p(ζ). One complex log of the ratio = branch-cut-safe.
+    # log OF THE RATIO, not a difference of logs: that is what keeps the branch cut safe.
     poly + pζ * log((vr - ζ) / (vl - ζ))
 end
 
@@ -42,11 +35,10 @@ end
 Parallel Hilbert integral `H∥[g](ζ) = ∫ g(v)/(v − ζ) dv` for a piecewise
 polynomial `g`: `nodes` are the `N+1` cell boundaries (ascending), `coeffs[i]`
 is the monomial-coefficient vector (ascending degree) of `g` on cell
-`[nodes[i], nodes[i+1]]`. Sums `cell_hilbert` over cells.
+`[nodes[i], nodes[i+1]]`.
 
-Landau-causal and single-valued across `Im ζ → 0` by construction (each cell
-uses the log-of-ratio form). For `ζ` inside the support the physical sheet is
-`Im ζ > 0`; the result continues analytically to `Im ζ < 0`.
+Single-valued across `Im ζ → 0` because every cell uses the log-of-ratio form. For `ζ`
+inside the support the physical sheet is `Im ζ > 0`, continued analytically below.
 """
 function hilbert_pwpoly(coeffs, nodes, ζ)
     s = cell_hilbert(coeffs[1], nodes[1], nodes[2], ζ)
@@ -81,9 +73,7 @@ end
 """
     hilbert_landau_pwpoly(coeffs, nodes, ζ, σ=1) -> Complex
 
-Piecewise-polynomial Cauchy integral on the Landau sheet. This is the MPDES
-parallel-pole correction: direct cell integral plus `σ·2πi` residue for
-Landau-crossed poles whose real part lies in a cell.
+[`hilbert_pwpoly`](@ref) on the Landau sheet: [`cell_hilbert_landau`](@ref) summed over cells.
 """
 function hilbert_landau_pwpoly(coeffs, nodes, ζ, σ = 1)
     s = cell_hilbert_landau(coeffs[1], nodes[1], nodes[2], ζ, σ)

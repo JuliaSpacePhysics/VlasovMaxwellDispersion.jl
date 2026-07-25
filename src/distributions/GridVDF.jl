@@ -1,5 +1,5 @@
-# The exact per-cell closed form (`hilbert_pwpoly`×`perp_pwpoly` on `fit.coeffs`) is the documented optimization
-# over the adaptive-quadrature coupled path; not yet wired.
+# Half of the per-cell closed form is wired: the parallel H∥ closes analytically per cell
+# (`_cellH`, the inlined `cell_hilbert_landau`). Perp factor keeps adaptive instead of `perp_pwpoly` for performance
 
 """
     GridVDF(vperp, vpar, f; method=NonnegBSpline{3}(), regime=NonRelativistic())

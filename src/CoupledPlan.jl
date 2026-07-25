@@ -20,15 +20,6 @@ end
 # here is the horizon past which the fixed grid under-resolves and AdaptiveEval is needed.
 _marg(g, lo, hi, np) = sum(x -> abs(g(x)), range(lo, hi, np))
 
-function _gl_nodes(pan, xg, wg, T)
-    xs = T[]; ws = T[]
-    for p in 1:(length(pan) - 1)
-        mid, half = (pan[p] + pan[p + 1]) / 2, (pan[p + 1] - pan[p]) / 2
-        append!(xs, mid .+ half .* xg); append!(ws, half .* wg)
-    end
-    return xs, ws
-end
-
 function _build_coupled_plan(c::PreparedVDF{<:CoupledVDF}, s, k, b::FixedNodeEval)
     d = c.vdf
     Ω, kz = s.Omega, para(k)
@@ -41,9 +32,9 @@ function _build_coupled_plan(c::PreparedVDF{<:CoupledVDF}, s, k, b::FixedNodeEva
     xg, wg = QuadGK.gauss(b.order)
     np = b.nprobe
 
-    un, uw = _gl_nodes(_panels(u -> _marg(v -> d.f0(v, u), d.perp..., np), ulo, uhi, zero(U)), xg, wg, T)
+    un, uw = gl_nodes(_panels(u -> _marg(v -> d.f0(v, u), d.perp..., np), ulo, uhi, zero(U)), xg, wg, T)
     # perp panels refined to the Bessel half-wavelength π/(2|a|), like the LowRank plan
-    vn, vw = _gl_nodes(_panels(v -> _marg(u -> d.f0(v, u), ulo, uhi, np), d.perp..., abs(a)), xg, wg, T)
+    vn, vw = gl_nodes(_panels(v -> _marg(u -> d.f0(v, u), ulo, uhi, np), d.perp..., abs(a)), xg, wg, T)
     L = length(un); Nv = length(vn)
 
     S2 = SVector{2,T}

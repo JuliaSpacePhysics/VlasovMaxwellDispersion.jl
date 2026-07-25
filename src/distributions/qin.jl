@@ -1,5 +1,4 @@
-# --- Evaluator A: Qin closed-orbit  (complex-order Bessel) -----------
-# See derivation.md §3A
+# Evaluator A: Qin closed-orbit (complex-order Bessel). See derivation.md §3A.
 
 # Empirically A is a CROSS-VALIDATION backend, not a speedup.
 # Using residue extraction so the first integrand is smooth in 2-D (near-resonance peaks removed) and

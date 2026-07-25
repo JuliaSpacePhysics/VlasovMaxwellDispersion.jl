@@ -7,7 +7,6 @@ abstract type Regime end
 struct NonRelativistic <: Regime end
 struct Relativistic <: Regime end
 
-# ── Swept manifold in k-space
 abstract type ParameterGeometry end
 
 """

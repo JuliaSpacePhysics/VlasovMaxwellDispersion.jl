@@ -45,7 +45,3 @@ erase_fd1(f, _) = f
 # Dispersion-function erasure: so discover/polish solver stack compiles once
 # per process instead of once per plasma type
 erase_cf(f) = FW{ComplexF64, Tuple{ComplexF64}}(f)
-
-# # SciML documentation on specialization levels
-# https://docs.sciml.ai/DiffEqDocs/stable/features/low_dep/
-# https://docs.sciml.ai/SciMLBase/stable/interfaces/Problems/#Specialization-Levels

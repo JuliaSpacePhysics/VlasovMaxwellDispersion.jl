@@ -1,4 +1,4 @@
-# --- Perpendicular Bessel-moment primitive P⊥ for a piecewise-polynomial h ---
+# Perpendicular Bessel-moment primitive P⊥ for a piecewise-polynomial h.
 # P⊥ needs cell integrals  ∫ v⊥^{d+1} J_n1(a v⊥) J_n2(a v⊥) dv⊥  (the v⊥^1 is the
 # cylindrical Jacobian, d = monomial degree of h on the cell, a = k⊥/Ω_s the
 # uniform Bessel argument coefficient).
@@ -16,26 +16,20 @@
 # (a transcription bug in the vendored MATLAB — its n==1 branch reuses `x_r` for `x_l`)
 # and no closed 2-term Lommel form exists for n1≠n2
 
-# Float64 series degrades smoothly: ~1e-10 rel. error by a·max(|vl|,|vr|)~10,
-# total garbage by ~20 (calibrated against brute quadrature, see self-test).
+# The ₂F₃ series ALTERNATES with terms peaking at ~(z/2)^z, so Float64 loses everything to
+# cancellation past z≈8 (~1e-10 rel by z~10, garbage by ~20, calibrated against brute
+# quadrature). That is an artifact of expanding from v=0, not of the integral itself.
 const _PERP_SERIES_F64_MAX_Z = 8.0
-
-# The ₂F₃ series is exact and cheap for small z but ALTERNATES with terms peaking
-# at ~(z/2)^z, so Float64 loses all precision to cancellation past z~8 — an
-# artifact of expanding from v=0, not of the integral (over one cell the integrand
-# barely oscillates, a·h ≲ 1).
 
 """
     besselprod_moment(vl, vr, d, n1, n2, a; tol=1e-12) -> Real
 
 Robust scalar perp cell integral `∫_{vl}^{vr} v^{d+1} J_{n1}(av) J_{n2}(av) dv`.
 `a == 0` closes exactly (`J_0(0)=1`, higher orders vanish).
-For small argument `a·max(|vl|,|vr|) ≤ _PERP_SERIES_F64_MAX_Z`
-the Bessel-product power series is exact and cheapest.
 
-Beyond that the alternating series loses Float64 precision to
-cancellation; rather than re-run it in (slow) `BigFloat`, evaluate the smooth
-integrand directly with stable Gauss–Legendre (`_besselprod_moment_gl`) — similar accuracy.
+Below `_PERP_SERIES_F64_MAX_Z` the Bessel-product power series is exact and cheapest;
+above it, Gauss–Legendre on the (smooth) integrand beats re-running the series in slow
+`BigFloat` at similar accuracy.
 """
 function besselprod_moment(vl, vr, d, n1, n2, a; tol=1e-12)
     a == 0 && return (n1 == 0 && n2 == 0) * (vr^(d + 2) - vl^(d + 2)) / (d + 2)

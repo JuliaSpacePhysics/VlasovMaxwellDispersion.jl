@@ -122,12 +122,7 @@ function LowRankPara(d::LowRankVDF, gl)
     T = typeof(float(uhi))
     U = max(abs(ulo), abs(uhi))
     upan = _panels(u -> sum(s -> abs(_b(d, s, u)), 1:R), ulo, uhi, zero(U))
-    xp, wp = QuadGK.gauss(gl)
-    un = T[]; uw = T[]
-    for p in 1:(length(upan) - 1)
-        mid, half = (upan[p] + upan[p + 1]) / 2, (upan[p + 1] - upan[p]) / 2
-        append!(un, mid .+ half .* xp); append!(uw, half .* wp)
-    end
+    un, uw = gl_nodes(upan, QuadGK.gauss(gl)..., T)
     L = length(un)
     Bv = [_b(d, s, un[l]) for l in 1:L, s in 1:R]
     dBv = [_db(d, s, un[l]) for l in 1:L, s in 1:R]
@@ -162,17 +157,12 @@ end[1]
 function _lr_cache(d::LowRankVDF, gl, rtol)
     pa = LowRankPara(d, gl)
     vpan = _panels(v -> sum(u -> abs(d.f0(v, u)), d.up), d.perp..., zero(pa.U))
-    xg, wg = QuadGK.gauss(gl)
     n = zero(pa.U); p2 = zero(n)
-    for p in 1:(length(vpan) - 1)
-        mid, half = (vpan[p] + vpan[p + 1]) / 2, (vpan[p + 1] - vpan[p]) / 2
-        for q in eachindex(xg)
-            v = mid + half * xg[q]; w = half * wg[q]
-            av = _perp_factors(d, v)[1]
-            for s in 1:rank(d)
-                n += 2π * w * v * av[s] * pa.I0[s]
-                p2 += 2π * w * v^3 * av[s] * pa.I0[s]
-            end
+    for (v, w) in zip(gl_nodes(vpan, QuadGK.gauss(gl)...)...)
+        av = _perp_factors(d, v)[1]
+        for s in 1:rank(d)
+            n += 2π * w * v * av[s] * pa.I0[s]
+            p2 += 2π * w * v^3 * av[s] * pa.I0[s]
         end
     end
     # ãₛ at a few perp probes, so `trust_error` costs O(nprobe + rank) f₀ evaluations per u
@@ -256,25 +246,20 @@ function plan_contribution(d::LowRankVDF, s, k; kw...)
     # is the only k-dependent thing about the perp grid (a quadrature rule sized for f₀
     # alone cannot see that oscillation).
     vpan = _refine(c.vpan, abs(a))   # Bessel wavelength π/|a|; negative Ω must still refine
-    xg, wg = QuadGK.gauss(gl)
     T = typeof(float(perp(k)))
     Pd = zeros(SMatrix{3, 3, T, 9}, length(ns), R)
     Pf = zeros(SMatrix{3, 3, T, 9}, length(ns), R)
     Jv = Vector{T}(undef, nmax + 2)
-    for p in 1:(length(vpan) - 1)
-        mid, half = (vpan[p] + vpan[p + 1]) / 2, (vpan[p + 1] - vpan[p]) / 2
-        for q in eachindex(xg)
-            v = mid + half * xg[q]; w = half * wg[q]
-            av, adv = _perp_factors(d, v)
-            besselj_ladder!(Jv, nmax + 1, a * v)
-            for (i, n) in enumerate(ns)
-                Jm, Jn, Jp = _jladder(Jv, n - 1), _jladder(Jv, n), _jladder(Jv, n + 1)
-                b1, b2 = v * (Jm + Jp) / 2, v * (Jm - Jp) / 2
-                K = _symmat(b1^2, b1 * b2, b1 * Jn, b2^2, b2 * Jn, Jn^2)
-                for r in 1:R
-                    Pd[i, r] += (2π * w * adv[r]) * K
-                    Pf[i, r] += (2π * w * v * av[r]) * K
-                end
+    for (v, w) in zip(gl_nodes(vpan, QuadGK.gauss(gl)..., T)...)
+        av, adv = _perp_factors(d, v)
+        besselj_ladder!(Jv, nmax + 1, a * v)
+        for (i, n) in enumerate(ns)
+            Jm, Jn, Jp = _jladder(Jv, n - 1), _jladder(Jv, n), _jladder(Jv, n + 1)
+            b1, b2 = v * (Jm + Jp) / 2, v * (Jm - Jp) / 2
+            K = _symmat(b1^2, b1 * b2, b1 * Jn, b2^2, b2 * Jn, Jn^2)
+            for r in 1:R
+                Pd[i, r] += (2π * w * adv[r]) * K
+                Pf[i, r] += (2π * w * v * av[r]) * K
             end
         end
     end

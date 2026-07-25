@@ -5,20 +5,7 @@
 # precision to catastrophic cancellation.
 const _BESSELJ_ASYM_Z = 14.0
 
-# Ascending series J_ν(z) = Σ_m (−1)^m (z/2)^{2m+ν} / (m! Γ(m+ν+1)).
-function _besselj_series(ν, z; maxiters = 4000, tol = 1.0e-16)
-    half = z / 2
-    term = half^ν / gamma(ν + 1)
-    s = term
-    z2 = -half^2
-    for m in 1:maxiters
-        term *= z2 / (m * (m + ν))
-        s += term
-        abs(term) <= tol * abs(s) && break
-    end
-    return s
-end
-
+# Ascending series J_ν(z) = Σ_m (−1)^m (z/2)^{2m+ν} / (m! Γ(m+ν+1)), and its z-derivative
 function _besselj_series_deriv(ν, z; maxiters = 4000, tol = 1.0e-16)
     half = z / 2
     term = half^ν / gamma(ν + 1)
