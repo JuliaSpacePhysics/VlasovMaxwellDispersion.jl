@@ -20,7 +20,10 @@ end
 
 regime(d::GridVDF) = regime(d.coupled)
 
+_vgrid(v) = eltype(v) <: Real ? v : map(velocity, v) # Unitful support
+
 function GridVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonRelativistic())
+    vperp, vpara = _vgrid(vperp), _vgrid(vpara)
     method = @something(method, NonnegBSpline{3}(; rtol, maxknots_para = length(vpara), maxknots_perp = length(vperp)))
     # rescale as a tiny-valued grid (e.g. exp(-μγ)~1e-18) would otherwise underflow the fit to all-zeros
     scale = maximum(abs, f)

@@ -134,7 +134,11 @@ function LowRankPara(d::LowRankVDF, gl)
     nu = zeros(T, _LR_NMOM + 1, R); mu = zeros(T, _LR_NMOM + 1, R)
     for s in 1:R
         nu[:, s] .= _scaled_moments(u -> _b(d, s, u), ulo, uhi, U)
-        mu[:, s] .= _scaled_moments(u -> _db(d, s, u), ulo, uhi, U)
+        blo, bhi = _b(d, s, ulo), _b(d, s, uhi)
+        for p in 1:(_LR_NMOM + 1)
+            edge = bhi * (uhi / U)^(p - 1) - blo * (ulo / U)^(p - 1)
+            mu[p, s] = (edge - (p - 1) * (p > 1 ? nu[p - 1, s] : zero(T))) / U
+        end
     end
     # ∫uᵖ b du = U^{p+1}·νₚ — the moment recursion's raw moments come free.
     return LowRankPara(

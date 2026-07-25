@@ -9,10 +9,30 @@ Method and internals: [`architecture.md`](docs/architecture.md).
 
 ```julia
 using Pkg; Pkg.develop(path="."); Pkg.instantiate()
-using VlasovMaxwellDispersion
+using VlasovMaxwellDispersion, Unitful
 
+plasma = Plasma(
+    Species(Proton(); n = 5u"cm^-3", T = (20u"eV", 100u"eV")),   # T = (T∥, T⟂)
+    Species(Electron(); n = 5u"cm^-3", T = 50u"eV"),
+    B0 = 5u"nT",
+)
+
+s = scales(plasma, 1)                    # dimensionless d, ρ, vth, vA, … for species 1
+k = Wavenumber(0.0, 0.5 / s.d)           # k∥·dᵢ = 0.5
+ω0 = 0.9 - 0.01im                        # ω in first species' gyrofrequency
+sol = solve(DispersionProblem(plasma, ω0, k))   # seeded root
+ωbox = (0.0 - 0.3im, 1.1 + 0.05im)        # frequency box for finding all roots
+gsol = solve(DispersionProblem(plasma, ωbox, k)) # all roots
+```
+
+Bare numbers work, assuming `n` in m⁻³, `B0` in T, `T` in eV, speeds in `v/c`.
+
+A dimensionless plasma skips that layer: `Ω̃ = Ω_s/Ω_ref`, `Π̃² = (ω_ps/Ω_ref)²`,
+speeds in `c`, `k̃ = k c/Ω_ref`.
+
+```julia
 pl = NormalizedSpecies(-1.0, 1.0, Maxwellian(1.0))   # Ω̃, Π̃², VDF
-k  = Wavenumber(0.0, 0.7)                           # k̃ = (k⊥, k∥)·c/Ω_ref
+k  = Wavenumber(0.0, 0.7)
 
 alg = Muller()
 sol = solve(DispersionProblem(pl, 1.2 - 0.1im, k), alg)             # seeded root (Langmuir+Landau)
@@ -64,20 +84,6 @@ pl = NormalizedSpecies(-1.0, 0.5, GridVDF(vperp, vpar, F))
 
 # Relativistic isotropic Maxwell–Jüttner (μ = mc²/T)
 pl = NormalizedSpecies(-1.0, 0.5, MaxwellJuttner(mu=40.0))
-```
-
-### From physical units
-
-Build species physically (SI or `Unitful` via the extension) and normalize to reference.
-`NormalizedSpecies(s::Species, B0, ref)` maps `(B0, n, q, m) →(Ω̃, Π̃²)`; `k` and `ω` stay dimensionless (`·c/Ω_ref`, `·/Ω_ref`).
-
-```julia
-using VlasovMaxwellDispersion.PlasmaBase   # Electron, Proton, Species
-
-B0 = 5.0e-9                                 # Tesla
-e  = Species(Electron(), Maxwellian(0.02); n=5.0e6)
-p  = Species(Proton(),   Maxwellian(0.02/√1836); n=5.0e6)
-plasma = (NormalizedSpecies(e, B0, Proton()), NormalizedSpecies(p, B0, Proton()))
 ```
 
 ## Capabilities
