@@ -72,10 +72,13 @@ end
 # track. The `v₀ = 0` panel shows the stable magnetosonic wave; with drift the
 # beam-resonant mode detaches and grows.
 #
-# At small `k` the survey also finds a ladder of strongly damped (`|γ| ~ ω`) proton-cyclotron modes. 
-# We draw only the weakly damped and growing branches (`γ > -0.05 ωcp` everywhere).
+# At small `k` the survey also finds a ladder of strongly damped (`|γ| ~ ω`) proton-cyclotron modes,
+# plus a few modes discovered too inconsistently for linking to join. We draw only the weakly
+# damped and growing branches (`γ > -0.05 ωcp` everywhere) that persist over a meaningful `k`-range.
 
-weakly_damped(b) = minimum((imag(ω) for ω in b.omega if isfinite(ω)); init=0.0) > -0.05
+weakly_damped(b) =
+    count(isfinite, b.omega) ≥ length(b.omega) ÷ 4 &&
+    minimum((imag(ω) for ω in b.omega if isfinite(ω)); init=0.0) > -0.05
 
 clean_sols = map(sol -> filter(weakly_damped, sol), sols)
 
@@ -102,5 +105,5 @@ Legend(
     [LineElement(color=:royalblue, linewidth=2), LineElement(color=:orangered, linewidth=2)],
     [L"ω_r / ω_{cp}", L"γ / ω_{cp}"]; orientation=:horizontal, framevisible=false
 )
-@assert length.(clean_sols) == [1, 1, 2, 2] #hide
+@assert length.(clean_sols) == [2, 1, 2, 2] #hide
 fig
