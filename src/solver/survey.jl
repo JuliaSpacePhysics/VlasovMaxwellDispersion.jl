@@ -27,13 +27,25 @@ function CommonSolve.solve!(cache::SurveyCache)
     zv = similar(ks, Vector{ComplexF64})
     nev = similar(ks, Int)
     conv = similar(ks, Bool)
-    Threads.@threads for i in eachindex(ks)
-        zv[i], nev[i], conv[i] = _pointroots(prob, alg, refine, ks[i])
+    _unblas() do
+        Threads.@threads for i in eachindex(ks)
+            zv[i], nev[i], conv[i] = _pointroots(prob, alg, refine, ks[i])
+        end
     end
     stats = SolveStats(sum(nev), (time_ns() - t0) / 1.0e9)
     return build_solution(cache, ks, zv, stats, all(conv))
 end
 
+function _unblas(f)
+    n = BLAS.get_num_threads()
+    n == 1 && return f()
+    BLAS.set_num_threads(1)
+    try
+        return f()
+    finally
+        BLAS.set_num_threads(n)
+    end
+end
 
 # All det(𝒟) zeros at one wavevector: discover → trust gate → polish → filter→ dedupe.
 function _pointroots(prob, alg, refine, k)
