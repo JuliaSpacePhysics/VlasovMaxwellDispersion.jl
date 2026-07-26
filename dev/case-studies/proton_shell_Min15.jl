@@ -50,21 +50,10 @@ fig = Figure(size = (900, 420))
 axr = Axis(fig[1, 1]; xlabel = "k d_p", ylabel = "Re ω / ωcp", title = "Proton shell, θ = 89.5°")
 axi = Axis(fig[1, 2]; xlabel = "k d_p", ylabel = "Im ω / ωcp")
 kdp(b) = [sqrt(abs2(k)) * dp for k in b.k]
-## linking occasionally hops harmonics; break the polyline at Re-ω jumps
-## instead of drawing the connector
-function masked(x, ω; dmax = 0.35)
-    y = collect(ω)
-    for i in 2:length(y)
-        abs(real(y[i]) - real(y[i - 1])) > dmax && (y[i - 1] = NaN + NaN * im)
-    end
-    return y
-end
 for b in sol.roots
     x = kdp(b)
-    p = sortperm(x)
-    ω = masked(x[p], b.omega[p])
-    lines!(axr, x[p], real.(ω); color = (:gray, 0.6), linewidth = 1.5)
-    lines!(axi, x[p], imag.(ω); color = (:crimson, 0.8), linewidth = 1.5)
+    lines!(axr, x, real.(b.omega); color = (:gray, 0.6), linewidth = 1.5)
+    lines!(axi, x, imag.(b.omega); color = (:crimson, 0.8), linewidth = 1.5)
 end
 ylims!(axr, 0, 8); ylims!(axi, 0, 0.09)
 fig
