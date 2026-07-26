@@ -4,7 +4,7 @@
 Link per-grid-point complex value sets `vals[I]` into continuous sheets over the
 m-D parameter grid.
 
-One sheet is traced at a time, seeded at the highest-growth-rate 
+One sheet is traced at a time, seeded at the highest-growth-rate
 unclaimed value and grown outward: each frontier cell takes the
 nearest unclaimed value within `gate` of a quadratic extrapolation.
 """
@@ -14,6 +14,7 @@ function link(vals::AbstractArray{<:Any,M}; gate) where {M}
     pool = map(c -> V.(vals[c]), grid)               # candidate values per cell
     live = map(p -> trues(length(p)), pool)          # still unclaimed
     steps = [CartesianIndex(ntuple(i -> ifelse(i == j, s, 0), M)) for j in 1:M for s in (-1, 1)]
+    δ = _grid_step(pool, grid, steps)
     sheets = Vector{Pair{CartesianIndex{M},V}}[]
     while true
         sc = zero(CartesianIndex{M})                 # seed at the highest-growth live value
@@ -29,8 +30,8 @@ function link(vals::AbstractArray{<:Any,M}; gate) where {M}
         while !isempty(frontier)
             c = popfirst!(frontier)
             (c in grid && !haskey(claim, c)) || continue
-            w = _quadratic_extrapolate(claim, c, steps)
-            i = isnothing(w) ? 0 : _nearest_live(pool[c], live[c], w, gate)
+            e = _quadratic_extrapolate(claim, c, steps)
+            i = isnothing(e) ? 0 : _nearest_live(pool[c], live[c], e[1], _jump_tol(gate, e[2], δ))
             i == 0 && continue
             live[c][i] = false
             claim[c] = pool[c][i]
@@ -54,6 +55,7 @@ end
 const _CURV = 0.4
 function _quadratic_extrapolate(claim, c, steps)
     acc = zero(valtype(claim))
+    step = zero(real(valtype(claim)))
     n = 0
     for s in steps
         a = get(claim, c + s, nothing)
@@ -67,9 +69,31 @@ function _quadratic_extrapolate(claim, c, steps)
         else
             3a - 3b + d
         end
+        isnothing(b) || (step = max(step, abs(a - b)))
         n += 1
     end
-    return n == 0 ? nothing : acc / n
+    return n == 0 ? nothing : (acc / n, step)
+end
+
+_jump_tol(gate, step, δ) = min(gate, _JUMP * max(step, δ))
+
+const _JUMP = 3
+
+# Grid-wide per-step motion: the `_STEP_Q` quantile of how far a value at one cell sits from
+# the nearest value at the adjacent cell.
+const _STEP_Q = 0.9
+function _grid_step(pool, grid, steps)
+    ds = Float64[]
+    for c in grid, s in steps
+        nb = c + s
+        (nb in grid && !isempty(pool[nb])) || continue
+        for v in pool[c]
+            push!(ds, minimum(w -> abs(w - v), pool[nb]))
+        end
+    end
+    isempty(ds) && return 0.0
+    sort!(ds)
+    return ds[clamp(ceil(Int, _STEP_Q * length(ds)), 1, length(ds))]
 end
 
 # Index of the nearest unclaimed value to `w` within `gate`; 0 if none.
