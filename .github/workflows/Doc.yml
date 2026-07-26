@@ -30,9 +30,52 @@ jobs:
       actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created
       contents: write
       statuses: write
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: Build and deploy Documenter.jl docs
         uses: JuliaSpacePhysics/actions/DocsDocumenter@main
         env:
           JULIA_NUM_THREADS: auto,1
+
+      # Baseline for PR comparisons; the composite action already left gh-pages checked out here.
+      - name: Record build time on gh-pages
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        continue-on-error: true
+        working-directory: gh-pages
+        run: |
+          cp ../docs/build-timings.tsv build-timings.tsv
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git add build-timings.tsv
+          git diff --cached --quiet || {
+            git commit -m "Update docs build timings (automated)"
+            git pull --rebase && git push
+          }
+
+      - name: Comment case-study build time
+        if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MARKER: "<!-- vmd-docs-build-timing -->"
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          [[ -s docs/build-timings.tsv ]] || exit 0
+          gh api "repos/$GITHUB_REPOSITORY/contents/build-timings.tsv?ref=gh-pages" \
+            -H "Accept: application/vnd.github.raw" > $RUNNER_TEMP/base.tsv || true
+          { echo "$MARKER"
+            printf '## Case-study build time\n\n| page | seconds | main | Δ |\n|---|---:|---:|---:|\n'
+            sort -t$'\t' -k2 -gr docs/build-timings.tsv |
+              awk -F'\t' 'FILENAME != "-" { base[$1] = $2; next }
+                { d = "—"; m = ($1 in base) ? base[$1] : "—"
+                  if (m != "—" && m + 0 > 0) d = sprintf("%+.2f (%+.0f%%)", $2 - m, 100 * ($2 - m) / m)
+                  printf "| %s | %s | %s | %s |\n", $1, $2, m, d }' $RUNNER_TEMP/base.tsv -
+          } > $RUNNER_TEMP/comment.md
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+                 --jq "[.[] | select(.body | startswith(\"$MARKER\"))] | .[0].id // empty")
+          if [[ -n $id ]]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@$RUNNER_TEMP/comment.md --silent
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@$RUNNER_TEMP/comment.md --silent
+          fi
