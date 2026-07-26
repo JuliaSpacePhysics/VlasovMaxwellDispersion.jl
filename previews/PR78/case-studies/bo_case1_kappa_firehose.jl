@@ -11,33 +11,33 @@ using DelimitedFiles, Printf, Unitful
 using CairoMakie
 
 # ## Plasma setup
-#
-# Normalized to the proton gyrofrequency `ωcp` — `ref` defaults to the first species.
-# `T = (T∥, T⟂)`, and `cut = 10` truncates the surrogate at `10 vth`.
 
 κs = (4.0, 6.0, 8.0)
 
+kappa_proton(κ) = sc -> LowRankVDF(
+    BiKappa(; vth_para=sc.vth, vth_perp=sc.vth_perp, kappa=κ);
+    rtol=1.0e-10, para=(-10sc.vth, 10sc.vth), perp=10sc.vth_perp
+)
+
+n = 5.0e19u"m^-3"
+Tpara, Tperp = 1986.734u"eV", 993.367u"eV"
+electron = Species(Electron(); n, T=496.683u"eV")
+
 plasmas = map(κs) do κ
-    Plasma(
-        Species(Proton(), LowRankVDF(BiKappa(; kappa = κ); rtol = 1.0e-10, cut = 10);
-            n = 5.0e19u"m^-3", T = (1986.734, 993.367) .* u"eV"),
-        Species(Electron(); n = 5.0e19u"m^-3", T = 496.683u"eV"),
-        B0 = 0.1u"T",
-    )
+    proton = Species(Proton(), kappa_proton(κ); n, T=(Tpara, Tperp))
+    Plasma(proton, electron; B0=0.1u"T")
 end
 
 # ## Seedless surveys, one per κ
 #
-# `k` is swept over `k·dᵢ ∈ [0.03, 0.45]`; `scales(plasma).di` is `dᵢ = c/ωpp = vA/ωcp`
-# (the paper's `λ_p`) in VMD's `c/ωcp` units, so dividing by it converts. The `ω` box
-# straddles the real axis to capture the non-propagating firehose branch together with
-# the damped modes around it.
+# `k` is swept over `k·dᵢ ∈ [0.03, 0.45]`; the protons' `scales(plasma, 1).d` is `dᵢ = c/ωpp = vA/ωcp`
+# (the paper's `λ_p`) in VMD's `c/ωcp` units.
 
-di = scales(first(plasmas)).di         # same for every κ
-region = (-0.1 - 0.25im, 0.5 + 0.12im)
-geom = AngleSweep(k = collect(0.03:0.015:0.45) ./ di, theta = 45u"°")
+di = scales(first(plasmas), 1).d       # same for every κ
+ω_region = (-0.1 - 0.25im, 0.5 + 0.12im)
+geom = AngleSweep(k=collect(0.03:0.015:0.45) ./ di, theta=deg2rad(45))
 
-sols = map(pl -> solve(DispersionProblem(pl, region, geom)), plasmas)
+sols = map(pl -> solve(DispersionProblem(pl, ω_region, geom)), plasmas)
 
 # ## Verification against PlasmaBO
 #
@@ -46,13 +46,13 @@ sols = map(pl -> solve(DispersionProblem(pl, region, geom)), plasmas)
 # fit of the sampled kappa distribution is poor in the tails and is omitted;
 # VMD evaluates the analytic bi-kappa susceptibility.
 
-ref = readdlm(joinpath(@__DIR__, "bo_case1_ref.tsv"); comments = true)
+ref = readdlm(joinpath(@__DIR__, "bo_case1_ref.tsv"); comments=true)
 kdi(b) = [sqrt(abs2(k)) * di for k in b.k]
 ## ref grid (Δk = 0.02) is offset from the survey grid (Δk = 0.015): nearest
 ## sample is ≤ 0.0075 away, so gate at half the survey spacing
 γmax(sol, x0) = maximum(
-    maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - x0) < 0.008); init = -Inf)
-        for b in sol.roots
+    maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - x0) < 0.008); init=(-Inf))
+    for b in sol.roots
 )
 for (κ, sol) in zip(κs, sols)
     rows = ref[ref[:, 4] .== κ, :]
@@ -73,21 +73,21 @@ end
 # Colored: all surveyed branches; black dots: PlasmaBO track (`κ = 6, 8`).
 # Peak growth `γ ≈ 0.05–0.066 ωcp` near `k·dᵢ ≈ 0.25` grows with `κ`.
 
-fig = Figure(size = (700, 780))
+fig = Figure(size=(700, 780))
 palette = Makie.wong_colors()
 for (i, (κ, sol)) in enumerate(zip(κs, sols))
     ax = Axis(
-        fig[i, 1]; ylabel = "γ / ωcp", title = "κ = $(round(Int, κ))",
-        xlabel = i == 3 ? "k dᵢ" : ""
+        fig[i, 1]; ylabel="γ / ωcp", title="κ = $(round(Int, κ))",
+        xlabel=i == 3 ? "k dᵢ" : ""
     )
     for (j, b) in enumerate(sol.roots)
         x = kdi(b)
         p = sortperm(x)
-        lines!(ax, x[p], imag.(b.omega)[p]; color = palette[mod1(j, length(palette))], linewidth = 2)
+        lines!(ax, x[p], imag.(b.omega)[p]; color=palette[mod1(j, length(palette))], linewidth=2)
     end
     rows = ref[ref[:, 4] .== κ, :]
-    isempty(rows) || scatter!(ax, rows[:, 1], rows[:, 3]; color = :black, markersize = 6)
-    hlines!(ax, [0.0]; color = (:black, 0.3), linestyle = :dash)
+    isempty(rows) || scatter!(ax, rows[:, 1], rows[:, 3]; color=:black, markersize=6)
+    hlines!(ax, [0.0]; color=(:black, 0.3), linestyle=:dash)
     xlims!(ax, 0, 0.6)
     ylims!(ax, -0.02, 0.075)
 end

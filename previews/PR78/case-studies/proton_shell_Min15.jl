@@ -18,13 +18,10 @@ using CairoMakie
 # ## Plasma setup
 #
 # Normalized to the proton gyrofrequency `ωcp`. The electron mass is the table's
-# deliberately heavy `m_e = 10⁻² m_p` — at quasi-perpendicular propagation the electron
-# dynamics matter, so the reduced mass must be kept.
+# deliberately heavy `m_e = 10⁻² m_p`.
 #
 # The shell is a raw `f₀(p⊥, p∥)`, so it is written as a function of the plasma's
-# [`scales`](@ref): shell speed `2 v_A`, spread the species' own `vth`, both dimensionless
-# there, and both set the surrogate's truncation box. `T` on such a species is the thermal
-# scale the closure reads, not a claim about the shell's second moment.
+# [`scales`](@ref): shell speed `2 v_A`, spread the species' own `vth`.
 
 shell(s) = let vd = 2s.vA, hi = 2s.vA + 5s.vth
     LowRankVDF((q, u) -> exp(-(sqrt(q^2 + u^2) - vd)^2 / s.vth^2); para = (-hi, hi), perp = (0.0, hi))
@@ -39,20 +36,20 @@ plasma = Plasma(
 
 # ## Seedless survey
 #
-# `k` sweeps `k·λ_p ∈ [0.3, 12.5]` (`λ_p = c/ω_pp = v_A/ω_cp`) at `θ = 89.5°`;
+# `k` sweeps `k·d_p ∈ [0.3, 12.5]` (`d_p = c/ω_pp = v_A/ω_cp`) at `θ = 89.5°`;
 # the `ω` box spans the Bernstein harmonic staircase up to `~7.5 ω_cp`.
 
-λp = scales(plasma).vA                        # λ_p = v_A/ω_cp in units of c/ω_cp
+dp = scales(plasma).vA                        # d_p = v_A/ω_cp in units of c/ω_cp
 region = (0.05 - 0.06im, 7.8 + 0.12im)
-geom = AngleSweep(k = range(0.3, 12.5, 128) ./ λp, theta = 89.5u"°")
+geom = AngleSweep(k = range(0.3, 12.5, 128) ./ dp, theta = deg2rad(89.5))
 sol = solve(DispersionProblem(plasma, region, geom))
 
 # ## Dispersion diagram
 
 fig = Figure(size = (900, 420))
-axr = Axis(fig[1, 1]; xlabel = "k λp", ylabel = "Re ω / ωcp", title = "Proton shell, θ = 89.5°")
-axi = Axis(fig[1, 2]; xlabel = "k λp", ylabel = "Im ω / ωcp")
-klp(b) = [sqrt(abs2(k)) * λp for k in b.k]
+axr = Axis(fig[1, 1]; xlabel = "k d_p", ylabel = "Re ω / ωcp", title = "Proton shell, θ = 89.5°")
+axi = Axis(fig[1, 2]; xlabel = "k d_p", ylabel = "Im ω / ωcp")
+kdp(b) = [sqrt(abs2(k)) * dp for k in b.k]
 ## linking occasionally hops harmonics; break the polyline at Re-ω jumps
 ## instead of drawing the connector
 function masked(x, ω; dmax = 0.35)
@@ -63,7 +60,7 @@ function masked(x, ω; dmax = 0.35)
     return y
 end
 for b in sol.roots
-    x = klp(b)
+    x = kdp(b)
     p = sortperm(x)
     ω = masked(x[p], b.omega[p])
     lines!(axr, x[p], real.(ω); color = (:gray, 0.6), linewidth = 1.5)

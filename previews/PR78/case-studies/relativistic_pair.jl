@@ -25,8 +25,7 @@ using CairoMakie
 # ## Plasma setup
 #
 # Normalized to `|Ω| = 1`; `Π² = ωp²/Ω² = 1` per species; momenta in `mc`, `k` in
-# `Ω/c` — the reference quotes these ratios directly, so this case skips the physical
-# `Plasma`/`Species` front end. `MaxwellJuttner(μ)` feeds the relativistic closed-form tensor. Equal
+# `Ω/c`. `MaxwellJuttner(μ)` feeds the relativistic closed-form tensor. Equal
 # masses and opposite charges make R/L degenerate, so the parallel branch is a
 # single Alfvén-like mode and every transverse root of the full determinant is a
 # *double* zero.

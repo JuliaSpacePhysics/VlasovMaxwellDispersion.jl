@@ -18,23 +18,20 @@ using CairoMakie
 
 # # 1. Firehose — bi-kappa protons (Astfalk 2017)
 #
-# `κ = 5.5` product-bi-kappa protons with `T∥p = 2 T⟂p` (`β∥p = 4`, `β⟂p = 2`)
-# plus Maxwellian electrons at `θ = 45°`, normalized to the proton gyrofrequency `ωcp`.
+# `κ = 5.5` product-bi-kappa protons with `T∥p = 2 T⟂p` plus Maxwellian electrons.
 
 plasma = Plasma(
-    Species(Proton(), ProductBiKappa(kappa_para = 5.5, kappa_perp = 5.5);
-        n = 5.0e19u"m^-3", T = (1986.734, 993.367) .* u"eV"),
-    Species(Electron(); n = 5.0e19u"m^-3", T = 496.683u"eV"),
-    B0 = 0.1u"T",
+    Species(Proton(), sc -> ProductBiKappa(sc; kappa_para=5.5, kappa_perp=5.5);
+        n=5.0e19u"m^-3", T=(1986.734, 993.367) .* u"eV"),
+    Species(Electron(); n=5.0e19u"m^-3", T=496.683u"eV"),
+    B0=0.1u"T",
 )
 
-# `k` is swept over `k·dᵢ ∈ [0.01, 0.5]`, `dᵢ = c/ωpp = vA/ωcp` from [`scales`](@ref);
-# the `ω` box straddles the real axis to capture the growing firehose branch together
-# with the damped modes around it.
+# `k` is swept over `k·dᵢ ∈ [0.01, 0.5]`, `dᵢ = c/ωpp = vA/ωcp`.
 
-di = scales(plasma).di
+di = scales(plasma, 1).d
 region = (-0.1 - 0.25im, 0.5 + 0.12im)
-geom = AngleSweep(k = (0.01, 0.5) ./ di, theta = 45u"°")
+geom = AngleSweep(k=(0.01, 0.5) ./ di, theta=deg2rad(45))
 sol = solve(DispersionProblem(plasma, region, geom))
 
 # ## Verification against PlasmaBO
@@ -44,14 +41,14 @@ sol = solve(DispersionProblem(plasma, region, geom))
 # The reference (`firehose_astfalk17_ref.tsv`) is the unstable branch tracked by
 # PlasmaBO's Hermite–Hermite solver (`N = 2`, `J = 24`).
 
-ref = readdlm(joinpath(@__DIR__, "firehose_astfalk17_ref.tsv"); comments = true)
+ref = readdlm(joinpath(@__DIR__, "firehose_astfalk17_ref.tsv"); comments=true)
 kdi(b) = [sqrt(abs2(k)) * di for k in b.k]
 Δmax = 0.0
 for r in eachrow(ref)
     r[3] > 0.005 || continue
     γ = maximum(
-        maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - r[1]) < 0.004); init = -Inf)
-            for b in sol.roots
+        maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - r[1]) < 0.004); init=(-Inf))
+        for b in sol.roots
     )
     global Δmax = max(Δmax, abs(γ - r[3]))
     @printf("k·di=%.2f  γ_ref=%.4f  γ_vmd=%.4f  Δ=%.1e\n", r[1], r[3], γ, abs(γ - r[3]))
@@ -72,19 +69,19 @@ end
 
 persists(b) = count(isfinite, b.omega) ≥ length(b.omega) ÷ 4
 
-fig = Figure(size = (700, 620))
-axr = Axis(fig[1, 1]; ylabel = "Re ω / ωcp", title = "Bi-kappa firehose, θ = 45°")
-axi = Axis(fig[2, 1]; xlabel = "k dᵢ", ylabel = "Im ω / ωcp")
+fig = Figure(size=(700, 620))
+axr = Axis(fig[1, 1]; ylabel="Re ω / ωcp", title="Bi-kappa firehose, θ = 45°")
+axi = Axis(fig[2, 1]; xlabel="k dᵢ", ylabel="Im ω / ωcp")
 palette = Makie.wong_colors()
 for (i, b) in enumerate(filter(persists, sol))
     col = palette[mod1(i, length(palette))]
     x = kdi(b)
-    lines!(axr, x, real.(b.omega); color = col, linewidth = 2)
-    lines!(axi, x, imag.(b.omega); color = col, linewidth = 2)
+    lines!(axr, x, real.(b.omega); color=col, linewidth=2)
+    lines!(axi, x, imag.(b.omega); color=col, linewidth=2)
 end
-scatter!(axr, ref[:, 1], ref[:, 2]; color = :black, markersize = 5)
-scatter!(axi, ref[:, 1], ref[:, 3]; color = :black, markersize = 5)
-hlines!(axi, [0.0]; color = (:black, 0.3), linestyle = :dash)
+scatter!(axr, ref[:, 1], ref[:, 2]; color=:black, markersize=5)
+scatter!(axi, ref[:, 1], ref[:, 3]; color=:black, markersize=5)
+hlines!(axi, [0.0]; color=(:black, 0.3), linestyle=:dash)
 ylims!(axi, -0.12, 0.08)
 fig
 
@@ -93,27 +90,26 @@ fig
 # Anisotropic electron product bi-kappa with `T⟂e = 4 T∥e`, product-bi-kappa
 # protons at `T_p = 50 eV`, for `κ ∈ {3, 7, ∞}` (paper Fig. 2). The `κ = 3`
 # panel is where the paper reports BO's fitted growth rate deviating from the
-# ALPS/benchmark curves. Normalized to `|ωce|`, so `ref = Electron()`; the `κ → ∞` panel
-# swaps the spec for a Maxwellian and nothing else.
+# ALPS/benchmark curves. Normalized to `|ωce|`, so `ref = Electron()`.
 
 κs = (3.0, 7.0, Inf)
-vdf(κ) = isinf(κ) ? Maxwellian() : ProductBiKappa(kappa_para = κ, kappa_perp = κ)
+vdf(κ) = isinf(κ) ? Maxwellian : sc -> ProductBiKappa(sc; kappa_para=κ, kappa_perp=κ)
 
 plasmas = map(κs) do κ
     Plasma(
-        Species(Proton(), vdf(κ); n = 1.0e7u"m^-3", T = 50u"eV"),
-        Species(Electron(), vdf(κ); n = 1.0e7u"m^-3", T = (102, 408) .* u"eV"),
-        B0 = 1.0e-8u"T", ref = Electron(),
+        Species(Proton(), vdf(κ); n=1.0e7u"m^-3", T=50u"eV"),
+        Species(Electron(), vdf(κ); n=1.0e7u"m^-3", T=(102, 408) .* u"eV"),
+        B0=1.0e-8u"T", ref=Electron(),
     )
 end
 
-# `k∥` is swept over `k·λₑ ∈ [0.01, 2.8]` (`λₑ = c/ωpe`, the paper's abscissa);
+# `k∥` is swept over `k·d_e ∈ [0.01, 2.8]` (`d_e = c/ωpe`, the paper's abscissa);
 # the `ω` box spans the whistler band `0 < Re ω < |ωce|` up to the strongly
 # growing peak `γ ≳ ωce` together with the damped branches around it.
 
-λe = scales(first(plasmas)).de
+de = scales(first(plasmas), 2).d
 region = (-0.2 - 0.5im, 1.0 + 1.5im)
-geom = CartesianSweep(kz = vcat(0.01:0.005:0.3, 0.32:0.02:2.8) ./ λe)
+geom = CartesianSweep(kz=vcat(0.01:0.005:0.3, 0.32:0.02:2.8) ./ de)
 
 sols = map(pl -> solve(DispersionProblem(pl, region, geom)), plasmas)
 
@@ -126,8 +122,8 @@ sols = map(pl -> solve(DispersionProblem(pl, region, geom)), plasmas)
 # with the Hermite–Hermite solver for the Maxwellian limit. At each reference
 # `k` the nearest surveyed root is compared over the whole complex plane.
 
-ref = readdlm(joinpath(@__DIR__, "bo_case2_ref.tsv"); comments = true)
-kle(b) = [para(k) * λe for k in b.k]
+ref = readdlm(joinpath(@__DIR__, "bo_case2_ref.tsv"); comments=true)
+kde(b) = [para(k) * de for k in b.k]
 for (κ, sol) in zip(κs, sols)
     rows = ref[ref[:, 4] .== κ, :]
     Δmax = 0.0
@@ -135,8 +131,8 @@ for (κ, sol) in zip(κs, sols)
         r[3] > 0 || continue   # ref's damped tail exits the surveyed ω box
         ω_ref = complex(r[2], r[3])
         d = minimum(
-            minimum((abs(ω - ω_ref) for (x, ω) in zip(kle(b), b.omega) if isfinite(ω) && abs(x - r[1]) < 0.005); init = Inf)
-                for b in sol.roots
+            minimum((abs(ω - ω_ref) for (x, ω) in zip(kde(b), b.omega) if isfinite(ω) && abs(x - r[1]) < 0.005); init=Inf)
+            for b in sol.roots
         )
         Δmax = max(Δmax, d)
     end
@@ -150,7 +146,7 @@ end
 # !!! note "Convention discrepancy in the paper's κ = 3 panel"
 #     With the paper's *written* thermal speeds `c∥ = √(2kT∥/m·(1−1/2κ))`,
 #     `c⊥ = √(2kT⊥/m·(1−1/κ))` (used here and by PlasmaBO), the κ = 3 branch
-#     crosses `γ = 0` at `k·λₑ ≈ 2.1`. The paper's Fig. 2(b) instead crosses at
+#     crosses `γ = 0` at `k·d_e ≈ 2.1`. The paper's Fig. 2(b) instead crosses at
 #     `≈ 2.45`, which VMD reproduces only with *raw* `θ∥,⊥ = √(2kT/m)` (no κ
 #     correction — evidently the convention of the plotted Bai 2024 benchmark).
 #     At κ = 7 and ∞ the correction is within the curve width, so only the
@@ -160,25 +156,27 @@ end
 #
 # Left `Re ω`, right `γ`, rows `κ = 3, 7, ∞`; black dots: PlasmaBO track. Only
 # branches with a growing mode (`max Im ω > 0`) are drawn. The whistler grows
-# for `k·λₑ ≈ 0.15–2` with peak `γ` larger and at slightly larger `k` for smaller κ.
+# for `k·d_e ≈ 0.15–2` with peak `γ` larger and at slightly larger `k` for smaller κ.
 
-fig = Figure(size = (850, 780))
+fig = Figure(size=(850, 780))
 for (i, (κ, sol)) in enumerate(zip(κs, sols))
     lab = isinf(κ) ? "κ = ∞" : "κ = $(round(Int, κ))"
-    axr = Axis(fig[i, 1]; ylabel = "Re ω / |ωce|", title = lab, xlabel = i == 3 ? "k λₑ" : "")
-    axi = Axis(fig[i, 2]; ylabel = "γ / |ωce|", title = lab, xlabel = i == 3 ? "k λₑ" : "")
+    axr = Axis(fig[i, 1]; ylabel="Re ω / |ωce|", title=lab, xlabel=i == 3 ? "k d_e" : "")
+    axi = Axis(fig[i, 2]; ylabel="γ / |ωce|", title=lab, xlabel=i == 3 ? "k d_e" : "")
     for branch in sol
         isgrowing(branch, 0.01) || continue
-        x = kle(branch)
+        x = kde(branch)
         p = sortperm(x)
-        lines!(axr, x[p], real.(branch.omega)[p]; color = :royalblue, linewidth = 2)
-        lines!(axi, x[p], imag.(branch.omega)[p]; color = :orangered, linewidth = 2)
+        lines!(axr, x[p], real.(branch.omega)[p]; color=:royalblue, linewidth=2)
+        lines!(axi, x[p], imag.(branch.omega)[p]; color=:orangered, linewidth=2)
     end
     rows = ref[ref[:, 4] .== κ, :]
-    scatter!(axr, rows[:, 1], rows[:, 2]; color = :black, markersize = 6)
-    scatter!(axi, rows[:, 1], rows[:, 3]; color = :black, markersize = 6)
-    hlines!(axi, [0.0]; color = (:black, 0.3), linestyle = :dash)
-    xlims!(axr, 0, 2.6); xlims!(axi, 0, 2.6)
-    ylims!(axr, 0, 1); ylims!(axi, -0.3, 1.5)
+    scatter!(axr, rows[:, 1], rows[:, 2]; color=:black, markersize=6)
+    scatter!(axi, rows[:, 1], rows[:, 3]; color=:black, markersize=6)
+    hlines!(axi, [0.0]; color=(:black, 0.3), linestyle=:dash)
+    xlims!(axr, 0, 2.6);
+    xlims!(axi, 0, 2.6)
+    ylims!(axr, 0, 1);
+    ylims!(axi, -0.3, 1.5)
 end
 fig

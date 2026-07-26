@@ -10,9 +10,7 @@
 # `ω` box and `k` sweep at every drift, no per-case seeds.
 #
 # The setup is fully dimensionless: `ω` in `ωcp`, `k` in `ωcp/c`, speeds in `c`.
-# With `β_m = 1` the core thermal speed `√(2qT_m/m_p)` *equals* `vA`. The paper's own
-# inputs are ratios (`vA/c`, `β_m`, `mp/me`), so `NormalizedSpecies` takes them directly
-# instead of routing through the physical `Plasma`/`Species` front end.
+# With `β_m = 1` the core thermal speed `√(2qT_m/m_p)` *equals* `vA`.
 
 using VlasovMaxwellDispersion
 using DelimitedFiles, Printf
