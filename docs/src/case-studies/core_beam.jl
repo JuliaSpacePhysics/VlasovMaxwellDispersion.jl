@@ -17,8 +17,8 @@ using Unitful
 
 B0 = 7.5e-7u"T"
 plasma = Plasma(
-    Species(Proton(), sc -> Maxwellian(sc; vd=-2.87e-4); n=2.53e9u"m^-3", T=(20, 100) .* u"eV"),
-    Species(Proton(), sc -> Maxwellian(sc; vd=3.33e-4); n=2.17e9u"m^-3", T=(48, 170) .* u"eV"),
+    Species(Proton(), sc -> Maxwellian(sc; vd=-2.87e-4); n=2.53e9u"m^-3", T=(100, 20) .* u"eV"),
+    Species(Proton(), sc -> Maxwellian(sc; vd=3.33e-4); n=2.17e9u"m^-3", T=(170, 48) .* u"eV"),
     Species(Electron(); n=4.7e9u"m^-3", T=50u"eV");
     B0,
 )

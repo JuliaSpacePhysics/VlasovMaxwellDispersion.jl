@@ -10,12 +10,12 @@ for specialized cases (bi-Maxwellian, kappa, …).
 using VlasovMaxwellDispersion, Unitful
 
 plasma = Plasma(
-    Species(Proton(); n = 5u"cm^-3", T = (20u"eV", 100u"eV")),   # T = (T∥, T⟂)
+    Species(Proton(); n = 5u"cm^-3", T = (100u"eV", 20u"eV")),  # T = (T⟂, T∥)
     Species(Electron(); n = 5u"cm^-3", T = 50u"eV"),
     B0 = 5u"nT",                                  # ω, k in Ω_ref = the proton gyrofreq
 )
 
-s = scales(plasma, 1)                    # dimensionless d, ρ, vth, vA, … for species 1
+s = scales(plasma, 1)   # dimensionless d, ρ, vth_perp, vth_para, vA, … for species 1
 k = Wavenumber(0.0, 0.5 / s.d)           # k∥·dᵢ = 0.5
 
 sol = solve(DispersionProblem(plasma, 0.9 - 0.01im, k))      # seeded root

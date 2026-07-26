@@ -15,8 +15,8 @@ using CairoMakie
 κs = (4.0, 6.0, 8.0)
 
 kappa_proton(κ) = sc -> LowRankVDF(
-    BiKappa(; vth_para=sc.vth, vth_perp=sc.vth_perp, kappa=κ);
-    rtol=1.0e-10, para=(-10sc.vth, 10sc.vth), perp=10sc.vth_perp
+    BiKappa(sc; kappa=κ);
+    rtol=1.0e-10, para=10sc.vth_para, perp=10sc.vth_perp
 )
 
 n = 5.0e19u"m^-3"
@@ -24,7 +24,7 @@ Tpara, Tperp = 1986.734u"eV", 993.367u"eV"
 electron = Species(Electron(); n, T=496.683u"eV")
 
 plasmas = map(κs) do κ
-    proton = Species(Proton(), kappa_proton(κ); n, T=(Tpara, Tperp))
+    proton = Species(Proton(), kappa_proton(κ); n, T=(Tperp, Tpara))
     Plasma(proton, electron; B0=0.1u"T")
 end
 

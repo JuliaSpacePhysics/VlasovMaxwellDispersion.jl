@@ -9,7 +9,7 @@ module PlasmaBase
 export AbstractVDF, Particle, Electron, Proton, Species, Plasma
 export charge, mass, particle, number_density, distribution, species, magnetic_field
 export gyrofrequency_ratio, plasma_gyro_ratio
-export Scales, scales
+export Scales, scales, perp_para
 
 """Supertype of every velocity distribution function."""
 abstract type AbstractVDF end
@@ -49,7 +49,8 @@ Proton() = Particle(E_SI, MP_SI)
     Species(particle, vdf=nothing; n, T=nothing, beta=nothing, vth=nothing)
 
 The thermal input is at most one of `T` (temperature), `beta` (plasma beta), or `vth` (thermal speed).
-Scalar for isotropic, tuple for anisotropic (parallel, perpendicular).
+Scalar for isotropic, or a `(⊥, ∥)` pair for anisotropic — positional `(perp, para)` or the
+order-free `(perp=…, para=…)`. See [`perp_para`](@ref).
 """
 struct Species{P,N,V,K}
     particle::P

@@ -13,7 +13,7 @@ using DelimitedFiles, Printf, Unitful
 # Here we specify the temperature `T` and resolve `vth` from particle identity `Electron()` and `T`.
 T = 2555 * u"eV" # vth = √(2qT/mₑ) = 0.1 c
 plasma = Plasma(
-    Species(Electron(), sc -> ProductBiKappa(sc; kappa_para=1, kappa_perp=200.0); n=2.43e6u"m^-3", T),
+    Species(Electron(), sc -> ProductBiKappa(sc; kappa=(200.0, 1)); n=2.43e6u"m^-3", T),
     B0=1.0e-6u"T",
 )
 
@@ -23,7 +23,7 @@ plasma = Plasma(
 # we invert this to VMD's `k` (normalized to `ωce/c`) at the fixed propagation angle.
 # `vtp` is the perpendicular kappa `θ⊥ = √(1−1/κ⊥)·vth`.
 
-vtp = sqrt(1 - 1 / 200) * scales(plasma).species[1].vth
+vtp = sqrt(1 - 1 / 200) * scales(plasma).species[1].vth_perp
 ref = readdlm(joinpath(@__DIR__, "cattaert07_ref.tsv"); comments=true)
 kρs = unique(ref[:, 1])
 θ = deg2rad(30)

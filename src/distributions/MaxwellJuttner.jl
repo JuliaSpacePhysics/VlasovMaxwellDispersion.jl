@@ -110,7 +110,7 @@ const _MJ_CYCLE_QUAD = BoxQuad(GaussLegendre(40), GaussLegendre(48))
 # lose more to fixed-quadrature resolution than they gain in truncation)
 _mj_prepared_box(μ) = get!(_MJ_BOX_CACHE, μ) do
     P = sqrt((1 + 16 / μ)^2 - 1)
-    prepare(CoupledVDF((γ, u) -> exp(-μ * γ); para = (-P, P), perp = P,
+    prepare(CoupledVDF((γ, u) -> exp(-μ * γ); para = P, perp = P,
         coords = :energy, regime = Relativistic()); quad = _MJ_CYCLE_QUAD)
 end
 

@@ -3,18 +3,20 @@
 # parabolic-cylinder series. Accurate for Λr=k⊥ vr/Ω ≲ 10; beyond, use `SeparableVDF`.
 
 """
-    GaussianRing(; vth_para, vth_perp=vth_para, vd=0, vr=0)
+    GaussianRing(; vth, vd=0, vr=0)
 
 Drifting ring-beam with a *literal* shifted-Gaussian perpendicular factor:
 
     f ∝ Gaussian(vth_perp, vr) ⊗ Gaussian(vth_para, vd)
 
+`vth` is a scalar (isotropic) or a `(⊥, ∥)` pair.
 Accurate for `Λr=k⊥ vr/Ω ≲ 10`; beyond, use [`SeparableVDF`](@ref).
 `vr=nothing` reduces to the bi-Maxwellian.
 """
-function GaussianRing(; vth_para, vth_perp = vth_para, vd = zero(vth_para), vr = nothing)
+function GaussianRing(; vth, vd = nothing, vr = nothing)
+    vth_perp, vth_para = perp_para(vth)
     perp = (isnothing(vr) || iszero(vr)) ? Gaussian(vth_perp) : Gaussian(vth_perp, vr)
-    return perp ⊗ Gaussian(vth_para, vd)
+    return perp ⊗ Gaussian(vth_para, @something(vd, zero(vth_para)))
 end
 
 

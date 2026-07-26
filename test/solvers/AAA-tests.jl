@@ -118,7 +118,7 @@ end
     # Kinetic species ⇒ ω²χ → 0 at ω=0 ⇒ det(ω²𝒟) has a zero pinned at the
     # origin. The raw residual CANNOT reject it (it also vanishes as ω → 0) — only
     # the geometric |ω| gate can.
-    vdf = ProductBiKappa(vth_para=0.1, vth_perp=0.1, kappa_para=1, kappa_perp=200.0)
+    vdf = ProductBiKappa(vth=0.1, kappa=(200.0, 1))
     plasma = (NormalizedSpecies(-1.0, 300.0, vdf),)
     k = Wavenumber(0.5, 1.0)
     @test abs(det(wave_dispersion_tensor(plasma, 1.0e-5 + 0im, k))) < 1.0e-4

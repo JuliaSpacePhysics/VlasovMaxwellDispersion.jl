@@ -3,7 +3,7 @@
 
 @testitem "CoupledVDF FixedNodeEval ≡ AdaptiveEval ≡ direct" begin
     f0(q, u) = exp(-(sqrt(q^2 + u^2) - 1.0)^2 / 0.3^2)     # inseparable ring, genuinely 2-D
-    d = CoupledVDF(f0; para = (-2.0, 2.0), perp = (0.0, 2.0))
+    d = CoupledVDF(f0; para = 2.0, perp = 2.0)
     s = NormalizedSpecies(-1.0, 1.0, d)
     # ω list includes crossed/damped poles; k∥ = 0 exercises the harmonic-independent branch
     for (k, ωs) in ((Wavenumber(0.6, 0.4), (1.2 + 0.05im, 0.7 + 0.02im, 1.4 - 0.05im, 1.4 - 0.3im)),
@@ -26,7 +26,7 @@ end
 # guard. Requires Im ζ ≈ 0 too, since Im δ = −Im ζ alone keeps |δ| large.
 @testitem "CoupledVDF plan: Landau pole grazing a quadrature node" begin
     f0(q, u) = exp(-(sqrt(q^2 + u^2) - 1.0)^2 / 0.3^2)
-    d = CoupledVDF(f0; para = (-2.0, 2.0), perp = (0.0, 2.0))
+    d = CoupledVDF(f0; para = 2.0, perp = 2.0)
     s = NormalizedSpecies(-1.0, 1.0, d)
     k = Wavenumber(0.6, 1.0)                     # k∥=1 ⇒ ζ_{n=0} = ω, so δ = u★ − ω exactly
     pl = plan_contribution(s, k; backend = FixedNodeEval())
@@ -40,7 +40,7 @@ end
 
 @testitem "FixedNodeEval is the default and threads through DispersionProblem" begin
     f0(q, u) = exp(-(sqrt(q^2 + u^2) - 1.0)^2 / 0.3^2)
-    ring = CoupledVDF(f0; para = (-2.0, 2.0), perp = (0.0, 2.0))
+    ring = CoupledVDF(f0; para = 2.0, perp = 2.0)
     plasma = (NormalizedSpecies(1.0, 0.5, ring), NormalizedSpecies(-1.0, 1.0, Maxwellian(0.2)))
     k = Wavenumber(0.6, 0.4)
     prob_p = DispersionProblem(plasma, 1.0 + 0.05im, k)                          # default backend
@@ -53,7 +53,7 @@ end
 
 @testitem "FixedNodeEval knobs and relativistic fallback" begin
     f0(q, u) = exp(-(sqrt(q^2 + u^2) - 1.0)^2 / 0.3^2)
-    d = CoupledVDF(f0; para = (-2.0, 2.0), perp = (0.0, 2.0))
+    d = CoupledVDF(f0; para = 2.0, perp = 2.0)
     s = NormalizedSpecies(-1.0, 1.0, d)
     k = Wavenumber(0.6, 0.4)
     ω = 1.2 + 0.05im
@@ -61,8 +61,8 @@ end
     @test plan_contribution(s, k; backend = FixedNodeEval(order = 8, nprobe = 65))(ω) ≈
         plan_contribution(s, k; backend = FixedNodeEval())(ω) rtol = 1.0e-6
 
-    mx = Maxwellian(vth_para = 0.1, vth_perp = 0.05)
-    rel = CoupledVDF(mx; para = (-0.6, 0.6), perp = 0.6, regime = Relativistic())
+    mx = Maxwellian(vth=(0.05, 0.1))
+    rel = CoupledVDF(mx; para = 0.6, perp = 0.6, regime = Relativistic())
     srel = NormalizedSpecies(-1.0, 1.0, rel)
     krel = Wavenumber(0.7, 0.4)
     pl = plan_contribution(srel, krel; backend = FixedNodeEval())

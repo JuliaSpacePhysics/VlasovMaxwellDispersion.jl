@@ -8,7 +8,7 @@
     k = Wavenumber(0.1, 0.4)
     ω = 1.3 - 0.05im
     χg = contribution(NormalizedSpecies(-1.0, 0.5, g), ω, k)
-    χm = contribution(NormalizedSpecies(-1.0, 0.5, Maxwellian(vth_para = vthp, vth_perp = vthq)), ω, k)
+    χm = contribution(NormalizedSpecies(-1.0, 0.5, Maxwellian(vth=(vthq, vthp))), ω, k)
     acc3 = maximum(abs.(χg .- χm)) / maximum(abs, χm)
     @test acc3 < 5.0e-3
 
@@ -51,7 +51,7 @@ end
     vperp = range(0.0, L, length = 61)
     F = [g0(u, v) for v in vperp, u in vpar]      # F[perp,para]
     g = GridVDF(vperp, vpar, F; rtol = 1.0e-4)
-    cpl = CoupledVDF(g0; para = (-L, L), perp = L)
+    cpl = CoupledVDF(g0; para = L, perp = L)
     k = Wavenumber(0.3, 0.4)
     ω = 1.2 - 0.05im
     χc = contribution(NormalizedSpecies(-1.0, 1.0, cpl), ω, k)
@@ -72,7 +72,7 @@ end
     vperp = range(0.0, L, length = 61)
     F = [f(v, u) for v in vperp, u in vpar]       # F[perp,para]
     grid = NormalizedSpecies(1.0, 1 / vA^2, GridVDF(vperp, vpar, F; rtol = 1.0e-4))
-    exact = NormalizedSpecies(1.0, 1 / vA^2, CoupledVDF(f; para = (-L, L), perp = L))
+    exact = NormalizedSpecies(1.0, 1 / vA^2, CoupledVDF(f; para = L, perp = L))
     k = Wavenumber(1.0e-3 / vA, 0.03 / vA)         # k̃ = k_ALPS/vA = (300, 10)
     ω = 0.029311 - 9.9693e-6im                   # ALPS bi-kappa (κ=6) root_1
     χg = contribution(grid, ω, k)

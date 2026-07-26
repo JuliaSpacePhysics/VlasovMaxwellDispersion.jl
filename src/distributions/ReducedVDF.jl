@@ -1,9 +1,11 @@
 """
-    ReducedVDF(fpar; para=(lo,hi), df=nothing)
+    ReducedVDF(fpar; para, df=nothing)
 
 Reduced 1-D parallel distribution for the field-aligned electrostatic path (`k⊥=0`):
 Landau damping / two-stream / bump-on-tail. `χ_zz = −(Π²/k∥²)∫ f∥′(u)/(u − ω/k∥) du`,
 with `f∥` evaluable at complex argument.
+
+$(RANGE_DOC)
 """
 struct ReducedVDF{D, T, N} <: AbstractVDF
     df::D
@@ -12,7 +14,7 @@ struct ReducedVDF{D, T, N} <: AbstractVDF
 end
 
 function ReducedVDF(fpar; para, df = nothing, normalize = true)
-    lo, hi = promote(float(para[1]), float(para[2]))
+    lo, hi = promote(float(_para_range(para)[1]), float(_para_range(para)[2]))
     n = normalize ? QuadGK.quadgk(fpar, lo, hi; rtol = 1.0e-10)[1] : one(lo)
     dfp = @something df (u -> _dwrt(fpar, u))
     return ReducedVDF(erase_f1(dfp, hi), (lo, hi), n)

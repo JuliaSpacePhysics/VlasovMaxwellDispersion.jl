@@ -4,7 +4,7 @@
     μ = 40.0
     L = sqrt((1 + 25 / μ)^2 - 1)
     ref = MaxwellJuttner(mu=μ)
-    rel = CoupledVDF(ref; para=(-L, L), perp=L, regime=Relativistic())
+    rel = CoupledVDF(ref; para=L, perp=L, regime=Relativistic())
 
     groups = (
         ((0.3 - 0.005im, 0.3 + 0.05im), (0.0, 0.3, 0.6, 0.7), 1.0e-5, 1.0e-5),
@@ -26,7 +26,7 @@ end
     μ = 2.0
     ref = MaxwellJuttner(mu=μ)
     P = 8.0
-    rel = CoupledVDF(ref; para=(-P, P), perp=P, regime=Relativistic())
+    rel = CoupledVDF(ref; para=P, perp=P, regime=Relativistic())
 
     pperp = range(0.0, 5.0, length=61)
     ppar = range(-5.0, 5.0, length=121)
@@ -77,8 +77,8 @@ end
     μ = 2.0
     ref = MaxwellJuttner(mu=μ)
     P = sqrt((1 + 16 / μ)^2 - 1)
-    en = CoupledVDF((γ, u) -> exp(-μ * γ); para=(-P, P), perp=P, coords=:energy, regime=Relativistic())
-    mom = CoupledVDF(ref; para=(-P, P), perp=P, regime=Relativistic())  # momentum coords: no denergy → no cycles
+    en = CoupledVDF((γ, u) -> exp(-μ * γ); para=P, perp=P, coords=:energy, regime=Relativistic())
+    mom = CoupledVDF(ref; para=P, perp=P, regime=Relativistic())  # momentum coords: no denergy → no cycles
     
     # momentum-coords VDF at damped-superluminal ω has no analytic continuation → warns
     @test_logs (:warn, r"damped superluminal") contribution(mom, 0.7 - 0.1im, Wavenumber(0.0, 0.5))
@@ -145,7 +145,7 @@ end
     μ = 2.0
     ref = MaxwellJuttner(mu=μ)
     P = sqrt((1 + 16 / μ)^2 - 1)
-    rel = CoupledVDF((γ, u) -> exp(-μ * γ); para=(-P, P), perp=P,
+    rel = CoupledVDF((γ, u) -> exp(-μ * γ); para=P, perp=P,
         coords=:energy, regime=Relativistic())
     ω = 2.5766 - 0.4536im
     for (kperp, tol) in ((0.0, 1.0e-4), (0.2, 5.0e-4), (0.6, 1.0e-6))

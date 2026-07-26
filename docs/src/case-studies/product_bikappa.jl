@@ -21,8 +21,8 @@ using CairoMakie
 # `κ = 5.5` product-bi-kappa protons with `T∥p = 2 T⟂p` plus Maxwellian electrons.
 
 plasma = Plasma(
-    Species(Proton(), sc -> ProductBiKappa(sc; kappa_para=5.5, kappa_perp=5.5);
-        n=5.0e19u"m^-3", T=(1986.734, 993.367) .* u"eV"),
+    Species(Proton(), sc -> ProductBiKappa(sc; kappa=5.5);
+        n=5.0e19u"m^-3", T=(993.367, 1986.734) .* u"eV"),
     Species(Electron(); n=5.0e19u"m^-3", T=496.683u"eV"),
     B0=0.1u"T",
 )
@@ -93,12 +93,12 @@ fig
 # ALPS/benchmark curves. Normalized to `|ωce|`, so `ref = Electron()`.
 
 κs = (3.0, 7.0, Inf)
-vdf(κ) = isinf(κ) ? Maxwellian : sc -> ProductBiKappa(sc; kappa_para=κ, kappa_perp=κ)
+vdf(κ) = isinf(κ) ? Maxwellian : sc -> ProductBiKappa(sc; kappa=κ)
 
 plasmas = map(κs) do κ
     Plasma(
         Species(Proton(), vdf(κ); n=1.0e7u"m^-3", T=50u"eV"),
-        Species(Electron(), vdf(κ); n=1.0e7u"m^-3", T=(102, 408) .* u"eV"),
+        Species(Electron(), vdf(κ); n=1.0e7u"m^-3", T=(408, 102) .* u"eV"),
         B0=1.0e-8u"T", ref=Electron(),
     )
 end
