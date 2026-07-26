@@ -4,5 +4,5 @@
 ```
 
 ```@autodocs
-Modules = [VlasovMaxwellDispersion, VlasovMaxwellDispersion.ReturnCode]
+Modules = [VlasovMaxwellDispersion, VlasovMaxwellDispersion.PlasmaBase, VlasovMaxwellDispersion.ReturnCode]
 ```

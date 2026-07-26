@@ -12,3 +12,14 @@ include("residue_cycles.jl")
 include("LowRankVDF.jl")
 include("Kappa.jl")
 include("BiKappa.jl")
+
+
+_vth(sc::Scales) = isnothing(sc.vth) ? throw(
+    ArgumentError("No thermal speed was given: set `T`, `beta` or `vth` on the Species")
+) : (; vth_para=sc.vth, vth_perp=sc.vth_perp)
+
+GaussianRing(sc::Scales; kw...) = GaussianRing(; _vth(sc)..., kw...)
+ProductBiKappa(sc::Scales; kw...) = ProductBiKappa(; _vth(sc)..., kw...)
+BiKappa(sc::Scales; kw...) = BiKappa(; _vth(sc)..., kw...)
+Maxwellian(sc::Scales; kw...) = Maxwellian(; _vth(sc)..., kw...)
+MaxwellJuttner(sc::Scales) = MaxwellJuttner(2 / _vth(sc).vth_para^2)

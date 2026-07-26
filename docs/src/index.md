@@ -7,16 +7,19 @@ for specialized cases (bi-Maxwellian, kappa, …).
 ## Quick start
 
 ```julia
-using VlasovMaxwellDispersion
+using VlasovMaxwellDispersion, Unitful
 
-pl = NormalizedSpecies(-1.0, 1.0, Maxwellian(1.0))   # Ω̃, Π̃², VDF
-k  = Wavenumber(0.0, 0.7)                            # k̃ = (k⊥, k∥)·c/Ω_ref
+plasma = Plasma(
+    Species(Proton(); n = 5u"cm^-3", T = (20u"eV", 100u"eV")),   # T = (T∥, T⟂)
+    Species(Electron(); n = 5u"cm^-3", T = 50u"eV"),
+    B0 = 5u"nT",                                  # ω, k in Ω_ref = the proton gyrofreq
+)
 
-sol = solve(DispersionProblem(pl, 1.2 - 0.1im, k), Muller())        # seeded root
-gsol = solve(DispersionProblem(pl, (0.5 - 0.6im, 2.5 + 0.1im), k))  # all roots in a box
+s = scales(plasma, 1)                    # dimensionless d, ρ, vth, vA, … for species 1
+k = Wavenumber(0.0, 0.5 / s.d)           # k∥·dᵢ = 0.5
 
-ks = [Wavenumber(0.0, kz) for kz in 0.3:0.05:1.0]
-ωs = solve(DispersionProblem(pl, 1.2 - 0.1im, ks)).omega            # track a k branch
+sol = solve(DispersionProblem(plasma, 0.9 - 0.01im, k))      # seeded root
+gsol = solve(DispersionProblem(plasma, (0.5 - 0.6im, 2.5 + 0.1im), k))  # all roots in a box
 ```
 
 The [Cattaert 2007 benchmark](case-studies/cattaert.md) page works a full non-Maxwellian

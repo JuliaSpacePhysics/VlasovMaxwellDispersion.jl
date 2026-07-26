@@ -2,7 +2,7 @@
     BiKappa(; vth_para, vth_perp=vth_para, kappa)
 
 Coupled anisotropic bi-kappa `f₀ ∝ (1 + p∥²/a∥ + p⊥²/a⊥)^{-(κ+1)}`,
-`a_{∥,⊥} = (κ-3/2)·vth_{∥,⊥}²` (so `⟨p⊥²⟩=vth_perp²`), `κ>3/2`.
+`a_{∥,⊥} = (κ-3/2)·vth_{∥,⊥}²`. Valid for `κ>3/2`.
 """
 struct BiKappa{K, T} <: AbstractVDF
     kappa::K
@@ -12,9 +12,9 @@ end
 
 parallel_even(::BiKappa) = true
 
-function BiKappa(; vth_para, vth_perp = vth_para, kappa)
+function BiKappa(; kappa, vth_para, vth_perp = vth_para)
     κ = kappa
-    kappa > 1.5 || throw(ArgumentError("BiKappa needs κ > 3/2 (finite ⟨p²⟩)"))
+    κ > 1.5 || throw(ArgumentError("BiKappa needs κ > 3/2 (finite ⟨p²⟩)"))
     a_para, a_perp = promote((κ - 1.5) * vth_para^2, (κ - 1.5) * vth_perp^2)
     return BiKappa(isinteger(κ) ? Int(κ) : κ, a_para, a_perp)
 end

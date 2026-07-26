@@ -29,7 +29,7 @@ and temperature-preserving θ's (`⟨p∥²⟩ = vth_para²/2`, `⟨p⊥²⟩ = 
 
 Note `ProductBiKappa(κ,κ) ≠ BiKappa(κ)`.
 """
-function ProductBiKappa(; vth_para, vth_perp=vth_para, kappa_para, kappa_perp=kappa_para)
+function ProductBiKappa(; kappa_para, kappa_perp=kappa_para, vth_para, vth_perp=vth_para)
     kappa_para > 0.5 || throw(ArgumentError("ProductBiKappa needs κ∥ > 1/2 (finite ⟨p∥²⟩)"))
     kappa_perp > 1 || throw(ArgumentError("ProductBiKappa needs κ⊥ > 1 (finite ⟨p⊥²⟩)"))
     return Kappa(sqrt(1 - 1 / kappa_perp) * vth_perp, kappa_perp) ⊗

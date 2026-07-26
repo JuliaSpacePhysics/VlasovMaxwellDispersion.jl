@@ -5,7 +5,7 @@
     Maxwellian(vth_para)
 
 Drifting bi-Maxwellian (dimensionless speeds `v/c`). A perpendicular ring speed `vr`
-selects the gyrotropic [`GyroRing`](@ref) `I₀` form. 
+selects the gyrotropic [`GyroRing`](@ref) `I₀` form.
 
     f ∝ (Gaussian | GyroRing) ⊗ Gaussian(vth_para, vd)
 """

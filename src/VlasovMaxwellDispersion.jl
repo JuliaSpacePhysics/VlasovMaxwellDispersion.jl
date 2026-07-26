@@ -4,7 +4,8 @@ include("../lib/PlasmaBase/src/PlasmaBase.jl")
 using .PlasmaBase
 using .PlasmaBase: AbstractVDF, AbstractPlasma, Particle, Species, Plasma,
     charge, mass, particle, number_density, distribution, species, magnetic_field, frequency,
-    gyrofrequency_ratio, plasma_gyro_ratio
+    gyrofrequency_ratio, plasma_gyro_ratio, velocity
+import .PlasmaBase: scales
 using LinearAlgebra
 using StaticArrays
 using Bumper: @no_escape, @alloc
@@ -44,7 +45,8 @@ export Wavenumber, para, perp
 export TensorReduction
 # re-exported physical vocabulary from PlasmaBase
 export AbstractVDF, Particle, Electron, Proton, Species, Plasma
-export NormalizedSpecies
+export charge, mass, plasma_gyro_ratio
+export NormalizedSpecies, NormalizedPlasma, scales
 export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, CoupledVDF, LowRankVDF, GaussianRing
 export BiKappa, ProductBiKappa, Kappa
 export Separable, ⊗, Gaussian, GyroRing
