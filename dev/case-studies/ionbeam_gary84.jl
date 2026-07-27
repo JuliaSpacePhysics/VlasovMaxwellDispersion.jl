@@ -27,9 +27,9 @@ function gary_plasma(v0_vm)
     Pi2 = 1 / vA_c^2                   # (ωpp(ne)/ωcp)²
     v0 = v0_vm * vm
     v0m = -0.01 * v0
-    main = NormalizedSpecies(1.0, 0.99Pi2, Maxwellian(; vth_para=vthm, vd=v0m))
-    beam = NormalizedSpecies(1.0, 0.01Pi2, Maxwellian(; vth_para=sqrt(10) * vthm, vd=v0m + v0))
-    elec = NormalizedSpecies(-mratio, mratio * Pi2, Maxwellian(; vth_para=sqrt(mratio) * vthm))
+    main = NormalizedSpecies(1.0, 0.99Pi2, Maxwellian(; vth=vthm, vd=v0m))
+    beam = NormalizedSpecies(1.0, 0.01Pi2, Maxwellian(; vth=sqrt(10) * vthm, vd=v0m + v0))
+    elec = NormalizedSpecies(-mratio, mratio * Pi2, Maxwellian(; vth=sqrt(mratio) * vthm))
     return (main, beam, elec)
 end
 
