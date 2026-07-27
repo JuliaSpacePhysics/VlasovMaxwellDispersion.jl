@@ -23,8 +23,8 @@ using CairoMakie
 # The shell is a raw `f₀(p⊥, p∥)`, so it is written as a function of the plasma's
 # [`scales`](@ref): shell speed `2 v_A`, spread the species' own `vth`.
 
-shell(s) = let vd = 2s.vA, hi = 2s.vA + 5s.vth
-    LowRankVDF((q, u) -> exp(-(sqrt(q^2 + u^2) - vd)^2 / s.vth^2); para = (-hi, hi), perp = (0.0, hi))
+shell(s) = let vd = 2s.vA, hi = 2s.vA + 5s.vth_para
+    LowRankVDF((q, u) -> exp(-(sqrt(q^2 + u^2) - vd)^2 / s.vth_para^2); para = hi, perp = hi)
 end
 
 plasma = Plasma(

@@ -29,23 +29,23 @@ end
     end
 
     f0(q, u) = exp(-(q^2 + u^2) / 0.16)
-    sep = SeparableVDF(q -> exp(-q^2 / 0.16), u -> exp(-u^2 / 0.16); para = (-3.0, 3.0), perp = (0.0, 3.0))
-    cpl = CoupledVDF(f0; para = (-3.0, 3.0), perp = (0.0, 3.0))
+    sep = SeparableVDF(q -> exp(-q^2 / 0.16), u -> exp(-u^2 / 0.16); para = 3.0, perp = 3.0)
+    cpl = CoupledVDF(f0; para = 3.0, perp = 3.0)
     for ω in (0.5 + 0.1im, 0.5 - 0.05im)   # growing AND damped (Landau residue active)
         @test parity(Maxwellian(0.4), ω) < 1.0e-12
-        @test parity(ProductBiKappa(vth_para = 0.4, kappa_para = 2), ω) < 1.0e-12    # integer-M residue path
-        @test parity(ProductBiKappa(vth_para = 0.4, kappa_para = 2.5), ω) < 1.0e-12  # ₂F₁ branch path
-        @test parity(BiKappa(vth_para = 0.4, kappa = 2.5), ω) < 1.0e-12
+        @test parity(ProductBiKappa(vth=0.4, kappa=2), ω) < 1.0e-12    # integer-M residue path
+        @test parity(ProductBiKappa(vth=0.4, kappa=2.5), ω) < 1.0e-12  # ₂F₁ branch path
+        @test parity(BiKappa(vth=0.4, kappa = 2.5), ω) < 1.0e-12
         @test parity(sep, ω) < 1.0e-6
         @test parity(cpl, ω) < 1.0e-6
         @test parity(cpl, ω; closure = Newberger()) < 1.0e-6
-        @test parity(ReducedVDF(u -> exp(-u^2 / 0.16); para = (-3.0, 3.0)), ω; kperp = 0.0) < 1.0e-10
+        @test parity(ReducedVDF(u -> exp(-u^2 / 0.16); para = 3.0), ω; kperp = 0.0) < 1.0e-10
     end
 
     # drifting f∥ is odd-asymmetric: χ(−k∥; vd) = S·χ(k∥; −vd)·S
     for ω in (0.5 + 0.1im, 0.5 - 0.05im)
-        a = contribution(sp(Maxwellian(vth_para = 0.4, vd = -0.3)), ω, Wavenumber(0.2, 0.6))
-        b = contribution(sp(Maxwellian(vth_para = 0.4, vd = 0.3)), ω, Wavenumber(0.2, -0.6))
+        a = contribution(sp(Maxwellian(vth=0.4, vd = -0.3)), ω, Wavenumber(0.2, 0.6))
+        b = contribution(sp(Maxwellian(vth=0.4, vd = 0.3)), ω, Wavenumber(0.2, -0.6))
         @test maximum(abs.(b .- flipz(a))) / maximum(abs.(a)) < 1.0e-12
     end
 end
@@ -64,7 +64,7 @@ end
     end
 
     mj(q, u) = exp(-8.0 * (sqrt(1 + q^2 + u^2) - 1))
-    cvdf = CoupledVDF(mj; para = (-2.0, 2.0), perp = (0.0, 2.0), regime = Relativistic())
+    cvdf = CoupledVDF(mj; para = 2.0, perp = 2.0, regime = Relativistic())
     for ω in (0.5 + 0.05im, 0.5 - 0.02im)   # subluminal (|Re ω| < k∥): damped side supported
         @test parity(cvdf, ω) < 1.0e-8
         @test parity(MaxwellJuttner(mu = 8.0), ω) < 1.0e-10

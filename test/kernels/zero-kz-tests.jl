@@ -35,8 +35,8 @@ end
 
     sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
     f0(q, u) = exp(-(q^2 + u^2) / 0.16)
-    sep = SeparableVDF(q -> exp(-q^2 / 0.16), u -> exp(-u^2 / 0.16); para = (-3.0, 3.0), perp = (0.0, 3.0))
-    cpl = CoupledVDF(f0; para = (-3.0, 3.0), perp = (0.0, 3.0))
+    sep = SeparableVDF(q -> exp(-q^2 / 0.16), u -> exp(-u^2 / 0.16); para = 3.0, perp = (0.0, 3.0))
+    cpl = CoupledVDF(f0; para = 3.0, perp = (0.0, 3.0))
     k0 = Wavenumber(0.7, 0.0)
     for ω in (1.37, 1.4 + 0.2im, 1.4 - 0.1im)
         ref = contribution(sp(Maxwellian(0.4)), ω, k0)
@@ -58,13 +58,13 @@ end
     k0 = Wavenumber(0.7, 0.0)
     for κ in (2, 2.5)   # integer-residue and ₂F₁ branches share the kz=0 moment formula
         aperp, apara = (κ - 1) * 0.4^2, (κ - 0.5) * 0.4^2
-        pbk = ProductBiKappa(vth_para = 0.4, kappa_para = κ)
+        pbk = ProductBiKappa(vth=0.4, kappa=κ)
         sep = SeparableVDF(
             v -> (1 + v^2 / aperp)^(-(κ + 1)), u -> (1 + u^2 / apara)^(-(κ + 1));
-            para = (-8.0, 8.0), perp = (0.0, 8.0)
+            para = 8.0, perp = (0.0, 8.0)
         )
-        bk = BiKappa(vth_para = 0.4, vth_perp = 0.5, kappa = κ)
-        cplk = CoupledVDF(bk; para = (-8.0, 8.0), perp = (0.0, 8.0))
+        bk = BiKappa(vth=(0.5, 0.4), kappa = κ)
+        cplk = CoupledVDF(bk; para = 8.0, perp = (0.0, 8.0))
         for ω in (1.4 + 0.2im, 1.4 - 0.1im)
             χp = contribution(sp(pbk), ω, k0)
             @test contribution(sp(sep), ω, k0) ≈ χp rtol = 1.0e-4
@@ -96,9 +96,9 @@ end
     sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
     vdfs = (
         Maxwellian(0.4),
-        Maxwellian(vth_para = 0.4, vd = 0.3),          # drift: exercises the odd moments
-        ProductBiKappa(vth_para = 0.4, kappa_para = 2.5),
-        BiKappa(vth_para = 0.4, kappa = 2),   # integer κ: ₂F₁ path takes ~2min/call at ζ~10⁴
+        Maxwellian(vth=0.4, vd = 0.3),          # drift: exercises the odd moments
+        ProductBiKappa(vth=0.4, kappa=2.5),
+        BiKappa(vth=0.4, kappa = 2),   # integer κ: ₂F₁ path takes ~2min/call at ζ~10⁴
     )
     ω = 1.4 + 0.2im
     for vdf in vdfs, kz in (1.0e-4, -1.0e-4)
@@ -113,7 +113,7 @@ end
 
     sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
     mj(q, u) = exp(-8.0 * (sqrt(1 + q^2 + u^2) - 1))
-    cvdf = CoupledVDF(mj; para = (-2.0, 2.0), perp = (0.0, 2.0), regime = Relativistic())
+    cvdf = CoupledVDF(mj; para = 2.0, perp = (0.0, 2.0), regime = Relativistic())
     for ω in (0.5 + 0.05im, 1.3 + 0.1im)   # γ-resonances inside support, off-axis at Im ω>0
         a0 = contribution(sp(cvdf), ω, Wavenumber(0.3, 0.0))
         aε = contribution(sp(cvdf), ω, Wavenumber(0.3, 1.0e-4))

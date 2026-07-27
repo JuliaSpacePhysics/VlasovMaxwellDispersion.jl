@@ -1,7 +1,7 @@
 @testitem "SeparableVDF(Gaussian) χ matches bi-Maxwellian" begin
     vthp, vthq = 0.9, 1.2
-    mx = Maxwellian(vth_para=vthp, vth_perp=vthq)
-    sep = SeparableVDF(mx; para=(-14vthp, 14vthp), perp=14vthq)
+    mx = Maxwellian(vth=(vthq, vthp))
+    sep = SeparableVDF(mx; para=14vthp, perp=14vthq)
     for (Ω, Pi2, ω, kz, kp) in (
         (-1.0, 0.5, 1.3 - 0.05im, 0.4, 0.3),
         (-1.0, 0.5, 0.7 + 0.02im, 0.25, 0.6),
@@ -36,7 +36,7 @@ end
     # ζ = (ω−nΩ)/kz so Landau residue exp(−ζ²) can overflow ⇒
     # parallel moments go Inf ⇒ QuadGK's perp integrand hits NaN ⇒ DomainError.
     # Root-finders probe such ω, need NaN tensor back without crash.
-    sep = SeparableVDF(v -> exp(-v^2), u -> exp(-u^2); para=(-6.0, 6.0), perp=6.0)
+    sep = SeparableVDF(v -> exp(-v^2), u -> exp(-u^2); para=6.0, perp=6.0)
     s = NormalizedSpecies(1.0, 1.0, sep)
     k = Wavenumber(0.1, 0.5)
     ω = 1.0 - 15.0im
@@ -47,7 +47,7 @@ end
     @test sol.retcode === ReturnCode.Failure && isnan(sol.resid)
 
     # Same overflow, coupled quadrature path
-    cpl = CoupledVDF((q, u) -> exp(-q^2 - u^2) / pi^1.5; para=(-6.0, 6.0), perp=6.0)
+    cpl = CoupledVDF((q, u) -> exp(-q^2 - u^2) / pi^1.5; para=6.0, perp=6.0)
     Dc = dispersion_tensor(NormalizedSpecies(1.0, 1.0, cpl), ω, k)
     @test all(x -> isnan(real(x)), Dc)
 end
@@ -55,9 +55,9 @@ end
 @testitem "SeparableVDF non-Gaussian plan matches CoupledVDF" begin
     fperp(v) = exp(-v^2) / π
     fpar(u) = (1 + u^2 / 3)^(-2)
-    sep = SeparableVDF(fperp, fpar; para=(-30.0, 30.0), perp=10.0,)
+    sep = SeparableVDF(fperp, fpar; para=30.0, perp=10.0,)
     coupled = CoupledVDF(
-        (v, u) -> fperp(v) * fpar(u); para=(-30.0, 30.0), perp=10.0
+        (v, u) -> fperp(v) * fpar(u); para=30.0, perp=10.0
     )
     k = Wavenumber(0.3, 0.4)
     plan = plan_contribution(NormalizedSpecies(-1.0, 1.0, sep), k)

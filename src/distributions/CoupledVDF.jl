@@ -1,8 +1,9 @@
 """
     CoupledVDF(f0; para, perp, dgrad=nothing, coords=:momentum, regime=NonRelativistic())
 
-Gyrotropic VDF `f0(p⊥, p∥)`, integrated over the box 
-`p⊥ ∈ perp`, `p∥ ∈ para` (each a `(lo, hi)` tuple).
+Gyrotropic VDF `f0(p⊥, p∥)`, integrated over the box `p⊥ ∈ perp`, `p∥ ∈ para`.
+
+$(RANGE_DOC)
 
 `coords` names the variables of `f0` and its gradient `dgrad`:
 
@@ -24,9 +25,6 @@ end
 
 regime(d::CoupledVDF) = d.regime
 
-@inline _pair(x::Tuple) = x
-@inline _pair(x) = (zero(x), x)
-
 #   ∂_⊥f = (p⊥/γ) ∂_γf,   ∂_∥f = ∂_∥f|_γ + (p∥/γ) ∂_γf.
 @inline function _mom_from_energy(denergy, q, u)
     γ = sqrt(1 + q^2 + u^2)
@@ -35,8 +33,8 @@ regime(d::CoupledVDF) = d.regime
 end
 
 function CoupledVDF(f0; para, perp, dgrad=nothing, coords=:momentum, regime=NonRelativistic())
-    plo, phi = promote(float(para[1]), float(para[2]))
-    qlo, qhi = oftype(phi, _pair(perp)[1]), oftype(phi, _pair(perp)[2])
+    plo, phi = promote(float(_para_range(para)[1]), float(_para_range(para)[2]))
+    qlo, qhi = oftype(phi, _perp_range(perp)[1]), oftype(phi, _perp_range(perp)[2])
     if coords === :energy
         denergy = @something dgrad (γ, u) -> _grad2(f0, γ, u)
         f0mom = (q, u) -> f0(sqrt(1 + q^2 + u^2), u)

@@ -20,7 +20,7 @@ end
     using VlasovMaxwellDispersion
     vth, Pi2, kz = 1.0, 1.0, 0.7
     k = Wavenumber(0.0, kz)
-    f = ReducedVDF(u -> exp(-(u / vth)^2) / (sqrt(pi) * vth); para = (-12.0, 12.0))
+    f = ReducedVDF(u -> exp(-(u / vth)^2) / (sqrt(pi) * vth); para = 12.0)
     ωf = solve(DispersionProblem(NormalizedSpecies(-1.0, Pi2, f), 1.2 - 0.1im, k)).omega
     ωm = solve(DispersionProblem(NormalizedSpecies(-1.0, Pi2, Maxwellian(vth)), 1.2 - 0.1im, k)).omega
     @test abs(ωf - ωm) < 1.0e-8
@@ -41,7 +41,7 @@ end
 @testitem "ReducedVDF guards against non-electrostatic use" begin
     using VlasovMaxwellDispersion
     using VlasovMaxwellDispersion: contribution
-    f = ReducedVDF(u -> exp(-u^2) / sqrt(pi); para = (-10.0, 10.0))
+    f = ReducedVDF(u -> exp(-u^2) / sqrt(pi); para = 10.0)
     s = NormalizedSpecies(-1.0, 1.0, f)
     @test_throws ArgumentError contribution(s, 1.0 + 0im, Wavenumber(0.3, 0.5))  # kperp≠0
 end

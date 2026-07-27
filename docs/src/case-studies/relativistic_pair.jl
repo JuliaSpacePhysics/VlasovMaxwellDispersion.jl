@@ -71,8 +71,8 @@ kz2c = collect(1.9:0.1:3.0)
 # `μ = 2`, `±5 mc` at `μ = 10`).
 
 using VlasovMaxwellDispersion: DispersionFunction
-plasmaC2 = pair(CoupledVDF(MaxwellJuttner(2.0); para=(-15.0, 15.0), perp=15.0, regime=Relativistic()))
-plasmaC10 = pair(CoupledVDF(MaxwellJuttner(10.0); para=(-5.0, 5.0), perp=5.0, regime=Relativistic()))
+plasmaC2 = pair(CoupledVDF(MaxwellJuttner(2.0); para=15.0, perp=15.0, regime=Relativistic()))
+plasmaC10 = pair(CoupledVDF(MaxwellJuttner(10.0); para=5.0, perp=5.0, regime=Relativistic()))
 function omode(plasmaC, kzs, wr0)
     out = similar(kzs)
     wr = wr0

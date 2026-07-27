@@ -10,9 +10,9 @@ const PROJ = dirname(Base.active_project())
 # process — a shared process would amortize the very compilation we measure.
 const CASES = [
     ("inseparable kp=0.3",
-        "g0(u,v)=exp(-(u^2+v^2+0.6u*v)); s=NormalizedSpecies(-1.0,1.0,CoupledVDF(g0;para=(-8.0,8.0),perp=6.0)); contribution(s,1.2+0.05im,Wavenumber(0.3,0.4))"),
+        "g0(u,v)=exp(-(u^2+v^2+0.6u*v)); s=NormalizedSpecies(-1.0,1.0,CoupledVDF(g0;para=8.0,perp=6.0)); contribution(s,1.2+0.05im,Wavenumber(0.3,0.4))"),
     ("perp-cut ring kp=0.6",
-        "f0=Maxwellian(vth_para=0.1,vth_perp=0.05,vr=0.6); s=CoupledVDF(f0;para=(-0.8,0.8),perp=(0.3,1.05)); contribution(s,1.3+0.02im,Wavenumber(0.6,0.4))"),
+        "f0=Maxwellian(vth=(0.05, 0.1),vr=0.6); s=CoupledVDF(f0;para=0.8,perp=(0.3,1.05)); contribution(s,1.3+0.02im,Wavenumber(0.6,0.4))"),
 ]
 
 probe(call) = """

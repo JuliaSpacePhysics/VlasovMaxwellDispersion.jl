@@ -34,14 +34,14 @@ Arbitrary **separable analytic** VDF `f(p⊥,p∥) = f⊥(p⊥)·f∥(p∥)` for
 magnetized EM** susceptibility. Both factors must be
 evaluable at complex arguments (continued onto the Landau contour).
 
-`para`/`perp` are `(lower, upper)` integration ranges (a bare `hi` for `perp` means `(0, hi)`).
+$(RANGE_DOC)
 """
 function SeparableVDF(fperp, fpar; para, perp, dfpara=nothing, dfperp=nothing)
     function _factor(f, df, lo, hi)
         fdf = isnothing(df) ? (x -> _val_dwrt(f, x)) : (x -> (f(x), df(x)))
         return AnalyticFactor(erase_f1(f, hi), erase_fd1(fdf, hi), lo, hi)
     end
-    return _factor(fperp, dfperp, _pair(perp)...) ⊗ _factor(fpar, dfpara, para...)
+    return _factor(fperp, dfperp, _perp_range(perp)...) ⊗ _factor(fpar, dfpara, _para_range(para)...)
 end
 
 # Force generic quadrature path

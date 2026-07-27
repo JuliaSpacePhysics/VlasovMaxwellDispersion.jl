@@ -11,7 +11,7 @@
     using VlasovMaxwellDispersion
     using VlasovMaxwellDispersion: CoupledVDF, NormalizedSpecies, Wavenumber, contribution
     g0(u, v) = exp(-(u^2 + v^2 + 0.6u * v))
-    s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; para = (-8.0, 8.0), perp = 6.0))
+    s = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; para = (-8.0, 8.0), perp = (0.0, 6.0)))
     r = @timed contribution(s, 1.2 + 0.05im, Wavenumber(0.3, 0.4))
     print(r.compile_time)
     """

@@ -11,7 +11,7 @@
 
     pl = NormalizedPlasma(
         Plasma(
-            Species(Proton(), sc -> BiKappa(sc; kappa=6); n=5.0e19u"m^-3", T=(1986.734, 993.367) .* u"eV"),
+            Species(Proton(), sc -> BiKappa(sc; kappa=6); n=5.0e19u"m^-3", T=(993.367, 1986.734) .* u"eV"),
             Species(Electron(); n=5.0e19u"m^-3", T=496.683u"eV"),
             B0=0.1u"T",
         )
@@ -21,7 +21,7 @@
     @test p.Pi2 ≈ Pi2(mp)
     @test e.Omega ≈ -mp / me
     @test e.Pi2 ≈ Pi2(me)
-    @test p.vdf == BiKappa(vth_para=vth(1986.734, mp), vth_perp=vth(993.367, mp), kappa=6)
+    @test p.vdf == BiKappa(vth=(vth(993.367, mp), vth(1986.734, mp)), kappa=6)
     @test e.vdf == Maxwellian(vth(496.683, me))
 
     s = scales(pl)
@@ -43,17 +43,17 @@ end
 
     # β∥ = 1 ⇒ vth∥ = B/√(μ₀ n mₛ), the species' OWN Alfvén speed
     plb = NormalizedPlasma(Plasma(Species(Proton(); n=1.0e6, beta=1.0), Species(Electron(); n=1.0e6, beta=1.0), B0=5.0e-9))
-    @test scales(plb).species[1].vth ≈ 5.0e-9 / sqrt(mu0 * 1.0e6 * mp) / c0
+    @test scales(plb).species[1].vth_para ≈ 5.0e-9 / sqrt(mu0 * 1.0e6 * mp) / c0
     # vth in c or Unitful; MaxwellJuttner reads mu = 2/vth²
     @test NormalizedPlasma(Plasma(Species(Electron(), MaxwellJuttner; n=1.0e6, vth=sqrt(2/10)), B0=5.0e-9)).species[1].vdf.mu ≈ 10.0
-    @test scales(NormalizedPlasma(Plasma(Species(Electron(); n=1.0e6, vth=0.1c0*u"m/s"), B0=5.0e-9))).species[1].vth ≈ 0.1
+    @test scales(NormalizedPlasma(Plasma(Species(Electron(); n=1.0e6, vth=0.1c0*u"m/s"), B0=5.0e-9))).species[1].vth_para ≈ 0.1
 
     # a callable spec sees its own thermal speeds alongside the plasma-wide vA
     pls = NormalizedPlasma(
-        Plasma(Species(Proton(), sc -> Maxwellian(sc.vth + sc.vA); n=1.0e6, T=10), Species(Electron(); n=1.0e6, T=10), B0=1.0e-8)
+        Plasma(Species(Proton(), sc -> Maxwellian(sc.vth_para + sc.vA); n=1.0e6, T=10), Species(Electron(); n=1.0e6, T=10), B0=1.0e-8)
     )
     ss = scales(pls)
-    @test pls.species[1].vdf == Maxwellian(ss.species[1].vth + ss.vA)
+    @test pls.species[1].vdf == Maxwellian(ss.species[1].vth_para + ss.vA)
 
     # ice_alpha: a D–e–α plasma normalized to ωcp, a particle it never contains, with the
     # paper's k-unit 1/λp built from a density no single species carries

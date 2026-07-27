@@ -4,8 +4,8 @@
 @testitem "LowRankVDF: separable f₀ is rank 1 and reproduces the bi-Maxwellian" begin
     using LinearAlgebra: rank
     vthp, vthq = 0.9, 1.2
-    mx = Maxwellian(vth_para = vthp, vth_perp = vthq)
-    lr = LowRankVDF(mx; para = (-10vthp, 10vthp), perp = 10vthq)
+    mx = Maxwellian(vth=(vthq, vthp))
+    lr = LowRankVDF(mx; para = 10vthp, perp = 10vthq)
     @test rank(lr) == 1
     for kperp in (0.1, 1.5), ω in (1.3 - 0.05im, 1.3 + 0.05im, 1.3 - 2.0im)
         k = Wavenumber(kperp, 0.4)
@@ -19,8 +19,8 @@ end
 @testitem "LowRankVDF: BiKappa vs its closed form, incl. damped ω" begin
     using LinearAlgebra: rank
     vthz, vthp, κ = 0.2, 0.3, 3.0
-    bk = BiKappa(vth_para = vthz, vth_perp = vthp, kappa = κ)
-    lr = LowRankVDF(bk; para = (-20vthz, 20vthz), perp = 20vthp, rtol = 1.0e-10)
+    bk = BiKappa(vth=(vthp, vthz), kappa = κ)
+    lr = LowRankVDF(bk; para = 20vthz, perp = 20vthp, rtol = 1.0e-10)
     @test 5 <= rank(lr) <= 25
     sb = NormalizedSpecies(1.0, 1.0, bk)
     sl = prepare(NormalizedSpecies(1.0, 1.0, lr))
@@ -37,7 +37,7 @@ end
 # Landau residue is exact. A fitted surrogate (e.g. GridVDF's spline) fails this test.
 @testitem "LowRankVDF: inseparable f₀ tracks the exact coupled path under damping" begin
     g0(v, u) = exp(-(u^2 + v^2 + 0.6u * v))
-    kw = (para = (-8.0, 8.0), perp = 6.0)
+    kw = (para = 8.0, perp = 6.0)
     cpl = prepare(NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...)))
     lr = prepare(NormalizedSpecies(-1.0, 1.0, LowRankVDF(g0; kw..., rtol = 1.0e-10)))
     for kperp in (0.3, 1.2)
@@ -50,7 +50,7 @@ end
 
 @testitem "LowRankVDF: k∥=0 (perpendicular) path" begin
     g0(v, u) = exp(-(u^2 + v^2 + 0.6u * v))
-    kw = (para = (-8.0, 8.0), perp = 6.0)
+    kw = (para = 8.0, perp = 6.0)
     cpl = NormalizedSpecies(-1.0, 1.0, CoupledVDF(g0; kw...))
     lr = prepare(NormalizedSpecies(-1.0, 1.0, LowRankVDF(g0; kw..., rtol = 1.0e-10)))
     k = Wavenumber(0.8, 0.0)
@@ -63,7 +63,7 @@ end
 # signed-zero real pole. Rank-1 Gaussian, as in the reviewer's counterexamples.
 @testitem "LowRankVDF: Landau-Cauchy edge cases match the exact coupled path" begin
     g0(v, u) = exp(-(u^2 + v^2))
-    kw = (para = (-8.0, 8.0), perp = 6.0)           # U=8 ⇒ far/near split at |ζ|=16
+    kw = (para = 8.0, perp = 6.0)           # U=8 ⇒ far/near split at |ζ|=16
     cpl = prepare(NormalizedSpecies(1.0, 1.0, CoupledVDF(g0; kw...)))
     lr = prepare(NormalizedSpecies(1.0, 1.0, LowRankVDF(g0; kw..., rtol = 1.0e-10)))
     cases = [
@@ -85,7 +85,7 @@ end
 # losing eps·uw/|δ|)
 @testitem "LowRankVDF: coincident node and negative-Ω refinement" begin
     g0(v, u) = exp(-(u^2 + v^2))
-    kw = (para = (-8.0, 8.0), perp = 6.0)
+    kw = (para = 8.0, perp = 6.0)
     cplraw, lrraw = CoupledVDF(g0; kw...), LowRankVDF(g0; kw..., rtol = 1.0e-10)
 
     # k∥=1 ⇒ ζ_{n=0}=ω; ω = a GL node ⇒ ζ hits that node exactly, ω+ε ⇒ grazes it.
@@ -112,18 +112,18 @@ end
     using LinearAlgebra: rank
     using VlasovMaxwellDispersion: isexact
     vthz, vthp = 0.2, 0.3
-    bk = BiKappa(vth_para = vthz, vth_perp = vthp, kappa = 3.0)
+    bk = BiKappa(vth=(vthp, vthz), kappa = 3.0)
     sb = NormalizedSpecies(1.0, 1.0, bk)
     k, ω = Wavenumber(4.0, 0.5), 1.3 - 0.02im
     err = map((1.0e-6, 1.0e-10)) do rtol
-        lr = LowRankVDF(bk; para = (-20vthz, 20vthz), perp = 20vthp, rtol)
+        lr = LowRankVDF(bk; para = 20vthz, perp = 20vthp, rtol)
         s = prepare(NormalizedSpecies(1.0, 1.0, lr))
         χ = contribution(s, ω, k)
         (rank(lr), maximum(abs, χ .- contribution(sb, ω, k)) / maximum(abs, contribution(sb, ω, k)))
     end
     @test err[2][1] > err[1][1]        # tighter rtol ⇒ higher rank
     @test err[2][2] < err[1][2] / 10   # ⇒ at least an order more accurate
-    lr = LowRankVDF(bk; para = (-20vthz, 20vthz), perp = 20vthp)
+    lr = LowRankVDF(bk; para = 20vthz, perp = 20vthp)
     plan = plan_contribution(prepare(NormalizedSpecies(1.0, 1.0, lr)), k)
     @test !isexact(plan)
 end
@@ -131,15 +131,15 @@ end
 @testitem "LowRankVDF: survey drops roots the surrogate cannot resolve" begin
     using VlasovMaxwellDispersion: trust_error, trusted, residual
     vthz, vthp = 0.2, 0.3
-    bk = BiKappa(vth_para = vthz, vth_perp = vthp, kappa = 3.0)
-    d = LowRankVDF(bk; para = (-20vthz, 20vthz), perp = 20vthp, rtol = 1.0e-10)
+    bk = BiKappa(vth=(vthp, vthz), kappa = 3.0)
+    d = LowRankVDF(bk; para = 20vthz, perp = 20vthp, rtol = 1.0e-10)
     # the cross is fitted on the real axis and degrades off it — sharply, in the tails first
     @test maximum(trust_error(d, u + 0.0im) for u in -4:0.5:4) < 1.0e-7
     @test maximum(trust_error(d, u - 0.3im) for u in -4:0.5:4) > 1.0e-4
 
     s = NormalizedSpecies(1.0, 1.0, d)
     k = Wavenumber(2.0, 1.0)
-    exact = NormalizedSpecies(1.0, 1.0, CoupledVDF(bk; para = (-20vthz, 20vthz), perp = (0.0, 20vthp)))
+    exact = NormalizedSpecies(1.0, 1.0, CoupledVDF(bk; para = 20vthz, perp = (0.0, 20vthp)))
     for ω in (1.3 + 0.3im, 1.3 + 0.2im)
         χl = contribution(s, ω, k)
         χe = contribution(exact, ω, k)

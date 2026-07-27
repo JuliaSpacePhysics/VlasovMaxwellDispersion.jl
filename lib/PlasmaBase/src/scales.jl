@@ -25,9 +25,10 @@ The plasma's characteristic scales, dimensionless — speeds in `c`, lengths in 
 
 - `vA` — Alfvén speed, from the total mass density
 - `Omega_ref`, `B0` — reference frequency [rad/s] and field [T] fixing the normalization
-- `species` — per species `(; wc, wp, vth, vth_perp, n, d, rho)`, with normalized
+- `species` — per species `(; wc, wp, vth_perp, vth_para, n, d, rho)`, with normalized
   gyro- and plasma frequency `wc = Ω_s/Ω_ref` (signed) and `wp = ω_ps/Ω_ref`, inertial
-  length `d = c/ω_ps = 1/wp` and gyroradius `rho = vth_perp/|Ω_s|`
+  length `d = c/ω_ps = 1/wp` and gyroradius `rho = vth_perp/|Ω_s|`. Both axes are named
+  explicitly; anisotropy pairs are ordered `(⊥, ∥)` — see [`perp_para`](@ref)
 
 `scales(plasma, i)` merges the `i`-th species' entry with the plasma-wide ones.
 """
@@ -49,28 +50,35 @@ function _species_scales(s::Species, B0, ref)
     p = particle(s)
     wc = ref isa Particle ? gyrofrequency_ratio(p, ref) : (charge(p) * B0 / mass(p)) / frequency(ref)
     wp = plasma_gyro_ratio(number_density(s), mass(p), B0) * abs(wc)
-    vth, vth_perp = thermal_speeds(s, B0)
+    vth_perp, vth_para = thermal_speeds(s, B0)
     return (;
-        wc, wp, vth, vth_perp, n=number_density(s), d=1 / wp,
+        wc, wp, vth_perp, vth_para, n=number_density(s), d=1 / wp,
         rho=isnothing(vth_perp) ? nothing : vth_perp / abs(wc),
     )
 end
 
 """
-    thermal_speeds(s::Species, B0) -> (vth_para, vth_perp)
+    thermal_speeds(s::Species, B0) -> (vth_perp, vth_para)
 
 The species' thermal speeds in `v/c`, from whichever of `T`/`beta`/`vth` it carries;
 `(nothing, nothing)` when it declares no thermal scale.
 """
 function thermal_speeds(s::Species, B0)
     th = s.thermal
-    haskey(th, :vth) && return map(velocity, _pair(th.vth))
-    haskey(th, :T) && return map(T -> sqrt(2 * energy(T) / mass(s)) / C_SI, _pair(th.T))
+    haskey(th, :vth) && return map(velocity, perp_para(th.vth))
+    haskey(th, :T) && return map(T -> sqrt(2 * energy(T) / mass(s)) / C_SI, perp_para(th.T))
     haskey(th, :beta) || return (nothing, nothing)
     # β = 2μ₀nT/B² ⇒ vth = √(2T/m) = √β·(B/√(μ₀ n m)), the species' own Alfvén speed
     vA_s = magnetic_field(B0) / sqrt(MU0_SI * mass_density(s)) / C_SI
-    return map(β -> sqrt(β) * vA_s, _pair(th.beta))
+    return map(β -> sqrt(β) * vA_s, perp_para(th.beta))
 end
 
-_pair(x) = (x, x)
-_pair(x::Union{Tuple,AbstractVector}) = (x[1], x[2])
+"""
+    perp_para(x) -> (perp, para)
+
+Widen an anisotropy parameter to its `(⊥, ∥)` pair: a scalar is isotropic, a
+`Tuple`/`AbstractVector` is positional, a `NamedTuple` is order-free.
+"""
+perp_para(x) = (x, x)
+perp_para(x::Union{Tuple,AbstractVector}) = (x[1], x[2])
+perp_para(x::NamedTuple) = (x.perp, x.para)

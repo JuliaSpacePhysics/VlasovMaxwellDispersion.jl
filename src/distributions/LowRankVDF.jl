@@ -18,6 +18,8 @@ rank — a bi-kappa and a spherical shell are both ≈ 10.
 `f0` must be evaluable at complex `p∥`: each `bₛ(u)=f₀(vₛ,u)` is a literal `f₀` slice, so unlike a
 fitted surrogate ([`GridVDF`](@ref)), which exists only on the real axis, it can be continued.
 
+$(RANGE_DOC)
+
 # Accuracy
 
 The cross is fitted on the REAL axis, so `rtol` bounds χ only where the p∥ integral stays there:
@@ -46,8 +48,8 @@ regime(::LowRankVDF) = NonRelativistic()
 LinearAlgebra.rank(d::LowRankVDF) = length(d.vp)
 
 function LowRankVDF(f0; para, perp, dgrad = nothing, rtol = 1.0e-8, rmax = 40, probe = (200, 401), gl = 12)
-    plo, phi = promote(float(para[1]), float(para[2]))
-    qlo, qhi = oftype(phi, _pair(perp)[1]), oftype(phi, _pair(perp)[2])
+    plo, phi = promote(float(_para_range(para)[1]), float(_para_range(para)[2]))
+    qlo, qhi = oftype(phi, _perp_range(perp)[1]), oftype(phi, _perp_range(perp)[2])
     dg = @something dgrad (q, u) -> _grad2(f0, q, u)
     bd = isnothing(dgrad) ? (q, u) -> _val_dwrt(x -> f0(q, x), u) : (q, u) -> (f0(q, u), dgrad(q, u)[2])
     vp, up = _cross_pivots(f0, range(qlo, qhi, probe[1]), range(plo, phi, probe[2]), rtol, rmax)

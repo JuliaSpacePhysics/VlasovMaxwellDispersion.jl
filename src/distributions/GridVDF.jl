@@ -12,8 +12,8 @@ Fit methods (`fit_grid`): `NonnegBSpline` (default; positivity-preserving two-pa
 The fit is renormalized to `∫d³p f₀ = 1`.
 """
 struct GridVDF{V, C, F <: TensorSplineFit} <: AbstractVDF
-    vpar::V
     vperp::V
+    vpar::V
     fit::F
     coupled::C
 end
@@ -44,7 +44,7 @@ function GridVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonR
     else
         (; n = one(para[1]), bernstein33 = _bernstein_rel(cpl))
     end
-    return GridVDF(vpara, vperp, fit, PreparedVDF(cpl, cache))
+    return GridVDF(vperp, vpara, fit, PreparedVDF(cpl, cache))
 end
 
 # A tabulated f₀ is ZERO outside its sampled support — never the bicubic's cubic

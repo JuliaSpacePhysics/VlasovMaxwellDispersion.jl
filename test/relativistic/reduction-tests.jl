@@ -44,7 +44,7 @@ end
     fO, fX, fD = map(m -> DispersionFunction(even, kp; mode=m), (:O, :X, :det))
     @test fD(ω) ≈ fO(ω) * fX(ω) rtol = 1.0e-12
     # a field-aligned drift recouples the blocks: rejected with opt-in hint
-    drift = (NormalizedSpecies(1.0, 1.0, Maxwellian(vth_para=0.05, vd=0.02)), NormalizedSpecies(-1.0, 1836.0, Maxwellian(0.05)))
+    drift = (NormalizedSpecies(1.0, 1.0, Maxwellian(vth=0.05, vd=0.02)), NormalizedSpecies(-1.0, 1836.0, Maxwellian(0.05)))
     @test_throws ArgumentError DispersionFunction(drift, kp; mode=:X)
 end
 
