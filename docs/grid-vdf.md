@@ -13,7 +13,9 @@ relative-error tolerance, positivity by construction, analytic derivatives. Naï
 per-cell interpolation gives negative f₀ and noisy ∂f₀ near the pole and is
 rejected.
 
-The fit is renormalized so `∫d³p f₀ = 1` (closed form over the cells, `_fit_d3p`).
+`moment` computes projected density and perpendicular scale. Tensor
+piecewise-polynomial moments close analytically; other projections use quadrature.
+As with `CoupledVDF`, susceptibility is divided by cached density.
 
 ## 2. Susceptibility as parallel × perpendicular moments
 
@@ -43,7 +45,7 @@ Because `f₀` is piecewise-polynomial, each `z^p` closes **exactly** per parall
 
 The single complex `log` of the ratio keeps the continuation single-valued as
 `Im ζ→0`; the `+2πi·P(ζ)` is the Landau term for a lower-half pole inside the cell
-(`cell_hilbert_landau`). So
+(`_cell_hilbert`). So
 
     z^p_F(v⊥) = −(1/k∥) Σ_i  cellH( v∥^p · ∂⊥f₀-slice ;  uᵢ, uᵢ₊₁, ζ_n ),
 
@@ -65,7 +67,7 @@ The key structural fact that makes this fast. Fix the perp cell `j` and let
 Two precomputations, **once per (harmonic n, perp cell j)** instead of per quadrature node:
 
 1. the moment coefficients `μ^{p,b}` (a handful of `cellH` per parallel cell);
-2. the per-parallel-cell `log((uᵢ₊₁−ζ_n)/(uᵢ−ζ_n))` and Landau flag — these depend only on `(i, ζ_n)`, not on `v⊥` or the moment, so they are shared across all moments, `t`-powers and perp cells of the harmonic (`_cellH` takes the log as an argument and reuses the Horner remainder `pζ = P(ζ)` for the Landau term).
+2. the per-parallel-cell `log((uᵢ₊₁−ζ_n)/(uᵢ−ζ_n))` and Landau flag — these depend only on `(i, ζ_n)`, not on `v⊥` or the moment, so they are shared across all moments, `t`-powers and perp cells of the harmonic (`_cell_hilbert` takes the log as an argument and reuses the Horner remainder `pζ = P(ζ)` for the Landau term).
 
 The remaining per-harmonic work is a smooth Gauss–Kronrod over each perp cell whose integrand only **evaluates the cubics** `evalpoly(t, μ)` and the Bessel weights:
 

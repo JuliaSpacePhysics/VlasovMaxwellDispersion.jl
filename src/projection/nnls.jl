@@ -166,7 +166,7 @@ function _ctrl_to_coeffs(knots1, knots2, ctrl, order)
     end
 
     coeffs = [SMatrix{N, N, Float64}(acc[i, j]) for i in 1:ncell1, j in 1:ncell2]
-    return TensorSplineFit(knots1, knots2, coeffs, ctrl)
+    return TensorSplineFit(knots1, knots2, coeffs)
 end
 
 
