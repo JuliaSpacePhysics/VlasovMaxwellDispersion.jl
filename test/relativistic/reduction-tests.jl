@@ -5,10 +5,11 @@
     cold = (NormalizedSpecies(1.0, 1.0, ColdVDF()), NormalizedSpecies(-1.0, 1836.0, ColdVDF()))
     # eager geometry validation at problem construction, not mid-sweep
     prob = DispersionProblem(cold, 0.5 + 0im, [Wavenumber(0.0, kz) for kz in 0.3:0.1:0.5]; mode=:L)
-    @test prob.mode === Circular(+1)
+    @test prob.mode === Circular(-1)
+    @test TensorReduction(:R) === Circular(+1)
     @test_throws ArgumentError DispersionFunction(cold, Wavenumber(0.1, 0.5); mode=:L)
     # rounded axis points (k⊥ = k sinθ at θ ≈ 0 or π) still qualify as parallel
-    @test DispersionProblem(cold, 0.5 + 0im, AngleSweep(1.0, [Float64(π)]); mode=:L).mode === Circular(+1)
+    @test DispersionProblem(cold, 0.5 + 0im, AngleSweep(1.0, [Float64(π)]); mode=:L).mode === Circular(-1)
     # Longitudinal is valid at any k: exact P factor at k⊥=0, electrostatic
     # approximation obliquely (same zeros as electrostatic_det)
     ko = Wavenumber(0.4, 0.5)
@@ -18,16 +19,19 @@
 end
 
 @testitem "Parallel factorization: det = R·L·P, convention, degeneracy" begin
-    cold = (NormalizedSpecies(1.0, 1.0, ColdVDF()), NormalizedSpecies(-1.0, 1836.0, ColdVDF()))
+    ep = (NormalizedSpecies(1 / 1836.0, 1 / 1836.0, ColdVDF()), NormalizedSpecies(-1.0, 1.0, ColdVDF()))
     k0 = Wavenumber(0.0, 0.5)
     fL, fR, fP, fD = map(
-        m -> DispersionFunction(cold, k0; mode=m),
+        m -> DispersionFunction(ep, k0; mode=m),
         (:L, :R, :P, :det)
     )
     ω = 0.3 + 0.01im
     @test fD(ω) ≈ fR(ω) * fL(ω) * fP(ω)
-    # L resonates with the positive species (ω → +Ω): |L| ≫ |R| near ω = 1
-    @test abs(fL(0.999)) > 100 * abs(fR(0.999))
+
+    kep = Wavenumber(0.0, 1.0e-6)   # n² → 0, so each factor is the bare S ∓ D
+    hL, hR = map(m -> DispersionFunction(ep, kep; mode=m), (:L, :R))
+    @test abs(hL(1.001 / 1836)) > 100 * abs(hR(1.001 / 1836))   # ion cyclotron pole ∈ L
+    @test abs(hR(1.001)) > 100 * abs(hL(1.001))                 # electron cyclotron pole ∈ R
     # equal-mass pair plasma: R and L exactly degenerate ⇒ every det root is
     # a double zero; the factors have simple zeros
     pair2 = (NormalizedSpecies(1.0, 1.0, MaxwellJuttner(mu=2.0)), NormalizedSpecies(-1.0, 1.0, MaxwellJuttner(mu=2.0)))

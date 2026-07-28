@@ -66,6 +66,27 @@
         @test abs(det(𝒟(plasma, ω, kL))) < 1.0e-8 * abs(R * L * P)
     end
 
+    @testset "mode symbols :L/:R select the Stix factors" begin
+        ω = 5.0 + 0im
+        kz = 0.3
+        k = Wavenumber(0.0, kz)
+        n2 = (kz / ω)^2
+        M = 𝒟(plasma, ω, k)
+        @test TensorReduction(:L)(M, k) ≈ stix_L(ω) - n2 rtol = 1.0e-10
+        @test TensorReduction(:R)(M, k) ≈ stix_R(ω) - n2 rtol = 1.0e-10
+
+        # ...and the cyclotron poles land on the matching symbol: the ion resonance
+        # belongs to :L, the electron resonance to :R.
+        k0 = Wavenumber(0.0, 1.0e-6)   # n²→0 so the factor is the bare S∓D
+        fac(m, om) = abs(TensorReduction(m)(𝒟(plasma, complex(om), k0), k0))
+        # only the resonant one grows like 1/(ω−Ω).
+        blowup(m, Ω) = fac(m, abs(Ω) * 1.0001) / fac(m, abs(Ω) * 1.001)
+        @test blowup(:L, Omega_i) > 5
+        @test blowup(:R, Omega_i) ≈ 1 atol = 0.1
+        @test blowup(:R, Omega_e) > 5
+        @test blowup(:L, Omega_e) ≈ 1 atol = 0.1
+    end
+
     @testset "perpendicular propagation (k_par=0): O-mode and X-mode factorization" begin
         # Stix: det(D) for k⊥B0 factors as (P-n^2)*(R*L - S*n^2), n^2=(kperp/ω)^2.
         ω = 5.0 + 0im

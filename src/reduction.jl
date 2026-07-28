@@ -5,7 +5,8 @@ Tensor → scalar reduction whose zeros a dispersion solve chases.
 
 - `:det` — `det 𝒟` - default.
 - `:L` / `:R` — circular factors at parallel `k` (`k⊥ = 0`), where
-  `det = L·R·P`. `:L` resonates with positive charges (`ω → +Ω`); `:R` mirror.
+  `det = L·R·P`. `:L` = `𝒟₁₁ − i𝒟₁₂` resonates with positive charges
+  (`ω → +Ω`, the ion-cyclotron branch); `:R` = `𝒟₁₁ + i𝒟₁₂` mirrors.
 - `:P` — `k̂ᵀ𝒟k̂`: at `k⊥ = 0` the exact parallel electrostatic factor;
   obliquely the electrostatic approximation.
 - `:O` / `:X` — perpendicular (`k∥ = 0`) factors `det = O·X`; exact only when
@@ -27,17 +28,13 @@ struct Extraordinary <: TensorReduction end
 TensorReduction(m::TensorReduction) = m
 @inline TensorReduction(m::Symbol) =
     m === :det ? FullDet() :
-    m === :L ? Circular(+1) :
-    m === :R ? Circular(-1) :
+    m === :L ? Circular(-1) :
+    m === :R ? Circular(+1) :
     m === :P ? Longitudinal() :
     m === :O ? Ordinary() :
     m === :X ? Extraordinary() :
     throw(ArgumentError("unknown mode $m; use :det, :L, :R, :P, :O, :X or a TensorReduction"))
 
-# Validity domain: a geometry condition (checked on the same parameter grid
-# the solvers will sample) and, for the perpendicular factors, a plasma
-# symmetry condition. The k-component that must vanish is compared against the
-# other so a rounded axis point (e.g. k⊥ = k sin(θ), θ ≈ π) still qualifies.
 _negligible(x, ref) = abs(x) ≤ 4 * eps(one(x)) * abs(ref)
 _valid_at(::TensorReduction, k) = true
 _valid_at(::Circular, k) = _negligible(perp(k), para(k))
@@ -68,17 +65,17 @@ function check_reduction(mode, plasma, geometry)
 end
 
 # Circular sign convention assumes e^{-iωt} and B₀ ∥ ẑ.
-@inline (m::TensorReduction)(M, k) = m(M)
-@inline (::FullDet)(M) = det(M)
-@inline (c::Circular)(M) = M[1, 1] + c.σ * im * M[1, 2]
-@inline function (::Longitudinal)(M, k)
+(m::TensorReduction)(M, k) = m(M)
+(::FullDet)(M) = det(M)
+(c::Circular)(M) = M[1, 1] + c.σ * im * M[1, 2]
+function (::Longitudinal)(M, k)
     kv = vec3(k)
     n2 = sum(abs2, kv)
     return iszero(n2) ? M[3, 3] : dot(kv, M, kv) / n2
 end
 # Perpendicular (k∥=0, f₀ even in p∥) block factors: det = O·X there.
-@inline (::Ordinary)(M) = M[3, 3]
-@inline (::Extraordinary)(M) = M[1, 1] * M[2, 2] - M[1, 2] * M[2, 1]
+(::Ordinary)(M) = M[3, 3]
+(::Extraordinary)(M) = M[1, 1] * M[2, 2] - M[1, 2] * M[2, 1]
 
 # A factor scales like a product of tensor eigenvalues — 1 of 3 for the 1×1
 # factors, 2 of 3 for the Extraordinary 2×2 block; shrinks the det-based
