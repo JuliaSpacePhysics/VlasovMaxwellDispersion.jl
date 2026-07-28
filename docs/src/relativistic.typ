@@ -236,4 +236,7 @@ Path $Gamma(omega)$ now requires an analytic complex energy-form gradient and an
 
 This note describes the subluminal-germ sheet. It can be exponentially far from the physical boundary value near marginal in-band frequencies.
 
+A correction is needed only where something resonates. At $"Im" omega -> 0^+$ harmonic $n$ reaches the real $p_parallel$ path iff
+$sqrt(omega_r^2 - k_parallel^2) <= |n Omega|$, always so for subluminal $omega_r$. Above the band of every coupled harmonic each $Gamma_n$ is empty, no pole crosses as $omega$ moves down, and the straight integral already _is_ the continuation.
+
 //  The Maxwell–Jüttner evaluator therefore keeps $|\operatorname{Im}\omega|\leq10^{-4}|\Omega|$ on the straight integral; locate near-real superluminal roots on the real boundary.

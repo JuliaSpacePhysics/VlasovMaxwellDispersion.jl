@@ -6,9 +6,14 @@ const _GL32 = GaussLegendre(32)
 
 const AType = SVector{6,ComplexF64}
 
-function _warn_damped_superluminal(ω, kz)
-    return if imag(ω) < 0 && real(ω)^2 > kz^2
-        @warn "damped superluminal ω (|Re ω| > |k∥|): the (p⊥,p∥) integral is not the analytic continuation there (apex branch cut, docs/src/relativistic.typ); use an analytic energy-form VDF with path=:cycles or evaluate at Im ω ≥ 0" maxlog = 1
+# Harmonic `n` reaches the real p∥ path iff √(ω_r²−k∥²) ≤ |nΩ| (min over |v|<c of
+# γ(ω−k∥v∥)); `m2min` = min(1+p⊥²) over the box.
+@inline _inband(ωr, kz, nΩ, m2min = 1) =
+    ωr^2 ≤ kz^2 || nΩ^2 ≥ (ωr^2 - kz^2) * m2min
+
+function _warn_damped_superluminal(ω, kz, nΩmax)
+    return if imag(ω) < 0 && real(ω)^2 > kz^2 && _inband(real(ω), kz, nΩmax)
+        @warn "damped superluminal ω (|Re ω| > |k∥|) inside a cyclotron band: the (p⊥,p∥) integral is not the analytic continuation there (apex branch cut, docs/src/relativistic.typ); use an analytic energy-form VDF with path=:cycles or evaluate at Im ω ≥ 0" maxlog = 1
     end
 end
 

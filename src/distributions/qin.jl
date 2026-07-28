@@ -41,14 +41,17 @@ const _GL64 = GaussLegendre(64)
 function _coupled_contribution(::Newberger, ::Relativistic, c::PreparedVDF, s, ω, k; quad = BoxQuad(_GL32, _GL64))
     d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
-    _warn_damped_superluminal(ω, kz)
-    val = _newberger_rel(d, ω, Ω, kz, kperp / Ω, quad)
+    a = kperp / Ω
+    nΩmax = nmax_bessel(a^2 * d.perp[2]^2 / 2) * abs(Ω)
+    _warn_damped_superluminal(ω, kz, nΩmax)
+    val = _newberger_rel(d, ω, Ω, kz, a, quad;
+        landau = _inband(real(ω), kz, nΩmax, 1 + d.perp[1]^2))
     bern = _ee33((s.Pi2 / ω^2) * c.cache.bernstein33)
     return (s.Pi2 / (ω^2 * Ω)) .* _antisymmat(val) .+ bern
 end
 
 # Outer p⊥ sweep peel every in-box resonance n (its two rationalized roots) once
-function _newberger_rel(d, ω, Ω, kz, a, qs::BoxQuad)
+function _newberger_rel(d, ω, Ω, kz, a, qs::BoxQuad; landau = true)
     plo, phi = d.para
     qlo, qhi = d.perp
     ν = imag(ω)
@@ -75,7 +78,7 @@ function _newberger_rel(d, ω, Ω, kz, a, qs::BoxQuad)
             Wof = (u, γ) -> (σof(u, γ) * (ω * γ + kz * u + nΩ)) .* _T_n_bare_x(n, z, u, q)
             (p1, c1), (p2, c2) = _Dn_poles(ω, kz, nΩ, m2)
             for (p, cc) in ((p1, c1), (p2, c2))
-                r, lg = _peel_residue(p, cc, Wof, γof, ν, plo, phi, sgnkz)
+                r, lg = _peel_residue(p, cc, Wof, γof, ν, plo, phi, sgnkz; landau)
                 (isfinite(p) && any(!iszero, r)) || continue
                 push!(poles, (p, (2π * Ω) .* r))
                 lgsum = lgsum .+ (2π * Ω) .* lg

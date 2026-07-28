@@ -83,9 +83,8 @@ end
     # momentum-coords VDF at damped-superluminal ω has no analytic continuation → warns
     @test_logs (:warn, r"damped superluminal") contribution(mom, 0.7 - 0.1im, Wavenumber(0.0, 0.5))
 
-    # near-marginal superluminal (|Re ω| > |k∥|, moderate damping): the germ and the Landau sheet differ by O(1)
-    for (kz, ω) in ((0.5, 0.7 - 0.1im), (0.5, 1.2 - 0.1im))
-        k = Wavenumber(0.0, kz)
+    # in band (√(ωr²−k∥²) ≤ |Ω|): the germ and the Landau sheet differ by O(1)
+    let k = Wavenumber(0.0, 0.5), ω = 0.7 - 0.1im
         χref = contribution(ref, ω, k)
         @test contribution(en, ω, k) ≈ χref rtol = 1.0e-4
         @test_broken contribution(en, ω, k; path=:landau) ≈ χref rtol = 0.5  # momentum: wrong sheet
@@ -98,6 +97,37 @@ end
         @test contribution(en, ω, k) ≈ χref rtol = 1.0e-4
         @test contribution(en, ω, k; path=:landau) ≈ χref rtol = 1.0e-3
     end
+end
+
+# Above every cyclotron band (√(ωr²−k∥²) > |nΩ| for every coupled harmonic) no
+# resonance reaches the real p∥ path, so the straight box already IS the analytic
+# continuation: holomorphic across the real axis, roots there undamped. The
+# subluminal-germ sheet is a different function there, reachable with path = :cycles.
+@testitem "Above the cyclotron band: no continuation term, O-mode is real" begin
+    using LinearAlgebra: norm
+    μ = 2.0
+    ref = MaxwellJuttner(mu=μ)
+    P = sqrt((1 + 16 / μ)^2 - 1)
+    en = CoupledVDF((γ, u) -> exp(-μ * γ); para=P, perp=P, coords=:energy, regime=Relativistic())
+    mom = CoupledVDF(ref; para=P, perp=P, regime=Relativistic())
+
+    k = Wavenumber(0.0, 0.5)
+    ω = 1.2 - 0.1im                      # √(ωr²−k∥²) = 1.09 > |Ω|: above the n=1 band
+    χ = contribution(mom, ω, k)
+    @test contribution(en, ω, k) ≈ χ rtol = 1.0e-8              # coords must not pick the sheet
+    # Schwarz reflection across the axis (gyrotropy flips the antisymmetric xy part)
+    @test contribution(mom, conj(ω), k) ≈ transpose(conj(χ)) rtol = 1.0e-10
+    χgerm = contribution(en, ω, k; path=:cycles)
+    @test χgerm ≈ contribution(ref, ω, k) rtol = 1.0e-4          # germ still available on request
+    @test norm(χgerm - χ) > 1                                    # ...and it is another sheet
+
+    # O-mode of the pair plasma: the transverse L(=R) branch above the band
+    pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
+    sol = solve(DispersionProblem(pair(mom), Seed(1.0933 + 0.0im, Wavenumber(0.0, 0.02)),
+        Wavenumber.(0.0, [0.02, 0.62, 1.22]); mode=:L))
+    @test all(<(1.0e-10), sol.resid)
+    @test real.(sol.omega) ≈ [1.093268, 1.258110, 1.637947] rtol = 1.0e-5
+    @test maximum(abs ∘ imag, sol.omega) < 1.0e-10
 end
 
 # Transported residue cycles: momentum-space continuation for damped-superluminal
