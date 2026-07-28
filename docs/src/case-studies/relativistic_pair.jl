@@ -14,7 +14,8 @@
 # Modes on the page:
 # - **quasi-parallel A/IC** (low `ωr`): weakly damped Alfvén-like at small `k∥`,
 #   turning strongly cyclotron-damped, then running into the light line;
-# - **ordinary wave** (O-mode, high `ωr`): superluminal branch, `γ ≈ 0`;
+# - **ordinary wave** (O-mode, high `ωr`): superluminal branch that clears the
+#   cyclotron band, nothing resonates and `γ = 0` exactly;
 # - **nonpropagating (aperiodic) family** (`ωr = 0`) present at *every* `k∥` with
 #   finite zero-`k` damping — a purely relativistic feature.
 
@@ -33,7 +34,6 @@ using CairoMakie
 pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
 plasma2 = pair(MaxwellJuttner(mu=2.0))    ## β = 1.0
 plasma10 = pair(MaxwellJuttner(mu=10.0))  ## β = 0.2
-kp = 0.001;
 
 # ## Branch continuation
 #
@@ -61,38 +61,22 @@ kap10 = collect(0.05:0.05:4.5)
 kz2c = collect(1.9:0.1:3.0)
 ω2c = solve(DispersionProblem(plasma2, ω2p[end], Wavenumber.(0.0, kz2c); mode=:L)).omega;
 
-# ## O-modes
+# ## O-mode
 #
-# Superluminal (`ωr > k∥`): the O-mode is near-marginal (`γ ≈ 0`), and the
-# continued sheet below the axis is exponentially far from the physical
-# boundary value near marginal superluminal `ω` ([continuation note](../relativistic.md)), so we
-# locate it on the real axis as the `|det 𝒟| → 0` minimum via the `CoupledVDF`
-# path, continued in `k∥`. Momentum bounds follow the thermal spread (`±15 mc` at
-# `μ = 2`, `±5 mc` at `μ = 10`).
+# The high-`ωr` branch is the *transverse* L(=R) branch.
+#
+# Runs on the box (`CoupledVDF`) path because the closed-form Swanson
+# integral converges only conditionally at real superluminal `ω`; box widths
+# follow the thermal spread.
 
-using VlasovMaxwellDispersion: DispersionFunction
-plasmaC2 = pair(CoupledVDF(MaxwellJuttner(2.0); para=15.0, perp=15.0, regime=Relativistic()))
-plasmaC10 = pair(CoupledVDF(MaxwellJuttner(10.0); para=5.0, perp=5.0, regime=Relativistic()))
-function omode(plasmaC, kzs, wr0)
-    out = similar(kzs)
-    wr = wr0
-    for i in eachindex(kzs)
-        g = DispersionFunction(plasmaC, Wavenumber(kp, kzs[i]))
-        f = w -> abs(g(complex(w, 0.0)))
-        lo, hi = max(0.9wr, kzs[i] + 0.02), wr + 0.4 + 0.25kzs[i]
-        for _ in 1:60
-            m1, m2 = (2lo + hi) / 3, (lo + 2hi) / 3
-            f(m1) < f(m2) ? (hi = m2) : (lo = m1)
-        end
-        wr = (lo + hi) / 2
-        out[i] = wr
-    end
-    return out
+function relbox(μ)
+    P = sqrt((1 + 16 / μ)^2 - 1)
+    return pair(CoupledVDF(MaxwellJuttner(μ); para=P, perp=P, regime=Relativistic()))
 end
 kzo = collect(0.02:0.2:3.0)
 kzo10 = collect(0.02:0.2:4.42)
-ωo2 = omode(plasmaC2, kzo, 1.1)
-ωo10 = omode(plasmaC10, kzo10, 1.5)
+ωo2 = solve(DispersionProblem(relbox(2.0), Seed(1.0933 + 0.0im, Wavenumber(0.0, 0.02)), Wavenumber.(0.0, kzo); mode=:L)).omega
+ωo10 = solve(DispersionProblem(relbox(10.0), Seed(1.5122 + 0.0im, Wavenumber(0.0, 0.02)), Wavenumber.(0.0, kzo10); mode=:L)).omega
 
 ## Digitized Verscharen (2018) Fig. 5, plotted as ×-crosses.
 ref = readdlm(joinpath(@__DIR__, "relativistic_pair_verscharen18.tsv"); comments=true)
@@ -120,7 +104,7 @@ function plotrow!((axr, axi), branches, (ko, ωo), refs, color, xmax)
         lines!(axr, k, real.(ω); color, linewidth, linestyle, label)
         lines!(axi, k, imag.(ω); color, linewidth, linestyle)
     end
-    lines!(axr, ko, ωo; color, linewidth=2.5, linestyle=:dashdot, label="O-mode")
+    lines!(axr, ko, real.(ωo); color, linewidth=2.5, linestyle=:dashdot, label="O-mode")
     for (m, ax) in zip(refs, (axr, axr, axi))
         scatter!(ax, m[:, 1], m[:, 2]; color=(color, 0.75), marker=:xcross, markersize=8)
     end

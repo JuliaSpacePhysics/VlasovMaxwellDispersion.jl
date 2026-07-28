@@ -118,28 +118,34 @@ function _coupled_X0(d, ω, Ω, a, ns, b2s; rtol, norm)
     end[1]
 end
 
-# `path` picks the damped continuation (docs/src/relativistic.typ):
+# `path` picks *how* the damped continuation is built (docs/src/relativistic.typ);
+# whether one is needed at all is the band gate's call (`_inband`):
 #   :landau — straight box + classic Landau residues; holomorphic per ω half-plane.
 #   :cycles — box (Landau off) + transported residue cycles; needs coords = :energy.
-#   :auto   — :cycles for damped-superluminal ω when an energy form is available, else
-#             :landau (with a wrong-sheet warning at superluminal ω).
+#   :auto   — :cycles for damped-superluminal ω *inside* a cyclotron band when an
+#             energy form is available, else :landau (warning when in band).
 function _coupled_contribution(::HarmonicSum, ::Relativistic, c, s, ω, k;
     path=:auto, quad=BoxQuad(_GL24, _GL32), rtol=1.0e-6, scaledUcov=nothing)
     d = c.vdf
     Ω, kz, kperp = s.Omega, para(k), perp(k)
-    _use_cycles(path, d, ω, kz) && return _cycle_contribution(c, s, ω, k; quad, rtol, scaledUcov)
-    path === :auto && _warn_damped_superluminal(ω, kz)
     a = kperp / Ω
     nmax = nmax_bessel(a^2 * d.perp[2]^2 / 2)
-    X_T = 2π * converge(n -> _harmonic_rel(n, d, ω, Ω, kz, a, quad); nmax, rtol)
+    nΩmax = nmax * abs(Ω)
+    _use_cycles(path, d, ω, kz, nΩmax, 1 + d.perp[1]^2) &&
+        return _cycle_contribution(c, s, ω, k; quad, rtol, scaledUcov)
+    path === :auto && _warn_damped_superluminal(ω, kz, nΩmax)
+    germ = _inband(real(ω), kz, nΩmax, 1 + d.perp[1]^2)
+    X_T = 2π * converge(n -> _harmonic_rel(n, d, ω, Ω, kz, a, quad; landau = germ); nmax, rtol)
     X = _antisymmat(X_T) .+ _ee33(c.cache.bernstein33)
     return (s.Pi2 / ω^2) * X
 end
 
-# damped-superluminal ⇔ Im ω < 0 and |Re ω| > |k∥| (k∥ ≠ 0)
-@inline function _use_cycles(path, d, ω, kz)
+# damped-superluminal ⇔ Im ω < 0 and |Re ω| > |k∥| (k∥ ≠ 0); above every band the
+# straight box is already the continuation, so `:auto` stays on it
+@inline function _use_cycles(path, d, ω, kz, nΩmax, m2min)
     path === :landau && return false
-    damped_super = imag(ω) < 0 && real(ω)^2 > kz^2 && !iszero(kz)
+    damped_super = imag(ω) < 0 && real(ω)^2 > kz^2 && !iszero(kz) &&
+        _inband(real(ω), kz, nΩmax, m2min)
     (path === :cycles || (path === :auto && damped_super)) || return false
     if isnothing(d.denergy)
         path === :cycles && throw(ArgumentError("path = :cycles needs coords = :energy (an analytic denergy)"))
