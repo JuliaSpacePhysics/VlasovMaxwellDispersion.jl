@@ -3,12 +3,14 @@ using Documenter
 using Literate
 using CairoMakie
 using Typst_jll
+include("utils.jl")
 
 DocMeta.setdocmeta!(VlasovMaxwellDispersion, :DocTestSetup, :(using VlasovMaxwellDispersion); recursive = true)
 
 # Literate scripts → executed markdown pages (figures rendered at build time).
 const SRC = joinpath(@__DIR__, "src")
 const CASE_STUDIES = joinpath(SRC, "case-studies")
+const REPRESENTATIONS = joinpath(SRC, "representations")
 const LITERATE_SOURCES = sort(filter(f -> endswith(f, ".jl"), readdir(CASE_STUDIES; join = true)))
 
 # Wrap each case-study page's @example execution in a hidden wall-clock timer.
@@ -23,20 +25,6 @@ timing_preprocess(name) = str ->
 foreach(LITERATE_SOURCES) do source
     name = first(splitext(basename(source)))
     Literate.markdown(source, CASE_STUDIES; documenter = true, preprocess = timing_preprocess(name))
-end
-
-# Typst notes → Documenter pages
-function typst_page(source, out_md; root = dirname(source))
-    html = tempname() * ".html"
-    run(`$(typst()) compile --features html --format html --root $root $source $html`)
-    doc = read(html, String)
-    title = match(r"<title>(.*?)</title>"s, doc).captures[1]
-    style = match(r"<style>.*?</style>"s, doc).match
-    body = match(r"<body>(.*)</body>"s, doc).captures[1]
-    open(out_md, "w") do io
-        println(io, "# ", title, "\n")
-        println(io, "```@raw html\n", style, "\n", body, "\n```")
-    end
 end
 
 const TYP_PAGES = [
@@ -55,7 +43,15 @@ const CASE_STUDY_PAGES = map(
     f -> joinpath("case-studies", f),
     sort(filter(f -> endswith(f, ".md"), readdir(CASE_STUDIES))),
 )
-const PAGES = vcat(ROOT_PAGES, ["Case studies" => CASE_STUDY_PAGES])
+const REPRESENTATION_PAGES = map(
+    f -> joinpath("representations", f),
+    sort(filter(f -> endswith(f, ".md"), readdir(REPRESENTATIONS))),
+)
+const PAGES = vcat(
+    ROOT_PAGES,
+    ["VDF representations" => REPRESENTATION_PAGES],
+    ["Case studies" => CASE_STUDY_PAGES],
+)
 
 makedocs(;
     modules = [VlasovMaxwellDispersion, VlasovMaxwellDispersion.PlasmaBase, VlasovMaxwellDispersion.ReturnCode],
@@ -70,14 +66,7 @@ makedocs(;
 )
 
 # Per-page build timing → CI step summary (or stdout locally), slowest first.
-if isfile(TIMINGS_FILE)
-    rows = sort!(split.(readlines(TIMINGS_FILE), '\t'); by = r -> -parse(Float64, r[2]))
-    summary = get(ENV, "GITHUB_STEP_SUMMARY", nothing)
-    io = isnothing(summary) ? stdout : open(summary, "a")
-    println(io, "\n## Case-study build time\n\n| page | seconds |\n|---|---:|")
-    foreach(r -> println(io, "| ", r[1], " | ", r[2], " |"), rows)
-    isnothing(summary) || close(io)
-end
+isfile(TIMINGS_FILE) && summary_timings(TIMINGS_FILE)
 
 deploydocs(;
     repo = "github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl",
