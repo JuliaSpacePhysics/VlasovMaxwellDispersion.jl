@@ -7,3 +7,6 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Typst_jll = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VlasovMaxwellDispersion = "cdafd680-06b3-5be4-9326-1ea31d308873"
+
+[compat]
+CairoMakie = "0.15.13"
