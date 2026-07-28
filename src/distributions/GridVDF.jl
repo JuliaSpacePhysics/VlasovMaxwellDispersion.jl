@@ -1,19 +1,15 @@
-# Half of the per-cell closed form is wired: the parallel H∥ closes analytically per cell
-# (`_cellH`, the inlined `cell_hilbert_landau`). Perp factor keeps adaptive instead of `perp_pwpoly` for performance
-
 """
     GridVDF(vperp, vpar, f; method=NonnegBSpline{3}(), regime=NonRelativistic())
 
 Tabulated gyrotropic VDF: `f[i,j] = f₀(vperp[i], vpar[j])` on an ascending grid (`vperp[1] ≥ 0`).
-A `method` turns the grid into a **tensor** `f₀` (knots + per-cell power coeffs) — a complex-evaluable `f₀` with analytic `∂∥/∂⊥`.
+A `method` projects the grid onto a compactly supported, complex-evaluable `f₀`.
 
-Fit methods (`fit_grid`): `NonnegBSpline` (default; positivity-preserving two-pass NNLS B-spline with `f ≥ 0`) or
-`BicubicHermite` (local C¹ interpolation, O(N), no positivity guard).
-The fit is renormalized to `∫d³p f₀ = 1`.
+Built-in methods return tensor piecewise polynomials: `NonnegBSpline` (default;
+positivity-preserving two-pass NNLS B-spline with `f ≥ 0`) or `BicubicHermite`
+(local C¹ interpolation, O(N), no positivity guard).
+Susceptibility is normalized by the projected density.
 """
-struct GridVDF{V, C, F <: TensorSplineFit} <: AbstractVDF
-    vperp::V
-    vpar::V
+struct GridVDF{F,C} <: AbstractVDF
     fit::F
     coupled::C
 end
@@ -28,88 +24,44 @@ function GridVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonR
     # rescale as a tiny-valued grid (e.g. exp(-μγ)~1e-18) would otherwise underflow the fit to all-zeros
     scale = maximum(abs, f)
     iszero(scale) && throw(ArgumentError("GridVDF: f is all zeros"))
-    fit = fit_grid(method, vperp, vpara, f ./ scale)   # (method, vperp, vpar, F[perp,par])
-    fit.coeffs ./= _fit_d3p(fit)
+    fit = fit_grid(method, vperp, vpara, f ./ scale)
+    n = 2π * moment(fit, (1, 0))
+    iszero(n) && throw(ArgumentError("GridVDF: projection has zero density"))
     dgrad = (v, u) -> _grad2(fit, v, u)
-    para = promote(float(fit.knots_para[1]), float(fit.knots_para[end]))
-    perp = oftype(para[2], fit.knots_perp[1]), oftype(para[2], fit.knots_perp[end])
+    lims = domain(fit)
+    para = promote(float(lims.para[1]), float(lims.para[2]))
+    perp = oftype(para[2], lims.perp[1]), oftype(para[2], lims.perp[2])
     cpl = CoupledVDF(erase_f2(fit, para[2]), erase_g2(dgrad, para[2]), nothing, para, perp, regime)
-    # fit is pre-normalized (n = 1); pperp2_mean closes per cell, cheaper than
-    # the generic nested quadrature in `precompute`
     cache = if regime isa NonRelativistic
-        p2m = 2π * QuadGK.quadgk(
-            v -> v^3 * _fit_par_integral(fit, v), zero(perp[2]), perp[2]; rtol = 1.0e-7
-        )[1]
-        (; n = one(para[1]), pperp2_mean = oftype(para[1], p2m))
+        p2m = 2π * moment(fit, (3, 0)) / n
+        (; n = oftype(para[1], n), pperp2_mean = oftype(para[1], p2m))
     else
-        (; n = one(para[1]), bernstein33 = _bernstein_rel(cpl))
+        (; n = oftype(para[1], n), bernstein33 = _bernstein_rel(cpl))
     end
-    return GridVDF(vperp, vpara, fit, PreparedVDF(cpl, cache))
+    return GridVDF(fit, PreparedVDF(cpl, cache))
 end
 
-# A tabulated f₀ is ZERO outside its sampled support — never the bicubic's cubic
-# extrapolation (which diverges and breaks the relativistic Plemelj, where ∇f₀ is
-# probed at the complex pole ζ far off-grid). Cell chosen by Re; outside ⇒ 0.
-@inline function _insupport(fit::TensorSplineFit, v, u)
-    return fit.knots_perp[1] <= real(v) <= fit.knots_perp[end] &&
-        fit.knots_para[1] <= real(u) <= fit.knots_para[end]
-end
-
-# ∫d³p f₀ = 2π∫∫ p⊥ f₀ dp⊥ dv∥ in closed form from the cell coeffs (cylindrical
-# weight p⊥ = knots_perp[i]+s⊥). cell[A,B] is s⊥^{A-1} s∥^{B-1}: A is the perp
-# (first) axis, B the parallel.
-# Used to normalize the fit
-function _fit_d3p(fit::TensorSplineFit)
-    kq, kp, c = fit.knots_perp, fit.knots_para, fit.coeffs
-    acc = 0.0
-    @inbounds for i in 1:(length(kq) - 1), j in 1:(length(kp) - 1)
-        hq, hp, wl = kq[i + 1] - kq[i], kp[j + 1] - kp[j], kq[i]
-        cell = c[i, j]
-        for A in axes(cell, 1), B in axes(cell, 2)
-            acc += cell[A, B] * (hp^B / B) * (wl * hq^A / A + hq^(A + 1) / (A + 1))
-        end
-    end
-    return 2π * acc
-end
-
-# Exact parallel moments make the GridVDF far faster than the generic
-# coupled path: f₀ IS piecewise-polynomial, so the inner Landau H∥ closes per cell
-# (`cell_hilbert_landau`) instead of adaptive QuadGK.
+# Exact parallel moments make the tensor projection faster than the generic coupled path.
 # Relativistic grids route through the coupled (p⊥,p∥) path: it integrates exactly the
 # grid rectangle (only p∥ goes complex, at the near-axis poles), so the spline is never
 # probed off-grid.
 function contribution(d::GridVDF, s, ω, k; closure::IntegralClosure = HarmonicSum())
     if closure isa HarmonicSum && regime(d) isa NonRelativistic
-        return _grid_contribution(d, s, complex(float(ω)), k)
+        return _grid_contribution(d.fit, d, s, complex(float(ω)), k)
     end
     return contribution(d.coupled, s, ω, k; closure)
 end
 
-function _grid_contribution(d::GridVDF, s, ω, k; rtol = 1.0e-6)
-    fit = d.fit
+_grid_contribution(fit, d, s, ω, k; kw...) =
+    contribution(d.coupled, s, ω, k; closure = HarmonicSum(), kw...)
+
+function _grid_contribution(fit::TensorSplineFit, d, s, ω, k; rtol = 1.0e-6)
     Ω, kz, kperp = s.Omega, para(k), perp(k)
     a = kperp / Ω
     nmax = nmax_bessel(a^2 * abs(d.coupled.cache.pperp2_mean) / 2)
     f = n -> _grid_harmonic(n, fit, ω, Ω, kz, a)
     χ = converge(f; nmax, rtol)
-    return (s.Pi2 / ω^2) * _antisymmat(χ)
-end
-
-# ∫ f₀(v,u) du over the parallel support at fixed perp v (for the perp-scale estimate).
-# cell[A,B] is s⊥^{A-1} s∥^{B-1}: t=s⊥ fixes the perp cell i; integrate s∥ (B axis).
-@inline function _fit_par_integral(fit::TensorSplineFit, v)
-    i = _cell(fit.knots_perp, v)
-    t = v - fit.knots_perp[i]
-    kp = fit.knots_para
-    acc = 0.0
-    @inbounds for j in 1:(length(kp) - 1)
-        h = kp[j + 1] - kp[j]
-        cell = fit.coeffs[i, j]
-        for A in axes(cell, 1), B in axes(cell, 2)
-            acc += cell[A, B] * t^(A - 1) * h^B / B
-        end
-    end
-    return acc
+    return (s.Pi2 / (ω^2 * d.coupled.cache.n)) * _antisymmat(χ)
 end
 
 # Local poly with coeffs `a` (ascending, in s=u-vl) → absolute-u monomial coeffs
@@ -127,10 +79,8 @@ end
     )
 end
 
-# Hot-loop inner kernel for the parallel moments.
-# `cell_hilbert_landau` with the per-cell `log((vr-ζ)/(vl-ζ))` and Landau jump
-# (`jump = σ·2πi` when crossed, else 0) precomputed
-@inline function _cellH(coeffs, vl, vr, ζ, logr, jump)
+# Cell Hilbert integral with log and Landau jump shared across all moments.
+@inline function _cell_hilbert(coeffs, vl, vr, ζ, logr, jump)
     m = length(coeffs)
     T = complex(promote_type(eltype(coeffs), typeof(ζ)))
     pζ = convert(T, coeffs[m])
@@ -143,35 +93,33 @@ end
     return poly + pζ * (logr + jump)
 end
 
-# Per-perp-cell t-POLYNOMIAL coefficients of the 5 parallel moments at pole ζ.
+# Per-perp-cell polynomial coefficients of the five parallel moments at pole ζ.
 # Key identity: the p⊥-slice coeffs are polynomials in t (= p⊥ − knots_perp[i]),
-# and `cell_hilbert` is linear in them ⇒ each moment z(t) is a polynomial in t —
+# and `_cell_hilbert` is linear in them ⇒ each moment z(t) is a polynomial in t —
 # F moments (∂⊥ slice) deg NP-2, T moments (∂∥ slice) deg NP-1. We compute it ONCE
 # per perp cell (and the perp-para-cell log ONCE per harmonic), then the p⊥ quadrature
-# only evaluates that polynomial per node instead of re-summing `cell_hilbert` over
+# only evaluates that polynomial per node instead of re-summing `_cell_hilbert` over
 # every parallel cell. Exact; −1/kz folds the resonance kz.
 # cell[A,B] is s⊥^{A-1} s∥^{B-1}: A is the perp (t) axis, B the parallel (Hilbert) axis.
 @inline function _grid_parmoment_polys(fit::TensorSplineFit, i, ζ, σ)
     kp = fit.knots_para
     c = fit.coeffs
-    coeff_Type = eltype(c)
-    T = complex(promote_type(eltype(coeff_Type), typeof(ζ)))
-    NP, NQ = size(coeff_Type)
+    Cell = eltype(c)
+    T = complex(promote_type(eltype(Cell), typeof(ζ)))
+    NP, NQ = size(Cell)
     MF0 = MF1 = MF2 = zero(SVector{NP - 1, T})   # t^0..t^{NP-2}
     MT0 = MT1 = zero(SVector{NP, T})             # t^0..t^{NP-1}
     @inbounds for j in 1:(length(kp) - 1)
         vl, vr = kp[j], kp[j + 1]
         cell = c[i, j]
         logr = log((vr - ζ) / (vl - ζ))
-        jump = σ * imag(ζ) < 0 && _pole_in_cell(vl, vr, ζ) ? σ * 2π * im : zero(σ * 2π * im)
+        jump = σ * imag(ζ) < 0 && vl < real(ζ) <= vr ? σ * 2π * im : zero(σ * 2π * im)
         # ∂⊥ slice: t-power b ⇐ row b+2, weight (b+1); s∥-poly P (length NQ).
         for b in 0:(NP - 2)
-            w = b + 1
-            row = b + 2
-            P = _shift_to_abs(SVector(ntuple(B -> w * cell[row, B], Val(NQ))), vl)
-            hF0 = _cellH(P, vl, vr, ζ, logr, jump)
-            hF1 = _cellH(vcat(SVector(zero(eltype(P))), P), vl, vr, ζ, logr, jump)
-            hF2 = _cellH(vcat(SVector(zero(eltype(P)), zero(eltype(P))), P), vl, vr, ζ, logr, jump)
+            P = _shift_to_abs(SVector(ntuple(B -> (b + 1) * cell[b + 2, B], Val(NQ))), vl)
+            hF0 = _cell_hilbert(P, vl, vr, ζ, logr, jump)
+            hF1 = _cell_hilbert(vcat(SVector(zero(eltype(P))), P), vl, vr, ζ, logr, jump)
+            hF2 = _cell_hilbert(vcat(SVector(zero(eltype(P)), zero(eltype(P))), P), vl, vr, ζ, logr, jump)
             MF0 = setindex(MF0, MF0[b + 1] + hF0, b + 1)
             MF1 = setindex(MF1, MF1[b + 1] + hF1, b + 1)
             MF2 = setindex(MF2, MF2[b + 1] + hF2, b + 1)
@@ -179,10 +127,9 @@ end
         # ∂∥ slice: t-power b ⇐ row b+1; s∥-deriv poly Q (length NQ-1, coeff
         # of s∥^{m-1} is m·cell[row,m+1]).
         for b in 0:(NP - 1)
-            row = b + 1
-            Q = _shift_to_abs(SVector(ntuple(m -> m * cell[row, m + 1], Val(NQ - 1))), vl)
-            hT0 = _cellH(Q, vl, vr, ζ, logr, jump)
-            hT1 = _cellH(vcat(SVector(zero(eltype(Q))), Q), vl, vr, ζ, logr, jump)
+            Q = _shift_to_abs(SVector(ntuple(m -> m * cell[b + 1, m + 1], Val(NQ - 1))), vl)
+            hT0 = _cell_hilbert(Q, vl, vr, ζ, logr, jump)
+            hT1 = _cell_hilbert(vcat(SVector(zero(eltype(Q))), Q), vl, vr, ζ, logr, jump)
             MT0 = setindex(MT0, MT0[b + 1] + hT0, b + 1)
             MT1 = setindex(MT1, MT1[b + 1] + hT1, b + 1)
         end
@@ -191,7 +138,7 @@ end
 end
 
 # kz=0 kernel: ∫p(u)du over the cell (coeffs ascending in absolute u).
-@inline function _cellM(coeffs, vl, vr)
+@inline function _cell_moment(coeffs, vl, vr)
     acc = zero(promote_type(eltype(coeffs), typeof(vl)))
     @inbounds for k in eachindex(coeffs)
         acc += coeffs[k] * (vr^k - vl^k) / k
@@ -200,13 +147,13 @@ end
 end
 
 # kz=0 variant of `_grid_parmoment_polys`: the Hilbert kernel degenerates to plain
-# moments (`_cellM`, ζ-free) — the 1/Δ_n weight is applied by the caller.
+# moments (`_cell_moment`, ζ-free) — the 1/Δ_n weight is applied by the caller.
 @inline function _grid_parmoment_polys0(fit::TensorSplineFit, i)
     kp = fit.knots_para
     c = fit.coeffs
-    coeff_Type = eltype(c)
-    T = eltype(coeff_Type)
-    NP, NQ = size(coeff_Type)
+    Cell = eltype(c)
+    T = eltype(Cell)
+    NP, NQ = size(Cell)
     MF0 = MF1 = MF2 = zero(SVector{NP - 1, T})
     MT0 = MT1 = zero(SVector{NP, T})
     z = zero(T)
@@ -214,18 +161,15 @@ end
         vl, vr = kp[j], kp[j + 1]
         cell = c[i, j]
         for b in 0:(NP - 2)
-            w = b + 1
-            row = b + 2
-            P = _shift_to_abs(SVector(ntuple(B -> w * cell[row, B], Val(NQ))), vl)
-            MF0 = setindex(MF0, MF0[b + 1] + _cellM(P, vl, vr), b + 1)
-            MF1 = setindex(MF1, MF1[b + 1] + _cellM(vcat(SVector(z), P), vl, vr), b + 1)
-            MF2 = setindex(MF2, MF2[b + 1] + _cellM(vcat(SVector(z, z), P), vl, vr), b + 1)
+            P = _shift_to_abs(SVector(ntuple(B -> (b + 1) * cell[b + 2, B], Val(NQ))), vl)
+            MF0 = setindex(MF0, MF0[b + 1] + _cell_moment(P, vl, vr), b + 1)
+            MF1 = setindex(MF1, MF1[b + 1] + _cell_moment(vcat(SVector(z), P), vl, vr), b + 1)
+            MF2 = setindex(MF2, MF2[b + 1] + _cell_moment(vcat(SVector(z, z), P), vl, vr), b + 1)
         end
         for b in 0:(NP - 1)
-            row = b + 1
-            Q = _shift_to_abs(SVector(ntuple(m -> m * cell[row, m + 1], Val(NQ - 1))), vl)
-            MT0 = setindex(MT0, MT0[b + 1] + _cellM(Q, vl, vr), b + 1)
-            MT1 = setindex(MT1, MT1[b + 1] + _cellM(vcat(SVector(z), Q), vl, vr), b + 1)
+            Q = _shift_to_abs(SVector(ntuple(m -> m * cell[b + 1, m + 1], Val(NQ - 1))), vl)
+            MT0 = setindex(MT0, MT0[b + 1] + _cell_moment(Q, vl, vr), b + 1)
+            MT1 = setindex(MT1, MT1[b + 1] + _cell_moment(vcat(SVector(z), Q), vl, vr), b + 1)
         end
     end
     return (MF0, MF1, MF2, MT0, MT1)

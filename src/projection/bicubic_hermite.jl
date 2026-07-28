@@ -38,6 +38,5 @@ function fit_grid(::BicubicHermite, x, y, F)
         fxy = SMatrix{2,2}(Fxy[i, j], Fxy[i+1, j], Fxy[i, j+1], Fxy[i+1, j+1])
         coeffs[i, j] = _hermite_patch(f, fx, fy, fxy, hx, hy)
     end
-    # ctrl unused downstream for this method; keep the nodal grid as metadata.
-    TensorSplineFit(x, y, coeffs, Matrix{Float64}(F))
+    TensorSplineFit(x, y, coeffs)
 end

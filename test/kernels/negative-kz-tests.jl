@@ -4,17 +4,6 @@
 # residue; growing ω exercises the causal-side branch choice (which was also wrong
 # for k∥<0: Im ω>0 puts ζ in the lower half-plane).
 
-@testitem "hilbert_landau_pwpoly σ orientation: Schwarz identity" begin
-    using VlasovMaxwellDispersion: hilbert_landau_pwpoly
-
-    nodes = [-2.0, -0.5, 0.3, 1.1, 2.0]
-    coeffs = [[1.0, 0.2], [0.8, -0.1, 0.05], [1.2, 0.3], [0.5, -0.2, 0.1]]
-    for ζ in (0.4 + 0.3im, 0.4 - 0.25im, -0.7 + 0.02im)
-        @test hilbert_landau_pwpoly(coeffs, nodes, ζ, -1) ≈
-            conj(hilbert_landau_pwpoly(coeffs, nodes, conj(ζ), 1)) rtol = 1.0e-12
-    end
-end
-
 @testitem "χ parity under k∥ → −k∥: analytic and quadrature paths" begin
     using VlasovMaxwellDispersion: contribution, Newberger
     using LinearAlgebra

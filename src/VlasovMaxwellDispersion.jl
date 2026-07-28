@@ -30,7 +30,6 @@ include("branch.jl")
 include("reduction.jl")
 include("problems.jl")
 include("integrals.jl")
-include("hilbert_pwpoly.jl")   # parallel H∥ piecewise-poly primitive
 include("perp_analytic.jl")    # perpendicular P⊥ Bessel-moment primitive
 include("projection.jl")
 include("distributions/distributions.jl")
