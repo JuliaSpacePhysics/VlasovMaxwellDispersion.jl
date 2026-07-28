@@ -17,3 +17,4 @@ Tests are `@testitem`s under `test/{distributions,solvers,kernels,relativistic}/
 - Focused: `julia --project=test -e 'using TestItemRunner;
   TestItemRunner.run_tests(pwd(); filter = ti -> occursin(r"...", ti.name))'`.
 - `test/standalone/` deliberately kept out of the suite
+- Full runs are slow; reach only when the blast radius is genuinely package-wide.

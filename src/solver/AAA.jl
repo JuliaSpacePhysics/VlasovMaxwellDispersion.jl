@@ -1,5 +1,3 @@
-using RationalFunctionApproximation: Barycentric, poles as aaa_poles
-
 """
     AAA(; n=(20, 16), tol=1e-13, max_degree=150, stagnation=5)
 
@@ -47,9 +45,22 @@ function discover(alg::AAA, f, region; keep = Returns(true))
         end
         Z, F = z, y
     end
-    fit, converged = _aaa(F, Z; alg.tol, alg.max_degree, alg.stagnation)
-    zs = filter!(z -> _in_box(region, z), aaa_poles(fit))
+    (nodes, weights), converged = _aaa(F, Z; alg.tol, alg.max_degree, alg.stagnation)
+    zs = filter!(z -> _in_box(region, z), _aaa_poles(nodes, weights))
     return zs, nev, converged
+end
+
+# Poles of a barycentric rational = finite eigenvalues of the arrowhead pencil (Klein 2012);
+# the infinite ones are the pencil's own, not the fit's. Zero weights leave the pencil singular,
+# so drop those nodes first.
+function _aaa_poles(nodes, weights)
+    keep = map(!iszero, weights)
+    z, w = nodes[keep], weights[keep]
+    m = length(w)
+    T = real(eltype(z))
+    B = diagm([zero(T); ones(T, m)])
+    E = [zero(T) transpose(w); ones(T, m) diagm(z)]
+    return filter!(isfinite, eigvals(E, B))
 end
 
 # Greedy AAA (Nakatsukasa et al.): interpolate at the worst sample, take the barycentric
@@ -106,7 +117,7 @@ function _aaa(y, z; tol, max_degree, stagnation)
         s = _quitting_check(errs, stagnation, tol, fmax, N)
         if s != 0
             s > 0 && ((σ, w) = hist[s])                # unconverged: fall back on the best fit
-            return Barycentric(z[σ], y[σ], w), s < 0
+            return (z[σ], w), s < 0
         end
 
         k = idx[imax]
@@ -115,7 +126,7 @@ function _aaa(y, z; tol, max_degree, stagnation)
     # Sample budget spent without ever passing the quitting check: also unconverged.
     s = argmin(errs)
     σ, w = hist[s]
-    return Barycentric(z[σ], y[σ], w), false
+    return (z[σ], w), false
 end
 
 # `RationalFunctionApproximation.quitting_check`, reproduced so the fit stops exactly where
