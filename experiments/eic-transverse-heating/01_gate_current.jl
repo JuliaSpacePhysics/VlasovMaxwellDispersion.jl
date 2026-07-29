@@ -8,7 +8,7 @@
 include(joinpath(@__DIR__, "common.jl"))
 
 rows = map((0.5, 1.0, 2.0, 4.0, 8.0)) do tau
-    uc, g, kr, r, wr = threshold_u(u -> plasma(; u, tau))
+    uc, g, kr, r, wr = threshold(u -> plasma(; u, tau))
     ok = confirm(plasma(; u = uc, tau), g, kr, r, wr)
     (tau, uc, uc * sqrt(tau * MI_ME), current_density(uc; tau) * 1e6, kr, r, wr, g, ok)
 end
@@ -26,6 +26,6 @@ writetsv(joinpath(@__DIR__, "out_gate.tsv"),
 println("\ndensity check at Te/Ti = 1 (reference Π² = $(round(PI2, digits=1)))")
 scale_density(s, f) = map(x -> NormalizedSpecies(x.Omega, f * x.Pi2, x.vdf), s)
 for f in (0.1, 1.0, 10.0)
-    uc = threshold_u(u -> scale_density(plasma(; u), f))[1]
+    uc = threshold(u -> scale_density(plasma(; u), f))[1]
     @printf("  n/n₀ = %4.1f:  u_c/v_e = %.4f\n", f, uc)
 end

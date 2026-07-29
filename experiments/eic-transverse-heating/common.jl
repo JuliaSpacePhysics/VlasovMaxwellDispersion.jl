@@ -110,10 +110,10 @@ function confirm(pl, gamma, kr, r, wr; tol = 1.0e-3)
     return isfinite(w) && abs(w - complex(wr, gamma)) < tol * max(1.0, abs(wr))
 end
 
-"""Bisect the electron drift `u` (in electron thermal speeds) whose peak growth equals
-`target`. Returns `(u_c, γ, k⊥ρ, k∥/k⊥, ω_r)`; `u_c = 0` when the plasma is already
-unstable with no current, `NaN` when `hi` does not destabilise it."""
-function threshold_u(build; target = 1.0e-3, lo = 0.0, hi = 0.5, iters = 9)
+"""Bisect the scalar parameter of `build` whose peak growth equals `target`.
+Returns `(x_c, γ, k⊥ρ, k∥/k⊥, ω_r)`; `x_c = lo` when the plasma is already unstable there,
+`NaN` when `hi` does not destabilise it."""
+function threshold(build; target = 1.0e-3, lo = 0.0, hi = 0.5, iters = 9)
     g0 = gamma_max(build(lo))
     g0[1] > target && return (0.0, g0...)
     gamma_max(build(hi))[1] > target || return (NaN, NaN, NaN, NaN, NaN)
