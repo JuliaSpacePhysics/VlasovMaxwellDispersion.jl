@@ -49,5 +49,4 @@ The remaining perpendicular integral evaluates those polynomials with Bessel
 weights using adaptive Gauss–Kronrod quadrature. Cells are split at the Bessel
 oscillation scale. At `k∥ = 0`, plain cell moments replace the Hilbert integral.
 
-Relativistic evaluation, `Newberger`, and non-tensor projections use the generic
-`CoupledVDF` path.
+Relativistic evaluation and non-tensor projections use the generic `CoupledVDF` path.
