@@ -8,3 +8,7 @@ updates:
       interval: "weekly"
     ignore:
       - dependency-name: "VlasovMaxwellDispersion"
+    groups:
+      julia:
+        patterns:
+          - "*"
