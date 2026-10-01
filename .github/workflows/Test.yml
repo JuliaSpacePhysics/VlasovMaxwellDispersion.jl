@@ -23,6 +23,7 @@ jobs:
   test:
     uses: JuliaSpacePhysics/actions/.github/workflows/julia-ci.yml@main
     with:
+      versions: '["1", "pre"]'
       env: |
         TEST_NWORKERS=2
       setup: git show-ref --verify --quiet refs/heads/main || git fetch --depth=1 origin main:main
