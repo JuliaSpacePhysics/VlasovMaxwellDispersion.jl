@@ -1,0 +1,11 @@
+name: Doc Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    permissions:
+      contents: write
+    uses: JuliaSpacePhysics/actions/.github/workflows/doc-cleanup.yml@main
