@@ -7,37 +7,41 @@
 # Reference: Guo (Fig. 1, arXiv:2606.14439)
 
 using VlasovMaxwellDispersion
+using PlasmaPopulations: thermal_speed, pdf
 using DelimitedFiles, Printf, Unitful
 using CairoMakie
 
 # ## Plasma setup
 
+# The proton bi-kappa enters as a [`LowRankVDF`](@ref) surrogate, whose `f₀(p⊥, p∥)` and
+# integration box are in units of `c`.
+
 κs = (4.0, 6.0, 8.0)
-
-kappa_proton(κ) = sc -> LowRankVDF(
-    BiKappa(sc; kappa=κ);
-    rtol=1.0e-10, para=10sc.vth_para, perp=10sc.vth_perp
-)
-
+c = 2.99792458e8   # m/s
+p, e = Proton(), Electron()
 n = 5.0e19u"m^-3"
-Tpara, Tperp = 1986.734u"eV", 993.367u"eV"
-electron = Species(Electron(); n, T=496.683u"eV")
+vth_perp, vth_para = thermal_speed(p, 993.367u"eV") / c, thermal_speed(p, 1986.734u"eV") / c
+electron = Population(e, BiMaxwellian; T = 496.683u"eV", n)
+
+function kappa_proton(κ)
+    bk = BiKappa(; vth_perp, vth_para, kappa = κ)
+    return LowRankVDF((q, u) -> pdf(bk, q, u); rtol = 1.0e-10, para = 10vth_para, perp = 10vth_perp)
+end
 
 plasmas = map(κs) do κ
-    proton = Species(Proton(), kappa_proton(κ); n, T=(Tperp, Tpara))
-    Plasma(proton, electron; B0=0.1u"T")
+    Plasma(Population(p, kappa_proton(κ); n), electron; B0 = 0.1u"T")
 end
 
 # ## Seedless surveys, one per κ
 #
-# `k` is swept over `k·dᵢ ∈ [0.03, 0.45]`; the protons' `scales(plasma, 1).d` is `dᵢ = c/ωpp = vA/ωcp`
+# `k` is swept over `k·dᵢ ∈ [0.03, 0.45]`; the protons' `scales(plasma).populations[1].d` is `dᵢ = c/ωpp = vA/ωcp`
 # (the paper's `λ_p`) in VMD's `c/ωcp` units.
 
-di = scales(first(plasmas), 1).d       # same for every κ
+di = scales(first(plasmas)).populations[1].d       # same for every κ
 ω_region = (-0.1 - 0.25im, 0.5 + 0.12im)
 geom = AngleSweep(k=collect(0.03:0.015:0.45) ./ di, theta=deg2rad(45))
 
-sols = map(pl -> solve(DispersionProblem(pl, ω_region, geom)), plasmas)
+sols = map(pl -> solve(DispersionProblem(NormalizedPlasma(pl), ω_region, geom)), plasmas)
 
 # ## Verification against PlasmaBO
 #

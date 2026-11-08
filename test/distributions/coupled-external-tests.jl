@@ -6,14 +6,14 @@
     using VlasovMaxwellDispersion: dielectric
     # matched dimensionless setup (Ωref=Ω_proton); shell f₀=exp(-(√(u²+w²)-v_s)²/2σ²)
     k̃, θ = 0.8, 60 / 180 * π
-    k = Wavenumber(k̃ * sin(θ), k̃ * cos(θ))
+    k = Wavevector(k̃ * sin(θ), k̃ * cos(θ))
     ω = 0.6 - 0.006im
     vthi, vthe, vshell = 0.0014600019156727816, 0.0625625037436143, 0.004380005747018345
     σ2 = vthi^2
     f0(w, u) = exp(-(sqrt(u^2 + w^2) - vshell)^2 / (2σ2))
     L = vshell + 9vthi
-    el = NormalizedSpecies(-1836.2059501591832, 346868.41251994757, Maxwellian(vth=vthe))
-    ish = NormalizedSpecies(1.0, 188.90496051920377,
+    el = NormalizedPopulation(-1836.2059501591832, 346868.41251994757, BiMaxwellian(; vth = vthe))
+    ish = NormalizedPopulation(1.0, 188.90496051920377,
         CoupledVDF(f0; para=L, perp=L))
     ε = dielectric((el, ish), ω, k)
     # LMV reference ε (row-major i,j)
@@ -31,12 +31,12 @@ end
         s = κ * a2 * vth^2
         f(v, u) = (1 + (u^2 + v^2) / s)^(-1 - κ)
         L = 12vth
-        NormalizedSpecies(Ω, Pi2, CoupledVDF(f; para=L, perp=L))
+        NormalizedPopulation(Ω, Pi2, CoupledVDF(f; para=L, perp=L))
     end
     plasma = (bikappa_species(1.0, 1 / vA^2, vA),
         bikappa_species(-1 / me, 1 / (me * vA^2), vA / sqrt(me)))
     # ALPS bi-kappa (κ=6) root_1, first scan point
-    k = Wavenumber(1e-3 / vA, 0.03 / vA)         # k̃ = k_ALPS/vA = (300, 10)
+    k = Wavevector(1e-3 / vA, 0.03 / vA)         # k̃ = k_ALPS/vA = (300, 10)
     ωref = 0.029311 - 9.9693e-6im
     # Solve from the ALPS seed instead of only checking |det| there: the prior
     # |det|<2e-3 spot-check was fragile (this mode is near-marginal, so the scaled

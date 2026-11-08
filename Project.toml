@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Zijin Zhang <zijin@ucla.edu>"]
 
 [workspace]
-projects = ["test", "docs", "benchmark", "lib/PlasmaBase"]
+projects = ["test", "docs", "benchmark"]
 
 [deps]
 Bumper = "8ce10254-0962-460f-a3d8-1f77fea1446e"
@@ -15,6 +15,7 @@ Gamma = "a0844989-3bd2-4988-8bea-c9407ab0941b"
 HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NonNegLeastSquares = "b7351bd1-99d9-5c5d-8786-f205a815c4d7"
+PlasmaPopulations = "19fe0aba-210f-40e6-8711-72208e0968be"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 RootsAndPoles = "a0859a10-ccb4-11e8-145d-674b3750773a"
@@ -25,13 +26,11 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [extensions]
 VlasovMaxwellDispersionMakieExt = "Makie"
 VlasovMaxwellDispersionRootsExt = "Roots"
 VlasovMaxwellDispersionSciMLBaseExt = "SciMLBase"
-VlasovMaxwellDispersionUnitfulExt = "Unitful"
 
 [compat]
 Bumper = "0.7"
@@ -43,6 +42,7 @@ HypergeometricFunctions = "0.3"
 LinearAlgebra = "1"
 Makie = "0.23, 0.24"
 NonNegLeastSquares = "0.4"
+PlasmaPopulations = "0.1"
 PrecompileTools = "1"
 QuadGK = "2"
 Roots = "3"
@@ -50,5 +50,7 @@ RootsAndPoles = "2"
 SciMLBase = "2, 3"
 SpecialFunctions = "2"
 StaticArrays = "1"
-Unitful = "1"
 julia = "1.10"
+
+[sources]
+PlasmaPopulations = { url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl" }

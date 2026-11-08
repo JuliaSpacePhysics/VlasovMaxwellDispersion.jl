@@ -10,10 +10,10 @@
 
     S = Diagonal([1, 1, -1])
     flipz(X) = S * X * S
-    sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
+    sp(vdf) = NormalizedPopulation(1.0, 1.0, vdf)
     parity(vdf, ω; kperp = 0.2, kz = 0.6, kw...) = begin
-        a = contribution(sp(vdf), ω, Wavenumber(kperp, kz); kw...)
-        b = contribution(sp(vdf), ω, Wavenumber(kperp, -kz); kw...)
+        a = contribution(sp(vdf), ω, Wavevector(kperp, kz); kw...)
+        b = contribution(sp(vdf), ω, Wavevector(kperp, -kz); kw...)
         maximum(abs.(b .- flipz(a))) / maximum(abs.(a))
     end
 
@@ -21,10 +21,10 @@
     sep = SeparableVDF(q -> exp(-q^2 / 0.16), u -> exp(-u^2 / 0.16); para = 3.0, perp = 3.0)
     cpl = CoupledVDF(f0; para = 3.0, perp = 3.0)
     for ω in (0.5 + 0.1im, 0.5 - 0.05im)   # growing AND damped (Landau residue active)
-        @test parity(Maxwellian(0.4), ω) < 1.0e-12
-        @test parity(ProductBiKappa(vth=0.4, kappa=2), ω) < 1.0e-12    # integer-M residue path
-        @test parity(ProductBiKappa(vth=0.4, kappa=2.5), ω) < 1.0e-12  # ₂F₁ branch path
-        @test parity(BiKappa(vth=0.4, kappa = 2.5), ω) < 1.0e-12
+        @test parity(BiMaxwellian(; vth = 0.4), ω) < 1.0e-12
+        @test parity(ProductBiKappa(; vth = 0.4, kappa_perp = 2, kappa_para = 2), ω) < 1.0e-12    # integer-M residue path
+        @test parity(ProductBiKappa(; vth = 0.4, kappa_perp = 2.5, kappa_para = 2.5), ω) < 1.0e-12  # ₂F₁ branch path
+        @test parity(BiKappa(; vth = 0.4, kappa = 2.5), ω) < 1.0e-12
         @test parity(sep, ω) < 1.0e-6
         @test parity(cpl, ω) < 1.0e-6
         @test parity(cpl, ω; closure = Newberger()) < 1.0e-6
@@ -33,8 +33,8 @@
 
     # drifting f∥ is odd-asymmetric: χ(−k∥; vd) = S·χ(k∥; −vd)·S
     for ω in (0.5 + 0.1im, 0.5 - 0.05im)
-        a = contribution(sp(Maxwellian(vth=0.4, vd = -0.3)), ω, Wavenumber(0.2, 0.6))
-        b = contribution(sp(Maxwellian(vth=0.4, vd = 0.3)), ω, Wavenumber(0.2, -0.6))
+        a = contribution(sp(BiMaxwellian(; vth = 0.4, vd_para = -0.3)), ω, Wavevector(0.2, 0.6))
+        b = contribution(sp(BiMaxwellian(; vth = 0.4, vd_para = 0.3)), ω, Wavevector(0.2, -0.6))
         @test maximum(abs.(b .- flipz(a))) / maximum(abs.(a)) < 1.0e-12
     end
 end
@@ -45,10 +45,10 @@ end
 
     S = Diagonal([1, 1, -1])
     flipz(X) = S * X * S
-    sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
+    sp(vdf) = NormalizedPopulation(1.0, 1.0, vdf)
     parity(vdf, ω; kperp = 0.2, kz = 0.6, kw...) = begin
-        a = contribution(sp(vdf), ω, Wavenumber(kperp, kz); kw...)
-        b = contribution(sp(vdf), ω, Wavenumber(kperp, -kz); kw...)
+        a = contribution(sp(vdf), ω, Wavevector(kperp, kz); kw...)
+        b = contribution(sp(vdf), ω, Wavevector(kperp, -kz); kw...)
         maximum(abs.(b .- flipz(a))) / maximum(abs.(a))
     end
 
@@ -56,13 +56,13 @@ end
     cvdf = CoupledVDF(mj; para = 2.0, perp = 2.0, regime = Relativistic())
     for ω in (0.5 + 0.05im, 0.5 - 0.02im)   # subluminal (|Re ω| < k∥): damped side supported
         @test parity(cvdf, ω) < 1.0e-8
-        @test parity(MaxwellJuttner(mu = 8.0), ω) < 1.0e-10
+        @test parity(MaxwellJuttner(; theta = 1 / 8.0), ω) < 1.0e-10
     end
     # (γ,p∥) Newberger backend supports Im ω ≥ 0 only
     @test parity(cvdf, 0.5 + 0.05im; closure = Newberger()) < 1.0e-6
 end
 
-@testitem "GridVDF at k∥<0: fast grid path ≡ coupled path on the same fit" begin
+@testitem "SplineVDF at k∥<0: fast grid path ≡ coupled path on the same fit" begin
     # The NNLS fit is not exactly even in v∥, so parity holds only to fit tolerance;
     # instead validate the grid fast path's σ handling against the (independently
     # parity-tested) CoupledVDF quadrature on the identical fit.
@@ -71,12 +71,12 @@ end
     vperp = range(0, 2.5, 40)
     vpar = range(-2.5, 2.5, 60)
     f = [exp(-(q^2 + u^2) / 0.16) for q in vperp, u in vpar]
-    g = GridVDF(collect(vperp), collect(vpar), f)
-    sp = NormalizedSpecies(1.0, 1.0, g)
-    spc = NormalizedSpecies(1.0, 1.0, g.coupled)
+    g = SplineVDF(collect(vperp), collect(vpar), f)
+    sp = NormalizedPopulation(1.0, 1.0, g)
+    spc = NormalizedPopulation(1.0, 1.0, g.coupled)
     for ω in (0.5 + 0.1im, 0.5 - 0.05im), kz in (0.6, -0.6)
-        a = contribution(sp, ω, Wavenumber(0.2, kz))
-        b = contribution(spc, ω, Wavenumber(0.2, kz))
+        a = contribution(sp, ω, Wavevector(0.2, kz))
+        b = contribution(spc, ω, Wavevector(0.2, kz))
         @test maximum(abs.(a .- b)) / maximum(abs.(a)) < 1.0e-5
     end
 end
@@ -85,9 +85,9 @@ end
     using VlasovMaxwellDispersion: muller
 
     Omega_e, Pi2, vth, kz = -1836.0, 1.0, 0.5, 0.7
-    pl = NormalizedSpecies(Omega_e, Pi2, Maxwellian(vth))
+    pl = NormalizedPopulation(Omega_e, Pi2, BiMaxwellian(; vth))
     root(kzv) = begin
-        k = Wavenumber(0.0, kzv)
+        k = Wavevector(0.0, kzv)
         f = omega -> electrostatic_det(pl, omega, k) / abs2(k)
         seed = sqrt(Complex(Pi2 + 3 * kzv^2 * vth^2 / 2)) - 0.01im
         muller(f, seed)

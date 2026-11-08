@@ -1,11 +1,7 @@
 module VlasovMaxwellDispersion
 
-include("../lib/PlasmaBase/src/PlasmaBase.jl")
-using .PlasmaBase
-using .PlasmaBase: AbstractVDF, AbstractPlasma, Particle, Species, Plasma,
-    charge, mass, particle, number_density, distribution, species, magnetic_field, frequency,
-    gyrofrequency_ratio, plasma_gyro_ratio, velocity
-import .PlasmaBase: scales
+using PlasmaPopulations
+using PlasmaPopulations: C_SI, si_frequency, kappa_widths, ParameterGeometry, gyrofrequency, plasma_frequency, alfven_speed
 using LinearAlgebra
 using StaticArrays
 using Bumper: @no_escape, @alloc
@@ -33,33 +29,31 @@ include("integrals.jl")
 include("perp_analytic.jl")    # perpendicular P⊥ Bessel-moment primitive
 include("projection.jl")
 include("distributions/distributions.jl")
-include("builders.jl")         # particle-identity + physical-unit Species adapters
+include("builders.jl")         # particle-identity + physical-unit Population adapters
 include("assemble.jl")
 include("susceptibility.jl")
 include("dispersion_function.jl")
 include("CoupledPlan.jl")
 include("solve.jl")
 
-export Regime, NonRelativistic, Relativistic
-export Wavenumber, para, perp
-export TensorReduction
-# re-exported physical vocabulary from PlasmaBase
-export AbstractVDF, Particle, Electron, Proton, Species, Plasma
-export charge, mass, plasma_gyro_ratio
-export NormalizedSpecies, NormalizedPlasma, scales, perp_para
-export Maxwellian, MaxwellJuttner, ColdVDF, GridVDF, SeparableVDF, ReducedVDF, CoupledVDF, LowRankVDF, GaussianRing
-export BiKappa, ProductBiKappa, Kappa
-export Separable, ⊗, Gaussian, GyroRing
-export IntegralClosure, HarmonicSum, Newberger, prepare
-export ChiBackend, FixedNodeEval, AdaptiveEval
-export contribution, plan_contribution, dispersion_tensor, 𝒟, electrostatic_det, solve, init, solve!, step!, residual
-export DispersionFunction
-export DispersionProblem, GlobalDispersionProblem, Seed, Region, ReturnCode
-export Muller, GRPF, Continuation, AAA, DispersionSolution
-export AngleSweep, CartesianSweep
-export SurveySolution, DispersionBranch, SolveStats, isgrowing
-export dispersion_diagram!, dispersion_diagram
-export NonnegBSpline, BicubicHermite, fit_grid
+export Particle, Electron, Positron, Proton, Population, Plasma,
+    BiMaxwellian, GaussianRing, BiKappa, ProductBiKappa, Cold, MaxwellJuttner, GridVDF,
+    Wavevector, AngleSweep, CartesianSweep
+export NonRelativistic, Relativistic
+export NormalizedPopulation, NormalizedPlasma, scales
+export SplineVDF, SeparableVDF, ReducedVDF, CoupledVDF, LowRankVDF
+export ⊗, Gaussian, GyroRing, Kappa
+export HarmonicSum, Newberger, prepare
+export FixedNodeEval, AdaptiveEval
+export contribution, dispersion_tensor, electrostatic_det, residual
+export DispersionProblem, Seed, Region, ReturnCode, solve
+export Muller, GRPF, Continuation, AAA
+export isgrowing, dispersion_diagram!, dispersion_diagram
+export NonnegBSpline, BicubicHermite
+
+VERSION >= v"1.11.0-DEV.469" && eval(Meta.parse("""public Regime, SolverVDF, IntegralClosure, ChiBackend, Separable, TensorReduction,
+    𝒟, plan_contribution, fit_grid, DispersionFunction,
+    DispersionSolution, SurveySolution, DispersionBranch, SolveStats, successful_retcode, init, solve!, step!"""))
 
 function dispersion_diagram! end
 function dispersion_diagram end

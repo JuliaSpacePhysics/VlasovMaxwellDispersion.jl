@@ -25,7 +25,7 @@ struct MullerCache{P, A, F}
     f::F
 end
 
-function CommonSolve.init(prob::DispersionProblem{<:Seed, <:Wavenumber}, alg::Muller)
+function _init(prob::DispersionProblem{<:Seed, <:Wavevector}, alg::Muller)
     p = prepare(prob)
     return MullerCache(p, alg, erase_cf(DispersionFunction(p)))
 end
@@ -34,7 +34,7 @@ function CommonSolve.solve!(cache::MullerCache)
     (; prob, alg, f) = cache
     t = @elapsed ω, nevals, code = _muller(f, prob.target[]; alg.atol, alg.maxiter)
     stats = SolveStats(nevals, t)
-    return DispersionSolution(ω, residual(prob, ω), stats, code, prob, alg)
+    return _seed_solution(prob, ω, stats, code, alg)
 end
 
 function polish!(f, ωs, alg::Muller = Muller())

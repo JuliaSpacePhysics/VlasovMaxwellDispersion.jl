@@ -10,11 +10,10 @@ using VlasovMaxwellDispersion
 using DelimitedFiles, Printf, Unitful
 
 # ## Plasma setup
-# Here we specify the temperature `T` and resolve `vth` from particle identity `Electron()` and `T`.
-T = 2555 * u"eV" # vth = √(2qT/mₑ) = 0.1 c
+e = Electron()
 plasma = Plasma(
-    Species(Electron(), sc -> ProductBiKappa(sc; kappa=(200.0, 1)); n=2.43e6u"m^-3", T),
-    B0=1.0e-6u"T",
+    Population(e, ProductBiKappa; T = 2555u"eV", kappa_perp = 200.0, kappa_para = 1.0, n = 2.43e6u"m^-3");  # vth = 0.1 c
+    B0 = 1.0e-6u"T",
 )
 
 # ## Reference roots and wavevectors
@@ -23,11 +22,11 @@ plasma = Plasma(
 # we invert this to VMD's `k` (normalized to `ωce/c`) at the fixed propagation angle.
 # `vtp` is the perpendicular kappa `θ⊥ = √(1−1/κ⊥)·vth`.
 
-vtp = sqrt(1 - 1 / 200) * scales(plasma).species[1].vth_perp
+vtp = sqrt(1 - 1 / 200) * scales(plasma).populations[1].vth_perp
 ref = readdlm(joinpath(@__DIR__, "cattaert07_ref.tsv"); comments=true)
 kρs = unique(ref[:, 1])
 θ = deg2rad(30)
-ks = [Wavenumber(kρ / vtp * sin(θ), kρ / vtp * cos(θ)) for kρ in kρs]
+ks = [Wavevector(kρ / vtp * sin(θ), kρ / vtp * cos(θ)) for kρ in kρs]
 i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 
 # ## Seeded tracking of the four branches
@@ -38,7 +37,7 @@ i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 ttrack = @elapsed ωs = map(1:4) do ib
     rows = ref[ref[:, 2] .== ib, :]
     seed = complex(rows[i0, 3], rows[i0, 4])
-    ω = solve(DispersionProblem(plasma, Seed(seed, ks[i0]), ks)).omega  # fans out both ways from kρ≈0.1
+    ω = solve(DispersionProblem(NormalizedPlasma(plasma), Seed(seed, ks[i0]), ks)).omega  # fans out both ways from kρ≈0.1
     ωref = complex.(rows[:, 3], rows[:, 4])
     dre = abs.(abs.(real.(ω)) .- abs.(real.(ωref)))
     dim = abs.(imag.(ω) .- imag.(ωref))
@@ -79,8 +78,8 @@ fig
 # `geom` sweeps `k` at fixed `θ`, spanning `kρ ∈ [0.005, 0.3]`.
 
 region = (0.005 - 0.16im, 3.05 + 0.02im)
-geom = AngleSweep(k=(0.05 / vtp * 0.1, 0.3 / vtp), theta=θ)
-prob = DispersionProblem(plasma, region, geom)
+geom = AngleSweep(k=range(0.05 / vtp * 0.1, 0.3 / vtp; length=61), theta=θ)
+prob = DispersionProblem(NormalizedPlasma(plasma), region, geom)
 sol = solve(prob)
 
 # `dispersion_diagram` plots the surveyed branches: `Re ω(kρ)` and `Im ω(kρ)`,

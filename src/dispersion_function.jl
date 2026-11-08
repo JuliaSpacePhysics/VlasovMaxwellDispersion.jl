@@ -5,7 +5,7 @@
 
 """
     DispersionFunction(plasma, k; closure=HarmonicSum(), deflate=true, scale=1.0, mode=:det)
-    DispersionFunction(prob::AbstractDispersionProblem)
+    DispersionFunction(prob::DispersionProblem)
 
 Callable fixed-`k` dispersion function `D(ω)` whose zeros are the dispersion relation's roots.
 Construction plans every species ([`plan_contribution`](@ref)) once for this `k`.
@@ -28,9 +28,12 @@ struct DispersionFunction{L,P,K,C,M,S,R<:TensorReduction}
     mode::R
 end
 
+DispersionFunction(::Plasma, k; kw...) =
+    throw(ArgumentError("DispersionFunction evaluates normalized ω: pass `NormalizedPlasma(plasma)` and `k` in `Ω_ref/c`"))
+
 function DispersionFunction(plasma, k; closure=HarmonicSum(), deflate=true, scale=1.0, mode=FullDet(), backend=FixedNodeEval())
     m = check_reduction(mode, plasma, k)
-    plans = map(s -> plan_contribution(s, k; closure, backend), NormalizedPlasma(plasma).species)
+    plans = map(s -> plan_contribution(s, k; closure, backend), NormalizedPlasma(plasma).populations)
     return DispersionFunction(plans, plasma, k, closure, _curlcurl(k), scale, deflate, m)
 end
 

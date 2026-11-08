@@ -7,7 +7,7 @@ with `f∥` evaluable at complex argument.
 
 $(RANGE_DOC)
 """
-struct ReducedVDF{D, T, N} <: AbstractVDF
+struct ReducedVDF{D, T, N} <: SolverVDF
     df::D
     para::T
     n::N
@@ -21,9 +21,9 @@ function ReducedVDF(fpar; para, df = nothing, normalize = true)
 end
 
 function contribution(d::ReducedVDF, s, ω, k; rtol = 1.0e-9, closure = HarmonicSum(), kw...)
-    iszero(perp(k)) ||
+    iszero(k.k_perp) ||
         throw(ArgumentError("ReducedVDF (1-D parallel) only supports field-aligned electrostatic kperp=0"))
-    kz = para(k)
+    kz = k.k_para
     χzz = -(s.Pi2 / kz^2) * plan_landau(d.para, ω / kz, sign(kz))(d.df; rtol, kw...)
     return _ee33(χzz) / d.n
 end

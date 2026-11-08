@@ -1,12 +1,12 @@
 """
-    contribution(species/vdf, ω, k)
+    contribution(population/vdf, ω, k)
 
-Susceptibility χ_s(ω,k) from one species or vdf.
+Susceptibility χ_s(ω,k) from one population or vdf.
 """
 @inline contribution(s, ω, k; kwargs...) = contribution(s.vdf, s, ω, k; kwargs...)
 
-function contribution(vdf::AbstractVDF, ω, k; kw...)
-    return contribution(NormalizedSpecies(1.0, 1.0, vdf), ω, k; kw...)
+function contribution(vdf::Union{AbstractVDF, SolverVDF}, ω, k; kw...)
+    return contribution(NormalizedPopulation(1.0, 1.0, vdf), ω, k; kw...)
 end
 
 # ω̃²·χ_s
@@ -31,7 +31,7 @@ end
 
 # ε = I + Σ_s χ_s(ω,k)
 dielectric(plasma, ω, k; kwargs...) =
-    _guarded_sum(s -> contribution(s, ω, k; kwargs...), NormalizedPlasma(plasma)) + I
+    _guarded_sum(s -> contribution(s, ω, k; kwargs...), NormalizedPlasma(plasma).populations) + I
 
 # Curl-curl operator k̃k̃ᵀ - k̃²I
 function _curlcurl(k)
@@ -60,19 +60,28 @@ coarse-grid root-finding (e.g., GRPF) may miss them and
 report a spurious net pole.
 """
 function wave_dispersion_tensor(plasma, ω, k; kwargs...)
-    ω2χ = _guarded_sum(s -> scaled_contribution(s, ω, k; kwargs...), NormalizedPlasma(plasma))
+    ω2χ = _guarded_sum(s -> scaled_contribution(s, ω, k; kwargs...), NormalizedPlasma(plasma).populations)
     return ω^2 * I + ω2χ + _curlcurl(k)
+end
+
+# The tensors are dimensionless, so only the arguments change unit.
+for f in (:dielectric, :dispersion_tensor, :wave_dispersion_tensor, :electrostatic_det, :residual)
+    @eval function $f(plasma::Plasma, ω, k::Wavevector; kwargs...)
+        normalized = NormalizedPlasma(plasma)
+        u = _physical_units(normalized)
+        return $f(normalized, ω / u.omega, _scale_k(k, inv(u.k)); kwargs...)
+    end
 end
 
 "Aliases for `dispersion_tensor`"
 const 𝒟 = dispersion_tensor
 
 """
-    electrostatic_det(plasma, ω, k::Wavenumber)
+    electrostatic_det(plasma, ω, k::Wavevector)
 
 Cheap longitudinal path `k̃ · ε · k̃`; its zeros are the electrostatic modes.
 """
-function electrostatic_det(plasma, ω, k::Wavenumber; kwargs...)
+function electrostatic_det(plasma, ω, k::Wavevector; kwargs...)
     ε = dielectric(plasma, ω, k; kwargs...)
     kv = vec3(k)
     return dot(kv, ε, kv)

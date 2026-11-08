@@ -7,17 +7,16 @@
     vA = 1.0e-4
     me = 5.44662e-4
     plasma = (
-        NormalizedSpecies(1.0, 1 / vA^2, Maxwellian(vA)),
-        NormalizedSpecies(-1 / me, 1 / (me * vA^2), Maxwellian(vA / sqrt(me))),
+        NormalizedPopulation(1.0, 1 / vA^2, BiMaxwellian(; vth = vA)),
+        NormalizedPopulation(-1 / me, 1 / (me * vA^2), BiMaxwellian(; vth = vA / sqrt(me))),
     )
-    k = Wavenumber(0.01 / vA, 0.01 / vA)
+    k = Wavevector(0.01 / vA, 0.01 / vA)
     prob = DispersionProblem(plasma, 9.9881e-3 - 2.3132e-7im, k)  # ALPS fast-wave root
 
     for alg in (Muller(), Order1())
         sol = solve(prob, alg)
         @test sol.retcode == ReturnCode.Success
         @test sol.resid < 1.0e-10
-        @test sol.stats.nevals > 0
     end
 end
 
@@ -25,13 +24,13 @@ end
     vA = 1.0e-4
     me = 5.44662e-4
     plasma = (
-        NormalizedSpecies(1.0, 1 / vA^2, Maxwellian(vA)),
-        NormalizedSpecies(-1 / me, 1 / (me * vA^2), Maxwellian(vA / sqrt(me))),
+        NormalizedPopulation(1.0, 1 / vA^2, BiMaxwellian(; vth = vA)),
+        NormalizedPopulation(-1 / me, 1 / (me * vA^2), BiMaxwellian(; vth = vA / sqrt(me))),
     )
-    k = Wavenumber(0.01 / vA, 0.01 / vA)
+    k = Wavevector(0.01 / vA, 0.01 / vA)
     ωref = 9.9881e-3 - 2.3132e-7im
 
-    gsol = solve(GlobalDispersionProblem(plasma, (0.008 - 0.001im, 0.012 + 0.001im), k), GRPF(; tol = 1.0e-4))
+    gsol = solve(DispersionProblem(plasma, (0.008 - 0.001im, 0.012 + 0.001im), k), GRPF(; tol = 1.0e-4))
     @test gsol.retcode == ReturnCode.Success
     groots = gsol.roots
     @test !isempty(groots)

@@ -156,7 +156,7 @@ This is the cold⊕Gaussian principle: momentum `\mathbf p=\mathbf p_c+\mathbf p
 ⊕ independent Gaussian); scalar `J_n^2` moments convolve with `J_m^2`, and the `v⊥²` insertion adds
 the `p_r^2` (cold) and `\partial_{\Lambda_r}` (cross) pieces above.
 
-> Implemented as `Maxwellian(; vr=…)` (`vr=0` keeps the bit-identical fast path); validated against
+> Implemented as `GyroRing(vth, vr)`; validated against
 > `SeparableVDF` to ~1e-10, ~30–45× faster than the quadrature path.
 
 ## Literal shifted-Gaussian ring-beam (the `exp[−(p_⊥−p_r)²/p_{th⊥}²]` form)
@@ -307,8 +307,8 @@ Both routes are forced through the `erf`/`erfc` family, the computational signat
 | 5.0, 0.5           | 5.0         | 3e-13 / 32    | 2e-13 / 139   | **2.2µs** | 376µs | 55µs  |
 | 5.0, 2.0           | 10          | 2e-7 / 58     | 6e-9 / 140    | **2.3µs** | 657µs | 106µs |
 
-Full-tensor `χ` (`GaussianRing` vs `SeparableVDF`): ~1e-9 and **~400–470× faster** for `\Lambda_r\lesssim8`,
+Full-tensor `χ` (ring `BiMaxwellian` vs `SeparableVDF`): ~1e-9 and **~400–470× faster** for `\Lambda_r\lesssim8`,
 breaking (≈30%) by `\Lambda_r\approx12`.
 
-> Implemented as `GaussianRing(; vth, vd, vr)` (Route A, full tensor); `vr=0` reduces to the
+> Implemented as `GaussianRing(; vr_perp, w_perp, vth_para, vd_para)` (Route A, full tensor); `vr_perp=0` reduces to the
 > bi-Maxwellian. Past `\Lambda_r\approx10` use `SeparableVDF`.

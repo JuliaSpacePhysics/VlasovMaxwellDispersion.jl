@@ -3,11 +3,13 @@ BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
 ChairmarksForAirspeedVelocity = "03f6ca6c-aa78-4850-b881-17e0d6a7eae9"
 HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
+PlasmaPopulations = "19fe0aba-210f-40e6-8711-72208e0968be"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 VlasovMaxwellDispersion = "cdafd680-06b3-5be4-9326-1ea31d308873"
 
 [sources]
-ChairmarksForAirspeedVelocity = {url = "https://github.com/LilithHafner/ChairmarksForAirspeedVelocity.jl", rev = "0affa3b2275e4dc1f7200436a615002cd126b81d"}
+PlasmaPopulations = { url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl" }
+ChairmarksForAirspeedVelocity = { url = "https://github.com/LilithHafner/ChairmarksForAirspeedVelocity.jl", rev = "0affa3b2275e4dc1f7200436a615002cd126b81d" }
 
 [compat]
 BenchmarkTools = "1"

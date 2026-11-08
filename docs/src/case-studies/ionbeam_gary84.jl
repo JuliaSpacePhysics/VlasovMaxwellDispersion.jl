@@ -27,9 +27,9 @@ function gary_plasma(v0_vm)
     Pi2 = 1 / vA_c^2                   # (ωpp(ne)/ωcp)²
     v0 = v0_vm * vm
     v0m = -0.01 * v0
-    main = NormalizedSpecies(1.0, 0.99Pi2, Maxwellian(; vth=vthm, vd=v0m))
-    beam = NormalizedSpecies(1.0, 0.01Pi2, Maxwellian(; vth=sqrt(10) * vthm, vd=v0m + v0))
-    elec = NormalizedSpecies(-mratio, mratio * Pi2, Maxwellian(; vth=sqrt(mratio) * vthm))
+    main = NormalizedPopulation(1.0, 0.99Pi2, BiMaxwellian(; vth = vthm, vd_para = v0m))
+    beam = NormalizedPopulation(1.0, 0.01Pi2, BiMaxwellian(; vth = sqrt(10) * vthm, vd_para = v0m + v0))
+    elec = NormalizedPopulation(-mratio, mratio * Pi2, BiMaxwellian(; vth = sqrt(mratio) * vthm))
     return (main, beam, elec)
 end
 
@@ -38,7 +38,7 @@ end
 # One `ω` box and `k∥` sweep serves all four panels.
 
 region = (0.0 - 0.1im, 0.45 + 0.2im)
-geom = CartesianSweep(kz=(0.001:0.002:0.2) ./ vm)
+geom = CartesianSweep(k_para=(0.001:0.002:0.2) ./ vm)
 v0s = (0.0, 10.0, 20.0, 30.0)
 sols = [solve(DispersionProblem(gary_plasma(v0), region, geom)) for v0 in v0s]
 
@@ -53,7 +53,7 @@ for (v0, sol) in zip(v0s, sols)
     ds = map(eachrow(rows)) do r
         best = Inf
         for b in sol.roots, (k, ω) in zip(b.k, b.omega)
-            isfinite(ω) && abs(para(k) * vm - r[2]) < 0.002 || continue
+            isfinite(ω) && abs(k.k_para * vm - r[2]) < 0.002 || continue
             best = min(best, abs(ω - complex(r[3], r[4])))
         end
         best
@@ -90,7 +90,7 @@ for (i, (v0, sol)) in enumerate(zip(v0s, clean_sols))
         xlabel=row == 2 ? L"k vₘ / ω_{cp}" : "", ylabel=col == 1 ? L"ω / ω_{cp}" : ""
     )
     for b in sol.roots
-        x = [para(k) * vm for k in b.k]
+        x = [k.k_para * vm for k in b.k]
         lines!(ax, x, real.(b.omega); color=:royalblue, linewidth=2)
         lines!(ax, x, imag.(b.omega); color=:orangered, linewidth=2)
     end

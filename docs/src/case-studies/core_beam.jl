@@ -8,18 +8,18 @@
 # Reference: Case 6 in Guo et al. (2026, arXiv:2606.14439)
 
 using VlasovMaxwellDispersion
+using PlasmaPopulations: gyrofrequency, plasma_frequency
 using VlasovMaxwellDispersion: isgrowing
 using Unitful
 
 # ## Plasma setup
 #
-# Drift speeds are in `c`.
-
 B0 = 7.5e-7u"T"
+p, e = Proton(), Electron()
 plasma = Plasma(
-    Species(Proton(), sc -> Maxwellian(sc; vd=-2.87e-4); n=2.53e9u"m^-3", T=(100, 20) .* u"eV"),
-    Species(Proton(), sc -> Maxwellian(sc; vd=3.33e-4); n=2.17e9u"m^-3", T=(170, 48) .* u"eV"),
-    Species(Electron(); n=4.7e9u"m^-3", T=50u"eV");
+    Population(p, BiMaxwellian; T_perp = 100u"eV", T_para = 20u"eV", vd_para = -2.87e-4u"c", n = 2.53e9u"m^-3"),
+    Population(p, BiMaxwellian; T_perp = 170u"eV", T_para = 48u"eV", vd_para = 3.33e-4u"c", n = 2.17e9u"m^-3"),
+    Population(e, BiMaxwellian; T = 50u"eV", n = 4.7e9u"m^-3");
     B0,
 )
 
@@ -27,11 +27,11 @@ plasma = Plasma(
 #
 # Parallel propagation, `k·d_p ∈ [0.02, 1]`.
 
-dp = 1 / plasma_gyro_ratio((2.53e9 + 2.17e9)u"m^-3", mass(Proton()), B0)
+dp = gyrofrequency(p, B0) / plasma_frequency(p, (2.53e9 + 2.17e9)u"m^-3")  # c/ωpp in units of c/ωcp
 region = (-0.55 - 0.1im, 0.55 + 0.06im)
-geom = CartesianSweep(kz=(0.01:0.008:1.0) ./ dp)
+geom = CartesianSweep(k_para=(0.01:0.008:1.0) ./ dp)
 
-sol = solve(DispersionProblem(plasma, region, geom))
+sol = solve(DispersionProblem(NormalizedPlasma(plasma), region, geom))
 
 
 # ## Dispersion diagram

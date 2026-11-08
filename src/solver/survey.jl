@@ -10,7 +10,7 @@ struct SurveyCache{P, A, R, L}
 end
 
 
-function CommonSolve.init(
+function _init(
         prob::DispersionProblem{<:Region}, alg;
         refine = Muller(), linking = (;)
     )
@@ -64,7 +64,7 @@ function _pointroots(prob, alg, refine, k)
     return consolidate(zs; atol = 1.0e-4 * diag), n1 + n2, converged
 end
 
-_trusted(plasma, ω, k) = all(s -> trusted(s.vdf, s, ω, k), NormalizedPlasma(plasma).species)
+_trusted(plasma, ω, k) = all(s -> trusted(s.vdf, s, ω, k), NormalizedPlasma(plasma).populations)
 
 # m=0 sweeps flow through as 0-dim arrays; collapse to scalars at construction
 _scalarize(x::AbstractArray{<:Any, 0}) = x[]
@@ -82,7 +82,7 @@ end
 function _branches(prob, sheets, ks, ::Type{T}) where {T}
     return map(sheets) do sheet
         ωs = _scalarize(Complex{T}.(sheet))
-        DispersionBranch(ωs, ks, _residuals(prob, ωs, ks, T))
+        DispersionBranch(ωs, ks, _residuals(prob, ωs, ks, T), true)
     end
 end
 

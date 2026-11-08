@@ -1,34 +1,20 @@
-"""
-    BiKappa(; vth, kappa)
-
-Coupled bi-kappa `f₀ ∝ (1 + p∥²/a∥ + p⊥²/a⊥)^{-(κ+1)}`,
-`a_{∥,⊥} = (κ-3/2)·vth_{∥,⊥}²`. Valid for `κ>3/2`.
-`vth` is a scalar (isotropic) or a `(⊥, ∥)` pair.
-"""
-struct BiKappa{K, T} <: AbstractVDF
+# Coupled bi-kappa `f₀ ∝ (1 + p∥²/a∥ + p⊥²/a⊥)^{-(κ+1)}`, from `PlasmaPopulations.BiKappa`
+struct CoupledKappa{K, T} <: SolverVDF
     kappa::K
     a_para::T
     a_perp::T
 end
 
-parallel_even(::BiKappa) = true
+parallel_even(::CoupledKappa) = true
 
-function BiKappa(; kappa, vth)
-    κ = kappa
-    κ > 1.5 || throw(ArgumentError("BiKappa needs κ > 3/2 (finite ⟨p²⟩)"))
-    vth_perp, vth_para = perp_para(vth)
-    a_para, a_perp = promote((κ - 1.5) * vth_para^2, (κ - 1.5) * vth_perp^2)
-    return BiKappa(isinteger(κ) ? Int(κ) : κ, a_para, a_perp)
-end
-
-(d::BiKappa)(q, u) = (1 + u^2 / d.a_para + q^2 / d.a_perp)^(-(d.kappa + 1))
+(d::CoupledKappa)(q, u) = (1 + u^2 / d.a_para + q^2 / d.a_perp)^(-(d.kappa + 1))
 
 # ∫d³p f₀=1 for the un-normalized (1+…)^{-(κ+1)}; closed-form moments carry C explicitly.
-@inline normalization(d::BiKappa) =
+@inline normalization(d::CoupledKappa) =
     gamma(d.kappa + 1) / (π^1.5 * d.a_perp * sqrt(d.a_para) * gamma(d.kappa - 0.5))
 
-function contribution(d::BiKappa, s, ω, k; rtol = 1.0e-8, norm = NORM, kwargs...)
-    Ω, kz, kperp = s.Omega, para(k), perp(k)
+function contribution(d::CoupledKappa, s, ω, k; rtol = 1.0e-8, norm = NORM, kwargs...)
+    Ω, kz, kperp = s.Omega, k.k_para, k.k_perp
     a = kperp / Ω
     p⊥2 = d.a_perp / (d.kappa - 1.5)
     ns = (-nmax_bessel(a^2 * p⊥2 / 2)):nmax_bessel(a^2 * p⊥2 / 2)
@@ -42,7 +28,7 @@ end
 # at fixed p⊥ the parallel slice is a 1-D kappa,
 #     f(·,p⊥) ∝ (b + p∥²/a∥)^{-(κ+1)},  b = 1 + p⊥²/a⊥,
 # whose Cauchy moments close (β²=a∥b in H_m).
-function _harmonic_sum_perp(d::BiKappa, v, ns, ω, Ω, kz, a)
+function _harmonic_sum_perp(d::CoupledKappa, v, ns, ω, Ω, kz, a)
     κ, a_para, a_perp = d.kappa, d.a_para, d.a_perp
     b = 1 + v^2 / a_perp
     σ = sign(kz)

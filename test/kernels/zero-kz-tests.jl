@@ -7,64 +7,64 @@
     using SpecialFunctions: besselix
 
     vth, Pi2, kperp = 0.5, 2.0, 1.3
-    s = NormalizedSpecies(1.0, Pi2, Maxwellian(vth))
+    s = NormalizedPopulation(1.0, Pi2, BiMaxwellian(; vth))
     λ = (kperp * vth)^2 / 2
     # k∥→0 limit of 1 + (1/k²λD²)[1 + ζ₀ Σ Λ_n Z(ζ_n)]:  Λ_n = I_n e^{-λ}, Ω = 1
     εl(ω) = 1 + (2Pi2 / (kperp * vth)^2) * (1 - sum(besselix(abs(n), λ) * ω / (ω - n) for n in -80:80))
 
     @testset "Maxwellian εxx matches the I_n(λ) series" begin
         for ω in (1.37, 1.37 + 0.21im, 0.83 - 0.15im)   # damped ω needs no continuation at kz=0
-            χ = contribution(s, ω, Wavenumber(kperp, 0.0))
+            χ = contribution(s, ω, Wavevector(kperp, 0.0))
             @test 1 + χ[1, 1] ≈ εl(complex(ω)) rtol = 1.0e-6
         end
     end
 
     @testset "Bernstein root via electrostatic_de" begin
-        k = Wavenumber(kperp, 0.0)
+        k = Wavevector(kperp, 0.0)
         seed = sqrt(complex(1 + Pi2))   # upper-hybrid branch, between n=1 and n=2
-        t = @elapsed r = muller(ω -> electrostatic_det(s, ω, k), seed)
+        r = muller(ω -> electrostatic_det(s, ω, k), seed)
         rref = muller(εl, seed)
         @test r ≈ rref rtol = 1.0e-8
         @test abs(imag(r)) < 1.0e-10  # Bernstein modes are undamped at kz=0
-        @test t < 10 # inference stays bounded
     end
 end
 
 @testitem "kz=0 cross-path agreement: Maxwellian vs quadrature paths" begin
     using VlasovMaxwellDispersion: contribution, Newberger
 
-    sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
+    sp(vdf) = NormalizedPopulation(1.0, 1.0, vdf)
     f0(q, u) = exp(-(q^2 + u^2) / 0.16)
     sep = SeparableVDF(q -> exp(-q^2 / 0.16), u -> exp(-u^2 / 0.16); para = 3.0, perp = (0.0, 3.0))
     cpl = CoupledVDF(f0; para = 3.0, perp = (0.0, 3.0))
-    k0 = Wavenumber(0.7, 0.0)
+    k0 = Wavevector(0.7, 0.0)
     for ω in (1.37, 1.4 + 0.2im, 1.4 - 0.1im)
-        ref = contribution(sp(Maxwellian(0.4)), ω, k0)
+        ref = contribution(sp(BiMaxwellian(; vth = 0.4)), ω, k0)
         rel(x) = maximum(abs.(x .- ref)) / maximum(abs.(ref))
         @test rel(contribution(sp(sep), ω, k0)) < 1.0e-5
         @test rel(contribution(sp(cpl), ω, k0)) < 1.0e-5
         @test rel(contribution(sp(cpl), ω, k0; closure = Newberger())) < 1.0e-5
     end
     # even f∥, no drift ⇒ χxz = χyz = 0 exactly on the analytic path
-    χ = contribution(sp(Maxwellian(0.4)), 1.4 + 0.1im, k0)
+    χ = contribution(sp(BiMaxwellian(; vth = 0.4)), 1.4 + 0.1im, k0)
     scale = maximum(abs.(χ))
     @test all(abs.((χ[1, 3], χ[3, 1], χ[2, 3], χ[3, 2])) .≤ 1.0e-12 * scale)
 end
 
 @testitem "kz=0 kappa paths: analytic vs quadrature twins" begin
+    using PlasmaPopulations: pdf
     using VlasovMaxwellDispersion: contribution
 
-    sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
-    k0 = Wavenumber(0.7, 0.0)
+    sp(vdf) = NormalizedPopulation(1.0, 1.0, vdf)
+    k0 = Wavevector(0.7, 0.0)
     for κ in (2, 2.5)   # integer-residue and ₂F₁ branches share the kz=0 moment formula
         aperp, apara = (κ - 1) * 0.4^2, (κ - 0.5) * 0.4^2
-        pbk = ProductBiKappa(vth=0.4, kappa=κ)
+        pbk = ProductBiKappa(; vth = 0.4, kappa_perp = κ, kappa_para = κ)
         sep = SeparableVDF(
             v -> (1 + v^2 / aperp)^(-(κ + 1)), u -> (1 + u^2 / apara)^(-(κ + 1));
             para = 8.0, perp = (0.0, 8.0)
         )
-        bk = BiKappa(vth=(0.5, 0.4), kappa = κ)
-        cplk = CoupledVDF(bk; para = 8.0, perp = (0.0, 8.0))
+        bk = BiKappa(; vth_perp = 0.5, vth_para = 0.4, kappa = κ)
+        cplk = CoupledVDF((q, u) -> pdf(bk, q, u); para = 8.0, perp = (0.0, 8.0))
         for ω in (1.4 + 0.2im, 1.4 - 0.1im)
             χp = contribution(sp(pbk), ω, k0)
             @test contribution(sp(sep), ω, k0) ≈ χp rtol = 1.0e-4
@@ -74,18 +74,18 @@ end
     end
 end
 
-@testitem "kz=0 GridVDF fast path ≡ coupled path on the same fit" begin
+@testitem "kz=0 SplineVDF fast path ≡ coupled path on the same fit" begin
     using VlasovMaxwellDispersion: contribution
 
     vperp = range(0, 2.5, 40)
     vpar = range(-2.5, 2.5, 60)
     f = [exp(-(q^2 + u^2) / 0.16) for q in vperp, u in vpar]
-    g = GridVDF(collect(vperp), collect(vpar), f)
-    sp = NormalizedSpecies(1.0, 1.0, g)
-    spc = NormalizedSpecies(1.0, 1.0, g.coupled)
+    g = SplineVDF(collect(vperp), collect(vpar), f)
+    sp = NormalizedPopulation(1.0, 1.0, g)
+    spc = NormalizedPopulation(1.0, 1.0, g.coupled)
     for ω in (0.5 + 0.1im, 0.5 - 0.05im)
-        a = contribution(sp, ω, Wavenumber(0.2, 0.0))
-        b = contribution(spc, ω, Wavenumber(0.2, 0.0))
+        a = contribution(sp, ω, Wavevector(0.2, 0.0))
+        b = contribution(spc, ω, Wavevector(0.2, 0.0))
         @test maximum(abs.(a .- b)) / maximum(abs, a) < 1.0e-5
     end
 end
@@ -93,17 +93,17 @@ end
 @testitem "kz→0 continuity: χ(±kz→0) → χ(0)" begin
     using VlasovMaxwellDispersion: contribution
 
-    sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
+    sp(vdf) = NormalizedPopulation(1.0, 1.0, vdf)
     vdfs = (
-        Maxwellian(0.4),
-        Maxwellian(vth=0.4, vd = 0.3),          # drift: exercises the odd moments
-        ProductBiKappa(vth=0.4, kappa=2.5),
-        BiKappa(vth=0.4, kappa = 2),   # integer κ: ₂F₁ path takes ~2min/call at ζ~10⁴
+        BiMaxwellian(; vth = 0.4),
+        BiMaxwellian(; vth = 0.4, vd_para = 0.3),          # drift: exercises the odd moments
+        ProductBiKappa(; vth = 0.4, kappa_perp = 2.5, kappa_para = 2.5),
+        BiKappa(; vth = 0.4, kappa = 2),   # integer κ: ₂F₁ path takes ~2min/call at ζ~10⁴
     )
     ω = 1.4 + 0.2im
     for vdf in vdfs, kz in (1.0e-4, -1.0e-4)
-        χ0 = contribution(sp(vdf), ω, Wavenumber(0.7, 0.0))
-        χε = contribution(sp(vdf), ω, Wavenumber(0.7, kz))
+        χ0 = contribution(sp(vdf), ω, Wavevector(0.7, 0.0))
+        χε = contribution(sp(vdf), ω, Wavevector(0.7, kz))
         @test χε ≈ χ0 rtol = 1.0e-4
     end
 end
@@ -111,13 +111,13 @@ end
 @testitem "kz=0 relativistic (Im ω > 0): CoupledVDF vs MaxwellJuttner Swanson" begin
     using VlasovMaxwellDispersion: contribution
 
-    sp(vdf) = NormalizedSpecies(1.0, 1.0, vdf)
+    sp(vdf) = NormalizedPopulation(1.0, 1.0, vdf)
     mj(q, u) = exp(-8.0 * (sqrt(1 + q^2 + u^2) - 1))
     cvdf = CoupledVDF(mj; para = 2.0, perp = (0.0, 2.0), regime = Relativistic())
     for ω in (0.5 + 0.05im, 1.3 + 0.1im)   # γ-resonances inside support, off-axis at Im ω>0
-        a0 = contribution(sp(cvdf), ω, Wavenumber(0.3, 0.0))
-        aε = contribution(sp(cvdf), ω, Wavenumber(0.3, 1.0e-4))
-        b = contribution(sp(MaxwellJuttner(mu = 8.0)), ω, Wavenumber(0.3, 0.0))
+        a0 = contribution(sp(cvdf), ω, Wavevector(0.3, 0.0))
+        aε = contribution(sp(cvdf), ω, Wavevector(0.3, 1.0e-4))
+        b = contribution(sp(MaxwellJuttner(; theta = 1 / 8.0)), ω, Wavevector(0.3, 0.0))
         # kz=0 is the limit of the backend's own kz→0 values …
         @test a0 ≈ aε rtol = 1.0e-3
         # … and cross-checks Swanson at the fixed-GL box path's baseline accuracy

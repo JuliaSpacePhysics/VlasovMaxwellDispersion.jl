@@ -30,7 +30,7 @@ mutable struct ContinuationCache{P, A, KV, KE, W, R}
 end
 
 _saveat(ks) = collect(ks)
-_saveat(k::Wavenumber) = [k]
+_saveat(k::Wavevector) = [k]
 function _saveat(g::ParameterGeometry)
     grids = paramgrids(g)
     length(grids) == 1 || throw(ArgumentError("higher-dimensional sweeps are not supported yet"))
@@ -38,16 +38,16 @@ function _saveat(g::ParameterGeometry)
 end
 
 # Seed anchored mid-path (`at`): track outward both ways and stitch to path order.
-function CommonSolve.solve(prob::DispersionProblem{<:Seed}, alg::Continuation)
-    isnothing(prob.target.at) && return CommonSolve.solve!(CommonSolve.init(prob, alg))
+function _solve(prob::DispersionProblem{<:Seed}, alg::Continuation)
+    isnothing(prob.target.at) && return solve!(_init(prob, alg))
     ks = _saveat(prob.k)
     j = argmin(i -> _dist(prob.target.at, ks[i]), eachindex(ks))
-    fwd = CommonSolve.solve!(CommonSolve.init(_reseed(prob, ks[j:end]), alg))
-    bwd = CommonSolve.solve!(CommonSolve.init(_reseed(prob, reverse(ks[1:j])), alg))
+    fwd = solve!(_init(_reseed(prob, ks[j:end]), alg))
+    bwd = solve!(_init(_reseed(prob, reverse(ks[1:j])), alg))
     return _splice(bwd, fwd, prob, alg)
 end
 _reseed(prob, ks) =
-    DispersionProblem(prob.plasma, Seed(prob.target.omega0), ks, prob.closure, prob.mode, prob.backend)
+    DispersionProblem(prob.plasma, Seed(prob.target.omega0), ks, prob.closure, prob.mode, prob.backend, prob.ref)
 
 # bwd runs anchor→start over the reversed path; drop its anchor node (fwd owns it).
 function _splice(bwd, fwd, prob, alg)
@@ -55,10 +55,10 @@ function _splice(bwd, fwd, prob, alg)
     resid = vcat(reverse(bwd.resid)[1:end-1], fwd.resid)
     stats = bwd.stats + fwd.stats
     code = successful_retcode(fwd) && successful_retcode(bwd) ? ReturnCode.Success : ReturnCode.Partial
-    return DispersionSolution(omega, resid, stats, code, prob, alg)
+    return _seed_solution(prob, omega, resid, stats, code, alg)
 end
 
-function CommonSolve.init(prob::DispersionProblem{<:Seed}, alg::Continuation)
+function _init(prob::DispersionProblem{<:Seed}, alg::Continuation)
     p = prepare(prob)
     ks = _saveat(p.k)
     ω0 = p.target.omega0
@@ -83,10 +83,8 @@ function CommonSolve.solve!(cache::ContinuationCache)
     end
     time = (time_ns() - t0) / 1.0e9
     (; prob, alg, omega, resid) = cache
-    return DispersionSolution(
-        omega, resid, SolveStats(cache.nevals, time),
-        all(isfinite, omega) ? ReturnCode.Success : ReturnCode.Partial, prob, alg
-    )
+    code = all(isfinite, omega) ? ReturnCode.Success : ReturnCode.Partial
+    return _seed_solution(prob, omega, resid, SolveStats(cache.nevals, time), code, alg)
 end
 
 # Step to `kt`, bisecting the interval from the last accepted point on rejection.
@@ -107,7 +105,7 @@ end
 
 function _refine(cache, kt, guess)
     (; prob, alg) = cache
-    sol = solve(DispersionProblem(prob.plasma, guess, kt; closure = prob.closure, mode = prob.mode, backend = prob.backend), alg.base)
+    sol = _solve(DispersionProblem(prob.plasma, Seed(guess), kt, prob.closure, prob.mode, prob.backend, prob.ref), alg.base)
     cache.nevals += sol.stats.nevals
     return sol.omega, sol.resid
 end
@@ -132,7 +130,7 @@ end
 # The origin is arbitrary (here, the oldest retained node): polynomial extrapolation
 # is invariant under an affine shift of the abscissa, so only differences matter and
 # no coordinate has to be carried across the track.
-_dist(a::Wavenumber, b::Wavenumber) = hypot(a.kperp - b.kperp, a.kz - b.kz)
+_dist(a::Wavevector, b::Wavevector) = hypot(a.k_perp - b.k_perp, a.k_para - b.k_para)
 function _arclengths!(s, khist)
     s[1] = zero(eltype(s))
     for i in 2:length(khist)
@@ -173,4 +171,4 @@ function _accept(cache, ω, guess)
     return abs(ω - guess) ≤ cache.alg.reltol * scale + cache.alg.abstol
 end
 
-_kmid(a::Wavenumber, b::Wavenumber) = Wavenumber((a.kperp + b.kperp) / 2, (a.kz + b.kz) / 2)
+_kmid(a::Wavevector, b::Wavevector) = Wavevector((a.k_perp + b.k_perp) / 2, (a.k_para + b.k_para) / 2)

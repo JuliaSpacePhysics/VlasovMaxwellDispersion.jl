@@ -12,6 +12,7 @@
 # integral, accelerating dispersion-tensor evaluation.
 
 using VlasovMaxwellDispersion
+using PlasmaPopulations: thermal_speed, alfven_speed
 using DelimitedFiles, Printf, Unitful
 using CairoMakie
 
@@ -20,18 +21,24 @@ using CairoMakie
 # Normalized to the proton gyrofrequency `ωcp`. The electron mass is the table's
 # deliberately heavy `m_e = 10⁻² m_p`.
 #
-# The shell is a raw `f₀(p⊥, p∥)`, so it is written as a function of the plasma's
-# [`scales`](@ref): shell speed `2 v_A`, spread the species' own `vth`.
+# The shell is a raw `f₀(p⊥, p∥)` in units of `c`: shell speed `2 v_A`, spread the 1 keV
+# thermal speed. `v_A` depends only on the mass density, so a cold copy of the plasma gives it.
 
-shell(s) = let vd = 2s.vA, hi = 2s.vA + 5s.vth_para
-    LowRankVDF((q, u) -> exp(-(sqrt(q^2 + u^2) - vd)^2 / s.vth_para^2); para = hi, perp = hi)
+c = 2.99792458e8   # m/s
+p = Proton()
+e = Particle(-1.602176634e-19, 1.0e-2 * p.m)
+B0 = 3.28e-8u"T"
+n_shell, n_core, n_e = 0.5e5u"m^-3", 4.5e5u"m^-3", 5.0e5u"m^-3"
+vA = alfven_speed(Plasma(Population(p, Cold(); n = n_shell + n_core), Population(e, Cold(); n = n_e); B0)) / c
+vth_shell = thermal_speed(p, 1000u"eV") / c
+shell = let vd = 2vA, hi = 2vA + 5vth_shell
+    LowRankVDF((q, u) -> exp(-(sqrt(q^2 + u^2) - vd)^2 / vth_shell^2); para = hi, perp = hi)
 end
-
 plasma = Plasma(
-    Species(Proton(), shell; n = 0.5e5u"m^-3", T = 1000u"eV"),        # 1 keV shell
-    Species(Proton(); n = 4.5e5u"m^-3", T = 10u"eV"),                 # cold core
-    Species(Particle(z = -1, A = 1.0e-2); n = 5.0e5u"m^-3", T = 10u"eV"),
-    B0 = 3.28e-8u"T",
+    Population(p, shell; n = n_shell),                       # 1 keV shell
+    Population(p, BiMaxwellian; T = 10u"eV", n = n_core),       # cold core
+    Population(e, BiMaxwellian; T = 10u"eV", n = n_e);
+    B0,
 )
 
 # ## Seedless survey
@@ -39,10 +46,10 @@ plasma = Plasma(
 # `k` sweeps `k·d_p ∈ [0.3, 12.5]` (`d_p = c/ω_pp = v_A/ω_cp`) at `θ = 89.5°`;
 # the `ω` box spans the Bernstein harmonic staircase up to `~7.5 ω_cp`.
 
-dp = scales(plasma).vA                        # d_p = v_A/ω_cp in units of c/ω_cp
+dp = vA                        # d_p = v_A/ω_cp in units of c/ω_cp
 region = (0.05 - 0.06im, 7.8 + 0.12im)
 geom = AngleSweep(k = range(0.3, 12.5, 128) ./ dp, theta = deg2rad(89.5))
-sol = solve(DispersionProblem(plasma, region, geom))
+sol = solve(DispersionProblem(NormalizedPlasma(plasma), region, geom))
 
 # ## Dispersion diagram
 

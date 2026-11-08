@@ -9,27 +9,34 @@
 # Reference: Warwick (Fig. 3.8, 2018), Xie (Fig. 3, 2025), Guo (2026, arXiv:2606.14439)
 
 using VlasovMaxwellDispersion
+using PlasmaPopulations: gyrofrequency, plasma_frequency, thermal_speed
 using VlasovMaxwellDispersion: isgrowing
 using Unitful
 using CairoMakie
 
 # ## Plasma setup
 #
-# Deuterons + electrons (Maxwellian) plus the hot alpha ring-beam. `ref = Proton()`
-# normalizes to `ωcp = eB₀/mp`.
+# Deuterons + electrons (Maxwellian) plus the hot alpha ring-beam, a `BiMaxwellian` with
+# ring speed `vr_perp`. `ref = Proton()` normalizes to `ωcp = eB₀/mp`.
 
 B0 = 2.1u"T"
-plasma = Plasma(
-    Species(Particle(z=2, A=4), sc -> GaussianRing(sc; vr=0.045); n=1.0e16u"m^-3", T=1000u"eV"),
-    Species(Particle(z=1, A=2); n=9.98e18u"m^-3", T=1000u"eV"),
-    Species(Electron(); n=1.0e19u"m^-3", T=1000u"eV");
-    B0, ref=Proton(),
+α, D, e = Particle(:He, 2), Particle(:H, 1; A = 2), Electron()
+T = 1000u"eV"
+vth = thermal_speed(α, T)
+plasma = NormalizedPlasma(
+    Plasma(
+        Population(α, GaussianRing(; vr_perp = 0.045u"c", w_perp = vth, vth_para = vth); n = 1.0e16u"m^-3"),
+        Population(D, BiMaxwellian; T, n = 9.98e18u"m^-3"),
+        Population(e, BiMaxwellian; T, n = 1.0e19u"m^-3");
+        B0,
+    );
+    ref = Proton(),
 )
 
 # ## Growing modes from the seedless survey
 #
 
-dp = 1 / plasma_gyro_ratio(1.0e19u"m^-3", mass(Proton()), B0) # prton inertial length
+dp = gyrofrequency(Proton(), B0) / plasma_frequency(Proton(), 1.0e19u"m^-3") # proton inertial length in c/ωcp
 kdp = range(3.0, 7.0, length=100) ./ dp
 θ = deg2rad(89.5)
 region = (1.8 - 0.8im, 4.2 + 0.2im)
@@ -53,7 +60,7 @@ fig
 # ## Clean propagating branch via seeded continuation
 
 kseed = 5.2 / dp
-seed = Seed(3.5 + 0.03im, Wavenumber(kseed .* sincos(θ)...))
+seed = Seed(3.5 + 0.03im, Wavevector(kseed .* sincos(θ)...))
 solc = solve(DispersionProblem(plasma, seed, geom))
 
 fig2 = Figure(size=(900, 400))

@@ -1,4 +1,5 @@
 @testitem "NonnegBSpline knot refinement survives residual plateau instead of bisecting data-free cells forever" begin
+    using VlasovMaxwellDispersion: fit_grid
     μ = 2.0
     f0(u, w) = exp(-μ * sqrt(1 + u^2 + w^2))
     pperp = range(0.0, 5.0, length = 61)
