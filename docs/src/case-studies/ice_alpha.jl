@@ -20,7 +20,7 @@ using CairoMakie
 # ring speed `vr_perp`. `ref = Proton()` normalizes to `ωcp = eB₀/mp`.
 
 B0 = 2.1u"T"
-α, D, e = Particle(:He, 2), Particle(:H, 1; A = 2), Electron()
+α, D, e = Particle(:He, 2), Particle(:D, 1), Electron()
 T = 1000u"eV"
 vth = thermal_speed(α, T)
 plasma = NormalizedPlasma(
