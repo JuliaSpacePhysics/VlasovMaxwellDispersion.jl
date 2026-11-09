@@ -20,6 +20,13 @@
         @test χA ≈ χref rtol = rtolA
         @test χB ≈ χref rtol = rtolB
     end
+
+    # Superluminal growing ω puts the n=0 pole near p∥ = ±1.3i, past the γ=0 branch point,
+    # where f₀ continues to ~e^μ: an optional (uncrossed) peel there cancels χ to noise (10²–10⁴×).
+    for kz in (0.4, 0.8), ω in (1.56kz + 0.01im, 1.8kz + 0.05im)
+        k = Wavevector(0.5, kz)
+        @test contribution(rel, ω, k) ≈ contribution(ref, ω, k) rtol = 1.0e-5
+    end
 end
 
 # Strongly-relativistic (μ=2) regime with resonances INSIDE the support

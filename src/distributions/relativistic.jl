@@ -85,6 +85,12 @@ end
     iszero(γp) && return zz
     r = c .* W(p, γp)
     all(isfinite, r) || return zz
+    # A near-only peel is optional: skip it when f₀ continued to p dwarfs the real-axis
+    # integrand (e.g. a pole past the γ=0 branch point), else r/(u−p) and r·log cancel to noise.
+    if !crossed
+        x = clamp(real(p), lo, hi)
+        _peel(r, NORM(c .* W(x, γof(x)))) || return zz
+    end
     return r, r .* (log((hi - p) / (lo - p)) + (crossed ? sgnkz * 2π * im : 0))
 end
 

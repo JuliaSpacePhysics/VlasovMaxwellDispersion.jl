@@ -17,7 +17,7 @@ end
 let g = SUITE["separable"]
     vthp, vthq = 0.9, 1.2
     ssep = prepare(NormalizedPopulation(-1.0, 1.0, SeparableVDF(
-        BiMaxwellian(; vth_perp = vthq, vth_para = vthp);
+        Gaussian(vthq) ⊗ Gaussian(vthp, 0.0);
         para=14vthp, perp=14vthq
     )))
     for (name, k) in (("moderate", Wavevector(1.0, 0.4)), ("many_harmonics", Wavevector(4.0, 0.1)))
