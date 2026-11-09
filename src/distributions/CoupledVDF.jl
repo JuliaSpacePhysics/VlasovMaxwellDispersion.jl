@@ -67,9 +67,10 @@ prepare(d::CoupledVDF, closure=HarmonicSum(); kw...) =
     PreparedVDF(d, precompute(regime(d), closure, d; kw...))
 
 precompute(::NonRelativistic, ::Newberger, d; kw...) = (; n=density(d))
-function precompute(::NonRelativistic, ::HarmonicSum, d; kw...)
+function precompute(::NonRelativistic, ::HarmonicSum, d; backend=FixedNodeEval(), kw...)
     n = density(d)
-    return (; n, pperp2_mean=pperp2_mean(d, n))
+    table = backend isa FixedNodeEval ? CoupledTable(d, backend) : nothing
+    return (; n, pperp2_mean=pperp2_mean(d, n), table)
 end
 precompute(::Relativistic, ::Any, d; quad=BoxQuad(_GL24, _GL32), kw...) =
     (; n=density(d), bernstein33=_bernstein_rel(d, quad))

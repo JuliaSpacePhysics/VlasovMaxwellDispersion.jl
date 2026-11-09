@@ -103,8 +103,8 @@ before selecting `:L`, `:R`, `:P`, `:O`, or `:X`.
 
 ## Susceptibility backends
 
-`FixedNodeEval(; order, nprobe)` is default. It plans quadrature nodes at each
-wavevector and reuses frequency-independent work. Use `AdaptiveEval()` when
+`FixedNodeEval(; order, nprobe, tol)` is default. It tabulates `∇f₀` on fixed nodes to
+interpolation tolerance `tol` and reuses frequency-independent work. Use `AdaptiveEval()` when
 fixed nodes under-resolve a distribution; it repeats adaptive quadrature at
 every frequency and is slower.
 

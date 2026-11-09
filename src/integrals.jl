@@ -99,12 +99,14 @@ function _node_kernel!(w, un, uw, ζ, near)
     W = zero(ζ)
     w0 = zero(eltype(uw))
     hit = false
+    near2 = near^2
     @inbounds for l in eachindex(w)
         δ = un[l] - ζ
-        if abs(δ) < near
+        δ2 = abs2(δ)
+        if δ2 < near2
             w[l] = zero(ζ); w0 += uw[l]; hit = true
         else
-            w[l] = uw[l] * safe_inv(δ)
+            w[l] = (uw[l] / δ2) * conj(δ)
             W += w[l]
         end
     end
@@ -141,25 +143,6 @@ end
 
 # conj/abs2 over Base's overflow-safe inv(::ComplexF64)
 safe_inv(x) = conj(x) / abs2(x)
-
-function _landau(::PeeledGK, g, lims, ζs::AbstractVector, side; kw...)
-    lo, hi = lims
-    gsub_res = _peel_pole.(g, ζs, lo, hi, side)
-    gsubs = first.(gsub_res)
-    I = similar(ζs, typeof(first(gsub_res)[2]))
-    f! = function (y, u)
-        gu = g(u)
-        return @inbounds for i in eachindex(ζs)
-            y[i] = (gu - gsubs[i]) * safe_inv(u - ζs[i])
-        end
-    end
-    segs = _quadgk_pole_segments(ζs, lo, hi)
-    QuadGK.quadgk!(f!, I, lo, hi; eval_segbuf = segs, norm = v -> maximum(NORM, v), kw...)
-    @inbounds for i in eachindex(I, gsub_res)
-        I[i] += last(gsub_res[i])
-    end
-    return I
-end
 
 # Parallel-stage primitive: the harmonic-ladder Landau reduction.
 # At one perp node p⊥=v with Bessel bilinears `b2s`, a `LandauAlg` computes

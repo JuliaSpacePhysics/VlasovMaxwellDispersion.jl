@@ -37,16 +37,21 @@ Selects how a per-`k` susceptibility plan evaluates `χ(ω)`.
 abstract type ChiBackend end
 
 """
-    FixedNodeEval(; order=12, nprobe=129)
+    FixedNodeEval(; order=12, nprobe=129, tol=1e-12)
 
-Fixed-node per-`k` plan backend (default). Both knobs size the plan-time grid:
+Fixed-node per-`k` plan backend (default). The knobs size the fixed grid:
 
 - `order`: Gauss–Legendre order per panel.
 - `nprobe`: samples of the marginal proxy `∫|f₀|` that adaptive panel discovery integrates.
+- `tol`: panels are bisected until the tabulated `∇f₀` interpolates to `tol·max|∇f₀|`; this
+  is the accuracy floor of `χ`.
+
+The tables are k-independent and built by `prepare`, which takes the same `backend`.
 """
 Base.@kwdef struct FixedNodeEval <: ChiBackend
     order::Int = 12
     nprobe::Int = 129
+    tol::Float64 = 1.0e-12
 end
 
 """
