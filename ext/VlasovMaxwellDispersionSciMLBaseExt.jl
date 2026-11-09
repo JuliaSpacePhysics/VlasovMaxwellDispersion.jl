@@ -24,7 +24,7 @@ function _solve(prob::DispersionProblem{<:Seed, <:Wavevector}, alg::SciMLBase.Ab
         ReturnCode.Failure
     end
     stats = SolveStats(nevals[], (time_ns() - t0) / 1.0e9)
-    return _seed_solution(prob, ω, stats, code, alg)
+    return _seed_solution(prob, ω, residual(f, ω), stats, code, alg)
 end
 
 end

@@ -3,6 +3,8 @@
 
 Link per-grid-point complex value sets `vals[I]` into continuous sheets over the
 m-D parameter grid.
+Each sheet is an index array: `sheet[I]` indexes `vals[I]`, `0` where
+the sheet is absent.
 
 One sheet is traced at a time, seeded at the highest-growth-rate
 unclaimed value and grown outward: each frontier cell takes the
@@ -15,7 +17,7 @@ function link(vals::AbstractArray{<:Any,M}; gate) where {M}
     live = map(p -> trues(length(p)), pool)          # still unclaimed
     steps = [CartesianIndex(ntuple(i -> ifelse(i == j, s, 0), M)) for j in 1:M for s in (-1, 1)]
     δ = _grid_step(pool, grid, steps)
-    sheets = Vector{Pair{CartesianIndex{M},V}}[]
+    sheets = Array{Int,M}[]
     while true
         sc = zero(CartesianIndex{M})                 # seed at the highest-growth live value
         si = 0
@@ -25,43 +27,40 @@ function link(vals::AbstractArray{<:Any,M}; gate) where {M}
         end
         si == 0 && break
         live[sc][si] = false
-        claim = Dict(sc => pool[sc][si])
+        idx = zeros(Int, size(vals))
+        idx[sc] = si
         frontier = [sc + s for s in steps if (sc + s) in grid]
         while !isempty(frontier)
             c = popfirst!(frontier)
-            (c in grid && !haskey(claim, c)) || continue
-            e = _quadratic_extrapolate(claim, c, steps)
+            iszero(idx[c]) || continue
+            e = _quadratic_extrapolate(pool, idx, c, steps)
             i = isnothing(e) ? 0 : _nearest_live(pool[c], live[c], e[1], _jump_tol(gate, e[2], δ))
             i == 0 && continue
             live[c][i] = false
-            claim[c] = pool[c][i]
+            idx[c] = i
             for s in steps
                 nb = c + s
-                (nb in grid && !haskey(claim, nb)) && push!(frontier, nb)
+                (nb in grid && iszero(idx[nb])) && push!(frontier, nb)
             end
         end
-        push!(sheets, collect(claim))
+        push!(sheets, idx)
     end
-    return map(sheets) do sh
-        out = fill(complex(NaN, NaN), size(vals))
-        foreach(((c, v),) -> out[c] = v, sh)
-        out
-    end
+    return sheets
 end
 
 # Quadratic extrapolation lets a smoothly bending branch cross a flat one without swapping
 # when the bend is mild. A kink where the second difference `|a−2b+d|` exceeds `_CURV·|a−b|` 
 # (e.g. an instability bifurcation) would overshoot onto a neighbouring branch -> linear
 const _CURV = 0.4
-function _quadratic_extrapolate(claim, c, steps)
-    acc = zero(valtype(claim))
-    step = zero(real(valtype(claim)))
+function _quadratic_extrapolate(pool, idx, c, steps)
+    acc = zero(eltype(eltype(pool)))
+    step = zero(real(eltype(eltype(pool))))
     n = 0
     for s in steps
-        a = get(claim, c + s, nothing)
+        a = _claimed(pool, idx, c + s)
         isnothing(a) && continue
-        b = get(claim, c + 2s, nothing)
-        d = get(claim, c + 3s, nothing)
+        b = _claimed(pool, idx, c + 2s)
+        d = _claimed(pool, idx, c + 3s)
         acc += if isnothing(b)
             a
         elseif isnothing(d) || abs(a - 2b + d) > _CURV * abs(a - b)
@@ -74,6 +73,8 @@ function _quadratic_extrapolate(claim, c, steps)
     end
     return n == 0 ? nothing : (acc / n, step)
 end
+
+_claimed(pool, idx, c) = checkbounds(Bool, idx, c) && !iszero(idx[c]) ? pool[c][idx[c]] : nothing
 
 _jump_tol(gate, step, δ) = min(gate, _JUMP * max(step, δ))
 
