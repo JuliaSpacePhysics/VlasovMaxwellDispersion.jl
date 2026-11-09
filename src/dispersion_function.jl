@@ -58,15 +58,15 @@ end
 scaled_contribution(p::GenericKPlan, ω) = scaled_contribution(p.s, ω, p.k; closure=p.closure)
 scaled_contribution(p, ω) = complex(ω)^2 * p(ω)
 
-function (D::DispersionFunction)(ω)
+function _tensor(D::DispersionFunction, ω)
     ω̃² = complex(ω)^2
-    M = if D.deflate
+    return if D.deflate
         ω̃² * I + _guarded_sum(p -> scaled_contribution(p, ω), D.plans) + D.curl
     else
         I + _guarded_sum(p -> p(ω), D.plans) + D.curl / ω̃²
     end
-    return D.mode(M, D.k) / D.scale
 end
+(D::DispersionFunction)(ω) = D.mode(_tensor(D, ω), D.k) / D.scale
 
 "`false` for plans that approximate (fit) the susceptibility; gates polish on `exact(D)`."
 isexact(x) = true
@@ -82,12 +82,10 @@ end
 _hadamard(D) = prod(norm(D[i, :]) for i in 1:3)
 
 function DispersionFunction(prob::DispersionProblem{<:Seed})
-    s = _hadamard(dispersion_tensor(prob.plasma, prob.target.omega0, prob.k; closure=prob.closure))
+    D = DispersionFunction(prob.plasma, prob.k; closure=prob.closure, deflate=false, mode=prob.mode, backend=prob.backend)
+    s = _hadamard(_tensor(D, prob.target.omega0))
     scale = isfinite(s) && s > 0 ? s^_scalepow(prob.mode) : one(s)
-    return DispersionFunction(
-        prob.plasma, prob.k;
-        closure=prob.closure, deflate=false, scale, mode=prob.mode, backend=prob.backend
-    )
+    return DispersionFunction(D.plans, D.plasma, D.k, D.closure, D.curl, scale, D.deflate, D.mode)
 end
 DispersionFunction(prob::DispersionProblem{<:Region}, k) =
     DispersionFunction(prob.plasma, k; closure=prob.closure, mode=prob.mode, backend=prob.backend)
