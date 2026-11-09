@@ -13,9 +13,9 @@ outcsv(name, header, rows) = open(joinpath(@__DIR__, name), "w") do io
 end
 
 # --- traces: López-formula root vs VMD root, μ=2, k=0.1→0.85 ---
-pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
+pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
 plasma2 = pair(MaxwellJuttner(mu = 2.0))
-vmd_det(kz) = DispersionFunction(plasma2, Wavenumber(0.0, kz); mode = :L, deflate = false)
+vmd_det(kz) = DispersionFunction(plasma2, Wavevector(0.0, kz); mode = :L, deflate = false)
 
 ks = 0.1:0.05:0.85
 function trace(fset, seed)

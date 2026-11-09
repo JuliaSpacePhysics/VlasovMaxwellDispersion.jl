@@ -79,5 +79,5 @@ a field-aligned drift breaks the mirror and recouples the blocks.
 ## API
 
 ```@docs; canonical = false
-TensorReduction
+VlasovMaxwellDispersion.TensorReduction
 ```

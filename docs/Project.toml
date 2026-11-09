@@ -3,6 +3,7 @@ CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+PlasmaPopulations = "19fe0aba-210f-40e6-8711-72208e0968be"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Typst_jll = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
@@ -15,3 +16,6 @@ Documenter = "1"
 Literate = "2"
 Typst_jll = "0.15"
 Unitful = "1"
+
+[sources]
+PlasmaPopulations = { url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl" }

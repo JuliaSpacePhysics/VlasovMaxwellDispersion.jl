@@ -1,4 +1,5 @@
 @testitem "Tensor projection moments" begin
+    using VlasovMaxwellDispersion: fit_grid
     import VlasovMaxwellDispersion as VMD
 
     f(v, u) = 1 + 2v + 3u + 4v * u
@@ -19,7 +20,7 @@
     end
 end
 
-@testitem "GridVDF accepts non-tensor projections" begin
+@testitem "SplineVDF accepts non-tensor projections" begin
     import VlasovMaxwellDispersion as VMD
 
     struct WrappedMethod end
@@ -36,11 +37,11 @@ end
     vperp = range(0.0, 4.0; length = 17)
     vpara = collect(range(-4.0, 4.0; length = 25))
     F = [f(v, u) for v in vperp, u in vpara]
-    grid = GridVDF(vperp, vpara, F; method = WrappedMethod())
+    grid = SplineVDF(vperp, vpara, F; method = WrappedMethod())
 
-    s = NormalizedSpecies(-1.0, 0.5, grid)
-    k = Wavenumber(0.1, 0.4)
+    s = NormalizedPopulation(-1.0, 0.5, grid)
+    k = Wavevector(0.1, 0.4)
     ω = 1.3 + 0.05im
     @test contribution(s, ω, k) ≈
-        contribution(NormalizedSpecies(-1.0, 0.5, grid.coupled), ω, k)
+        contribution(NormalizedPopulation(-1.0, 0.5, grid.coupled), ω, k)
 end

@@ -14,7 +14,7 @@ $(RANGE_DOC)
 
 Prefer [`SeparableVDF`] when `f(p⊥, p∥) = f⊥(p⊥) f∥(p∥)`.
 """
-struct CoupledVDF{F,Dg,De,T,R<:Regime} <: AbstractVDF
+struct CoupledVDF{F,Dg,De,T,R<:Regime} <: SolverVDF
     f0::F
     dgrad::Dg      # (∂_⊥f, ∂_∥f)
     denergy::De    # (∂_γf, ∂_∥f)
@@ -79,7 +79,7 @@ contribution(c::PreparedVDF{<:CoupledVDF}, s, ω, k; closure=HarmonicSum(), kw..
 
 function _coupled_contribution(::HarmonicSum, ::NonRelativistic, c, s, ω, k; alg=PeeledGK(), norm=NORM, rtol=1.0e-6)
     d = c.vdf
-    Ω, kz, kperp = s.Omega, para(k), perp(k)
+    Ω, kz, kperp = s.Omega, k.k_para, k.k_perp
     a = kperp / Ω
     nmax = nmax_bessel(a^2 * abs(c.cache.pperp2_mean) / 2)
     ns = (-nmax):nmax
@@ -127,7 +127,7 @@ end
 function _coupled_contribution(::HarmonicSum, ::Relativistic, c, s, ω, k;
     path=:auto, quad=BoxQuad(_GL24, _GL32), rtol=1.0e-6, scaledUcov=nothing)
     d = c.vdf
-    Ω, kz, kperp = s.Omega, para(k), perp(k)
+    Ω, kz, kperp = s.Omega, k.k_para, k.k_perp
     a = kperp / Ω
     nmax = nmax_bessel(a^2 * d.perp[2]^2 / 2)
     nΩmax = nmax * abs(Ω)

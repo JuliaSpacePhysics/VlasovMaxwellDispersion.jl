@@ -36,8 +36,8 @@ end
     dfsk(u) = (-2u * erfc(-u) + 2 * exp(-u^2) / sqrt(π)) * exp(-u^2) / sqrt(π)
     auto = ReducedVDF(fsk; para = (-10.0, 12.0))
     manual = ReducedVDF(fsk; para = (-10.0, 12.0), df = dfsk)
-    k = Wavenumber(0.0, 0.5)
-    ωa = solve(DispersionProblem(NormalizedSpecies(-1.0, 1.0, auto), 1.3 - 0.1im, k)).omega
-    ωm = solve(DispersionProblem(NormalizedSpecies(-1.0, 1.0, manual), 1.3 - 0.1im, k)).omega
+    k = Wavevector(0.0, 0.5)
+    ωa = solve(DispersionProblem(NormalizedPopulation(-1.0, 1.0, auto), 1.3 - 0.1im, k)).omega
+    ωm = solve(DispersionProblem(NormalizedPopulation(-1.0, 1.0, manual), 1.3 - 0.1im, k)).omega
     @test abs(ωa - ωm) < 1.0e-12
 end

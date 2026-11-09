@@ -1,26 +1,21 @@
-"""
-    MaxwellJuttner(; mu)
-
-Relativistic isotropic Maxwell-Juttner VDF. `mu = mc^2 / T` is inverse
-dimensionless temperature. Large `mu` tends to `Maxwellian(sqrt(2 / mu))`.
-"""
-Base.@kwdef struct MaxwellJuttner{T} <: AbstractVDF
+# `MaxwellJuttner` in this solver's representation, `mu = mc²/T = 1/theta`.
+struct Juttner{T} <: SolverVDF
     mu::T
 end
 
-regime(::MaxwellJuttner) = Relativistic()
-parallel_even(::MaxwellJuttner) = true
+regime(::Juttner) = Relativistic()
+parallel_even(::Juttner) = true
 
 # Relativistic density f(q,u)∝exp(-μγ), γ=√(1+q²+u²). Feeds the general CoupledVDF path.
-@inline (d::MaxwellJuttner)(q, u) = exp(-d.mu * sqrt(1 + q^2 + u^2))
+@inline (d::Juttner)(q, u) = exp(-d.mu * sqrt(1 + q^2 + u^2))
 
 # Swanson time-integral form avoids harmonic sums and relativistic resonance
 # bookkeeping for isotropic Maxwell-Juttner; ported from LMV.
-function contribution(d::MaxwellJuttner, s, ω, k; kwargs...)
+function contribution(d::Juttner, s, ω, k; kwargs...)
     μ = d.mu
     Ω = s.Omega
-    kz = para(k)
-    kperp = perp(k)
+    kz = k.k_para
+    kperp = k.k_perp
 
     if imag(ω) < 0 && iszero(kz)
         throw(ArgumentError("MaxwellJuttner with imag(ω)<0 and kz=0 needs Landau contour continuation"))
@@ -114,7 +109,7 @@ _mj_prepared_box(μ) = get!(_MJ_BOX_CACHE, μ) do
         coords = :energy, regime = Relativistic()); quad = _MJ_CYCLE_QUAD)
 end
 
-function _mj_cycle_contribution(d::MaxwellJuttner, s, ω, k; quad = _MJ_CYCLE_QUAD, kwargs...)
+function _mj_cycle_contribution(d::Juttner, s, ω, k; quad = _MJ_CYCLE_QUAD, kwargs...)
     c = _mj_prepared_box(d.mu)
     logU0 = log(complex(-d.mu * ω))
     scaledUcov = (γ, u, σ) -> exp(logU0 - d.mu * γ + σ)

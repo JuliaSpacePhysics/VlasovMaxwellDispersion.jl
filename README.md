@@ -7,104 +7,96 @@ fast paths; arbitrary distributions use numerical integration.
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl"); Pkg.add("Unitful")
+Pkg.add(url = "https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl"); Pkg.add(["PlasmaPopulations", "Unitful"])
 ```
 
 ## Quick start
 
 ```julia
 using VlasovMaxwellDispersion, Unitful
+using PlasmaPopulations: gyrofrequency, inertial_length
 
+p, e = Proton(), Electron()
+n = 5u"cm^-3"
 plasma = Plasma(
-    Species(Proton(); n = 5u"cm^-3", T = (100u"eV", 20u"eV")),
-    Species(Electron(); n = 5u"cm^-3", T = 50u"eV");
+    Population(p, BiMaxwellian; T_perp = 100u"eV", T_para = 20u"eV", n),
+    Population(e, BiMaxwellian; T = 50u"eV", n);
     B0 = 5u"nT",
 )
 
-s = scales(plasma, 1)
-k = Wavenumber(0.0, 0.5 / s.d)  # k∥ dᵢ = 0.5
+Ωp = gyrofrequency(p, plasma.B0)        # rad/s
+k = Wavevector(0.0, 0.5 / inertial_length(p, n))  # k∥ dᵢ = 0.5, in m⁻¹
 
 # Refine one root from a nearby complex frequency.
-root = solve(DispersionProblem(plasma, 0.9 - 0.01im, k))
-root.omega, root.resid, root.retcode
+root = solve(DispersionProblem(plasma, (0.9 - 0.01im) * Ωp, k))
+root.omega / Ωp, root.resid, root.retcode
 
 # Find every root inside a complex-frequency box.
-box = (0.0 - 0.3im, 1.1 + 0.05im)
+box = ((0.0 - 0.3im) * Ωp, (1.1 + 0.05im) * Ωp)
 survey = solve(DispersionProblem(plasma, box, k))
-survey[1].omega
+survey[1].omega / Ωp
 ```
-
-Frequencies and wavevectors are normalized to a reference gyrofrequency
-`Ω_ref`, the first species' by default. Above, `ω` is in proton gyrofrequencies
-and `k` is in `Ω_ref/c`.
 
 ## Conventions
 
-| quantity | solver unit | note |
-|---|---|---|
-| `ω`, boxes, seeds | `Ω_ref` | complex; `e^{-iωt}`, so `Im ω > 0` means growth |
-| `k` | `Ω_ref/c` | `Wavenumber(kperp, kz)`, with `B₀ ∥ ẑ` |
-| `vth`, `vd`, `vr` | `c` | |
-| physical `n`, `T`, `B0` | m⁻³, eV, tesla | bare numbers or `Unitful` quantities |
+Units follow the plasma you pass. `Ω_ref` is a reference gyrofrequency, the first population's by default.
 
-Use `Plasma(...; ref = particle)` to change `Ω_ref`. `scales(plasma, i)` gives
-dimensionless scales for species `i`, including inertial length `d`, gyroradius
-`rho`, thermal speeds, gyrofrequency ratio `wc`, and plasma-frequency ratio
-`wp`.
+| quantity | physical `Plasma` | `NormalizedPlasma`, `NormalizedPopulation` | note |
+|---|---|---|---|
+| `ω`, boxes, seeds | rad/s | `Ω_ref` | complex; `e^{-iωt}`, so `Im ω > 0` means growth |
+| `k` | m⁻¹ | `Ω_ref/c` | `Wavevector(k_perp, k_para)`, with `B₀ ∥ ẑ` |
+| model speeds | m/s, bare or `Unitful` (`0.1u"c"`) | `c` | |
+| momenta of `SolverVDF`s (`CoupledVDF`, `SplineVDF`, …) | `mc` | `mc` | |
 
-Scalar thermal parameters are isotropic. A pair means `(⊥, ∥)`:
-`T = (100u"eV", 20u"eV")` or
-`T = (perp = 100u"eV", para = 20u"eV")`.
+Solvers always run normalized, so their numerical options (`linking.gate`, the `isgrowing` margin, `atol`) are in `Ω_ref`.
 
 ## Build plasma and distribution
 
-Physical input:
+Particles (`Particle`, `Electron`, `Positron`, `Proton`), `Population`, `Plasma`, the
+distribution models below and `Wavevector`, `AngleSweep`, `CartesianSweep` come from
+[PlasmaPopulations.jl](https://github.com/JuliaPlasma/PlasmaPopulations.jl#readme) and are re-exported.
+See its README for constructors and conventions.
 
-```text
-Species(particle, vdf = nothing; n, T | beta | vth)
-Plasma(species...; B0, ref = first species' particle)
-```
+`DispersionProblem(plasma, target, k; ref)` keeps SI inputs and results and solves internally
+with `Ω_ref` from `ref`, another particle's gyrofrequency or a frequency [rad/s]. 
 
-`particle` may be `Electron()`, `Proton()`, `Particle(; z, A)`, or
-`Particle(q, m)`. Omit `vdf` for a bi-Maxwellian built from `T`, `beta`, or
-`vth`; omit thermal input too for a cold species.
-
-Choose another distribution with a function of species scales:
+To work in normalized units, pass `NormalizedPlasma(plasma; ref)`:
 
 ```julia
-Species(
-    Proton(),
-    sc -> ProductBiKappa(sc; kappa = (200.0, 3.0));
-    n = 2.4u"cm^-3",
-    T = 2555u"eV",
-)
+DispersionProblem(NormalizedPlasma(plasma; ref = Electron()), box_in_Ωe, k_in_Ωe_over_c)
 ```
 
-Or bypass physical units by supplying normalized gyrofrequency `Ω̃`,
-plasma-frequency squared `Π̃²`, and distribution:
+`scales(plasma; ref)` gives that normalization's dimensionless scales: `vA`,
+`Omega_ref`, and per population `wc`, `wp`, inertial length `d`, thermal speeds and gyroradius `rho`.
+
+To bypass physical units, give the normalized gyrofrequency `Ω̃`,
+plasma-frequency squared `Π̃²`, and distribution, with speeds in `c`:
 
 ```julia
-plasma = NormalizedSpecies(-1.0, 1.0, Maxwellian(0.02))
+plasma = NormalizedPopulation(-1.0, 1.0, BiMaxwellian(; vth = 0.02))
 ```
 
-Main distribution choices:
+Distribution choices:
 
 | constructor | use |
 |---|---|
-| `ColdVDF()` | cold limit |
-| `Maxwellian(; vth, vd, vr)` | drifting bi-Maxwellian or gyro-ring |
-| `GaussianRing(; vth, vd, vr)` | shifted-Gaussian ring; accurate for `k⊥vr/Ω ≲ 10` |
-| `BiKappa(; vth, kappa)` | coupled bi-kappa, `κ > 3/2` |
-| `ProductBiKappa(; vth, kappa)` | separable product bi-kappa |
-| `MaxwellJuttner(; mu)` | isotropic relativistic distribution, `mu = mc²/T` |
+| `Cold()` | cold limit (closed Stix form) |
+| `BiMaxwellian(; vth_perp, vth_para, vd_para)` | drifting bi-Maxwellian |
+| `GaussianRing(; vr_perp, w_perp, vth_para, vd_para)` | shifted-Gaussian ring (beam with `vd_para`), accurate for `k⊥ vr_perp/Ω ≲ 10` |
+| `BiKappa(; vth_perp, vth_para, kappa)` | coupled bi-kappa, `κ > 3/2` |
+| `ProductBiKappa(; vth_perp, vth_para, kappa_perp, kappa_para)` | separable product bi-kappa, no loss cone |
+| `GyroRing(vth_perp, vr) ⊗ Gaussian(vth_para, vd)` | gyro-averaged perpendicular-drifting Maxwellian (`I₀` ring) |
+| `MaxwellJuttner(; theta)` | isotropic relativistic distribution, `theta = T/(mc²)` |
 | `SeparableVDF(fperp, fpara; perp, para)` | analytic `f₀ = f⊥ f∥` |
-| `CoupledVDF(f0; perp, para)` | arbitrary analytic `f₀(p⊥,p∥)` |
+| `CoupledVDF(f0; perp, para)` | arbitrary analytic `f₀(p⊥,p∥)`, e.g. `(q, u) -> pdf(model, q, u)` for a `model` with speeds in `c` |
 | `LowRankVDF(f0; perp, para)` | faster surrogate for a coupled `f₀` |
-| `GridVDF(vperp, vpara, F)` | tabulated or simulation data |
+| `GridVDF(v_perp, v_para, f)` | tabulated or simulation data, fitted by `SplineVDF`'s defaults |
+| `SplineVDF(vperp, vpara, F; method, regime)` | the fit itself, momenta in `mc`; relativistic data |
+| `ReducedVDF(fpara; para)` | 1-D parallel `f∥` for field-aligned electrostatic roots (`k⊥ = 0`) |
 
-Analytic functions must accept complex parallel arguments for Landau
-continuation. Use `GridVDF` for real-axis-only data. Prefer `CoupledVDF` over
-`LowRankVDF` for strongly damped roots.
+Kappa models do not support a drift `vd_para`. Analytic functions must accept complex
+parallel arguments for Landau continuation. Use `GridVDF` for real-axis-only
+data. Prefer `CoupledVDF` over `LowRankVDF` for strongly damped roots.
 
 See [Advanced usage](docs/src/usage.md) for constructor details, integration
 bounds, custom gradients, relativistic coordinates.
@@ -113,10 +105,10 @@ bounds, custom gradients, relativistic coordinates.
 
 | `k` argument | result |
 |---|---|
-| `Wavenumber(kperp, kz)` | one wavevector |
-| vector of `Wavenumber`s | one seeded branch continued along path |
+| `Wavevector(k_perp, k_para)` | one wavevector |
+| vector of `Wavevector`s | one seeded branch continued along path |
 | `AngleSweep(; k, theta)` | polar sweep |
-| `CartesianSweep(; kx = 0, kz)` | Cartesian sweep |
+| `CartesianSweep(; k_perp = 0, k_para)` | Cartesian sweep |
 
 Target determines root search:
 
@@ -134,12 +126,12 @@ branch found inside it. Default algorithms are `Muller` for one point,
 
 ## Read results
 
-A seeded solve returns `DispersionSolution`:
+A seeded solve returns `DispersionSolution`, in the units of the problem:
 
 | field | meaning |
 |---|---|
 | `.omega` | root, or roots along path; failed points are `NaN` |
-| `.resid` | scale-invariant `σ_min/σ_max` residual |
+| `.resid` | scale-invariant `σ_min/σ_max` of full `𝒟` |
 | `.retcode` | convergence status; see [return codes](docs/src/usage.md#return-codes-and-operation) |
 | `.stats` | function evaluations and elapsed time |
 

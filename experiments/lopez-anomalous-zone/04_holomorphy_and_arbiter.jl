@@ -4,9 +4,9 @@ using VlasovMaxwellDispersion: DispersionFunction
 using RationalFunctionApproximation: approximate, poles
 using Printf
 
-pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
+pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
 plasma2 = pair(MaxwellJuttner(mu = 2.0)); plasma10 = pair(MaxwellJuttner(mu = 10.0))
-vmd_defl(pl, kz) = DispersionFunction(pl, Wavenumber(0.0, kz); mode = :L, deflate = true)
+vmd_defl(pl, kz) = DispersionFunction(pl, Wavevector(0.0, kz); mode = :L, deflate = true)
 
 # fixed Wirtinger d/dz̄, d/dz : y-derivative uses real spacing h
 function dzbar(f, z; h=1e-4)

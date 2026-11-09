@@ -2,16 +2,16 @@
 using VlasovMaxwellDispersion
 using CairoMakie
 
-pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
+pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
 p2 = pair(MaxwellJuttner(mu=2.0))
 p10 = pair(MaxwellJuttner(mu=10.0))
 
 k2 = collect(0.25:0.02:4.5)
-ω2 = solve(DispersionProblem(p2, 0.13 - 0.227im, Wavenumber.(0.0, k2); mode=:L)).omega
+ω2 = solve(DispersionProblem(p2, 0.13 - 0.227im, Wavevector.(0.0, k2); mode=:L)).omega
 k10a = collect(1.5:0.02:4.5)
-ω10a = solve(DispersionProblem(p10, 1.482 - 0.2422im, Wavenumber.(0.0, k10a); mode=:L)).omega
+ω10a = solve(DispersionProblem(p10, 1.482 - 0.2422im, Wavevector.(0.0, k10a); mode=:L)).omega
 k10b = collect(0.4:0.02:1.4)
-ω10b = solve(DispersionProblem(p10, 0.1752 - 0.3852im, Wavenumber.(0.0, k10b); mode=:L)).omega
+ω10b = solve(DispersionProblem(p10, 0.1752 - 0.3852im, Wavevector.(0.0, k10b); mode=:L)).omega
 
 blu, red = Makie.wong_colors()[1], Makie.wong_colors()[6]
 fig = Figure(size=(880, 380))

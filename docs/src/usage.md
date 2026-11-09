@@ -33,7 +33,7 @@ lowrank = LowRankVDF(f0; perp = 6.0, para = 6.0, rtol = 1e-8)
 # Tabulated data.
 vperp, vpara = range(0, 6, 61), range(-6, 6, 81)
 F = [exp(-(v^2 + u^2)) for v in vperp, u in vpara]
-grid = GridVDF(vperp, vpara, F)
+grid = SplineVDF(vperp, vpara, F)
 ```
 
 Closed-form one-dimensional factors compose with `⊗`:
@@ -59,19 +59,18 @@ CoupledVDF(
 Representation-specific behavior lives in:
 
 - [Choosing a coupled representation](representations/coupled-vdf.md)
-- [GridVDF projection](representations/grid-vdf.md)
+- [SplineVDF projection](representations/grid-vdf.md)
 - [Low-rank susceptibility](representations/lowrank-susceptibility.md)
 
 ## Sweep geometry
 
-Each `AngleSweep` or `CartesianSweep` axis may be a fixed scalar, explicit
-sample vector, or `(lo, hi)` tuple. Tuples generate 61 samples.
+Each `AngleSweep` or `CartesianSweep` axis is a fixed scalar or a sample vector.
 
 ```julia
-ks = [Wavenumber(0.0, kz) for kz in 0.3:0.05:1.0]
-angle = AngleSweep(k = (0.01, 0.6), theta = deg2rad(45))
-cartesian = CartesianSweep(kz = 0.01:0.008:1.0)
-surface = CartesianSweep(kx = (0.0, 1.0), kz = (0.0, 1.0))
+ks = [Wavevector(0.0, kz) for kz in 0.3:0.05:1.0]
+angle = AngleSweep(k = range(0.01, 0.6; length = 60), theta = deg2rad(45))
+cartesian = CartesianSweep(k_para = 0.01:0.008:1.0)
+surface = CartesianSweep(k_perp = range(0.0, 1.0; length = 41), k_para = range(0.0, 1.0; length = 41))
 ```
 
 Surveys accept two swept axes. Seeded continuation accepts one.
@@ -129,7 +128,7 @@ problem = DispersionProblem(
 | `Failure` | no root found |
 
 For `Saturated`, shrink frequency box or increase `AAA(n = ...)`.
-`successful_retcode(solution)` tests for full convergence.
+`VlasovMaxwellDispersion.successful_retcode(solution)` tests for full convergence.
 
 Surveys are threaded over wavevector points; start Julia with `-t auto`.
 `Region` boundaries are soft, so branches may continue slightly past box edges.
@@ -139,15 +138,16 @@ Surveys are threaded over wavevector points; start Julia with `-t auto`.
 For custom root finding, diagnostics, or determinant maps:
 
 ```julia
-𝒟(plasma, ω, k)
+dispersion_tensor(plasma, ω, k)   # 𝒟, also `VlasovMaxwellDispersion.𝒟`
 residual(plasma, ω, k)
+electrostatic_det(plasma, ω, k)   # k̂·ε·k̂, zero at electrostatic modes
 
-# Callable scalar function with frequency-independent work planned once.
-D = DispersionFunction(plasma, k)
+# Callable scalar function with frequency-independent work planned once; normalized plasma only.
+D = VlasovMaxwellDispersion.DispersionFunction(NormalizedPlasma(plasma), k)
 
-# Per-species susceptibility.
-species = NormalizedPlasma(plasma).species[1]
-contribution(species, ω, k)
+# Per-population susceptibility.
+pop = NormalizedPlasma(plasma).populations[1]
+contribution(pop, ω, k)
 
 # Bare distribution at Ω̃ = Π̃² = 1.
 contribution(vdf, ω, k)

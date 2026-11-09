@@ -2,24 +2,6 @@
 # no finite Bessel closure (docs/Maxwellian.md); perp moments use Route A — the exact-shift
 # parabolic-cylinder series. Accurate for Λr=k⊥ vr/Ω ≲ 10; beyond, use `SeparableVDF`.
 
-"""
-    GaussianRing(; vth, vd=0, vr=0)
-
-Drifting ring-beam with a *literal* shifted-Gaussian perpendicular factor:
-
-    f ∝ Gaussian(vth_perp, vr) ⊗ Gaussian(vth_para, vd)
-
-`vth` is a scalar (isotropic) or a `(⊥, ∥)` pair.
-Accurate for `Λr=k⊥ vr/Ω ≲ 10`; beyond, use [`SeparableVDF`](@ref).
-`vr=nothing` reduces to the bi-Maxwellian.
-"""
-function GaussianRing(; vth, vd = nothing, vr = nothing)
-    vth_perp, vth_para = perp_para(vth)
-    perp = (isnothing(vr) || iszero(vr)) ? Gaussian(vth_perp) : Gaussian(vth_perp, vr)
-    return perp ⊗ Gaussian(vth_para, @something(vd, zero(vth_para)))
-end
-
-
 struct GaussianRingCtx{T}
     vr::T
     p::T             # 1/vth²

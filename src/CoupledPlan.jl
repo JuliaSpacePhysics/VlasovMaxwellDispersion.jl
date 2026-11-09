@@ -22,8 +22,8 @@ _marg(g, lo, hi, np) = sum(x -> abs(g(x)), range(lo, hi, np))
 
 function _build_coupled_plan(c::PreparedVDF{<:CoupledVDF}, s, k, b::FixedNodeEval)
     d = c.vdf
-    Ω, kz = s.Omega, para(k)
-    a = perp(k) / Ω
+    Ω, kz = s.Omega, k.k_para
+    a = k.k_perp / Ω
     nmax = nmax_bessel(a^2 * abs(c.cache.pperp2_mean) / 2)
     ns = (-nmax):nmax
     ulo, uhi = d.para

@@ -37,12 +37,12 @@ TensorReduction(m::TensorReduction) = m
 
 _negligible(x, ref) = abs(x) ≤ 4 * eps(one(x)) * abs(ref)
 _valid_at(::TensorReduction, k) = true
-_valid_at(::Circular, k) = _negligible(perp(k), para(k))
-_valid_at(::Union{Ordinary,Extraordinary}, k) = _negligible(para(k), perp(k))
+_valid_at(::Circular, k) = _negligible(k.k_perp, k.k_para)
+_valid_at(::Union{Ordinary,Extraordinary}, k) = _negligible(k.k_para, k.k_perp)
 
 _valid_plasma(::TensorReduction, plasma) = true
 _valid_plasma(::Union{Ordinary,Extraordinary}, plasma) =
-    all(s -> parallel_even(s.vdf), NormalizedPlasma(plasma).species)
+    all(s -> parallel_even(s.vdf), NormalizedPlasma(plasma).populations)
 
 _domain(::TensorReduction) = "a restricted k domain"
 _domain(::Circular) = "exactly parallel k (k⊥ = 0)"

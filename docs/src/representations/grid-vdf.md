@@ -1,6 +1,6 @@
-# GridVDF
+# SplineVDF
 
-`GridVDF` projects tabulated gyrotropic data
+`SplineVDF` projects tabulated gyrotropic data
 `F[i,j] = f₀(v⊥ᵢ,v∥ⱼ)` onto a compactly supported callable distribution.
 
 ## Projection

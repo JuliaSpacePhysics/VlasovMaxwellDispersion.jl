@@ -5,19 +5,19 @@ using VlasovMaxwellDispersion: contribution
 using Chairmarks
 
 vthp, vthq = 0.9, 1.2
-mx = Maxwellian(vth=(vthq, vthp))
-sep = prepare(SeparableVDF(mx; para = 14vthp, perp = 14vthq))
+mx = BiMaxwellian(; vth_perp = vthq, vth_para = vthp)
+sep = prepare(SeparableVDF(Gaussian(vthq) ⊗ Gaussian(vthp, 0.0); para = 14vthp, perp = 14vthq))
 
 # Non-Gaussian parallel (kappa-like) × Gaussian perp — no closed form, exercises quadrature.
 fpar(u) = (1 + u^2 / 3)^(-2)
 sepk = prepare(SeparableVDF(v -> exp(-v^2) / pi, fpar; para = 30.0, perp = 10.0))
 
 cases = [
-    ("sep/kp=0.1", NormalizedSpecies(-1.0, 0.5, sep), 1.3 - 0.05im, Wavenumber(0.1, 0.4)),
-    ("sep/kp=1.0", NormalizedSpecies(-1.0, 0.5, sep), 1.3 - 0.05im, Wavenumber(1.0, 0.4)),
-    ("sep/kp=2.5", NormalizedSpecies(-1.0, 0.5, sep), 1.3 - 0.05im, Wavenumber(2.5, 0.4)),
-    ("kappa/kp=1.0", NormalizedSpecies(-1.0, 1.0, sepk), 1.2 - 0.05im, Wavenumber(1.0, 0.4)),
-    ("kappa/kp=3.0", NormalizedSpecies(-1.0, 1.0, sepk), 1.2 - 0.05im, Wavenumber(3.0, 0.4)),
+    ("sep/kp=0.1", NormalizedPopulation(-1.0, 0.5, sep), 1.3 - 0.05im, Wavevector(0.1, 0.4)),
+    ("sep/kp=1.0", NormalizedPopulation(-1.0, 0.5, sep), 1.3 - 0.05im, Wavevector(1.0, 0.4)),
+    ("sep/kp=2.5", NormalizedPopulation(-1.0, 0.5, sep), 1.3 - 0.05im, Wavevector(2.5, 0.4)),
+    ("kappa/kp=1.0", NormalizedPopulation(-1.0, 1.0, sepk), 1.2 - 0.05im, Wavevector(1.0, 0.4)),
+    ("kappa/kp=3.0", NormalizedPopulation(-1.0, 1.0, sepk), 1.2 - 0.05im, Wavevector(3.0, 0.4)),
 ]
 
 # Correctness vs Maxwellian closed form (Gaussian cases only).
@@ -28,9 +28,9 @@ for (Ω, Pi2, ω, kz, kp) in (
         (2.0, 0.8, 1.1 - 0.1im, 0.5, 0.2),
         (-1.0, 0.5, 1.3 - 0.05im, 0.4, 2.5),
     )
-    k = Wavenumber(kp, kz)
-    χs = contribution(NormalizedSpecies(Ω, Pi2, sep), ω, k)
-    χm = contribution(NormalizedSpecies(Ω, Pi2, mx), ω, k)
+    k = Wavevector(kp, kz)
+    χs = contribution(NormalizedPopulation(Ω, Pi2, sep), ω, k)
+    χm = contribution(NormalizedPopulation(Ω, Pi2, mx), ω, k)
     rel = maximum(abs, χs .- χm) / maximum(abs, χm)
     println("  Ω=$Ω kp=$kp  relerr=$rel")
 end

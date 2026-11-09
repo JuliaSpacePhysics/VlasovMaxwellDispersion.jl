@@ -1,5 +1,5 @@
 """
-    GridVDF(vperp, vpar, f; method=NonnegBSpline{3}(), regime=NonRelativistic())
+    SplineVDF(vperp, vpar, f; method=NonnegBSpline{3}(), regime=NonRelativistic())
 
 Tabulated gyrotropic VDF: `f[i,j] = f₀(vperp[i], vpar[j])` on an ascending grid (`vperp[1] ≥ 0`).
 A `method` projects the grid onto a compactly supported, complex-evaluable `f₀`.
@@ -8,25 +8,23 @@ Built-in methods return tensor piecewise polynomials: `NonnegBSpline` (default;
 positivity-preserving two-pass NNLS B-spline with `f ≥ 0`) or `BicubicHermite`
 (local C¹ interpolation, O(N), no positivity guard).
 Susceptibility is normalized by the projected density.
+A PlasmaPopulations `GridVDF` converts to one with the defaults.
 """
-struct GridVDF{F,C} <: AbstractVDF
+struct SplineVDF{F,C} <: SolverVDF
     fit::F
     coupled::C
 end
 
-regime(d::GridVDF) = regime(d.coupled)
+regime(d::SplineVDF) = regime(d.coupled)
 
-_vgrid(v) = eltype(v) <: Real ? v : map(velocity, v) # Unitful support
-
-function GridVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonRelativistic())
-    vperp, vpara = _vgrid(vperp), _vgrid(vpara)
+function SplineVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonRelativistic())
     method = @something(method, NonnegBSpline{3}(; rtol, maxknots_para = length(vpara), maxknots_perp = length(vperp)))
     # rescale as a tiny-valued grid (e.g. exp(-μγ)~1e-18) would otherwise underflow the fit to all-zeros
     scale = maximum(abs, f)
-    iszero(scale) && throw(ArgumentError("GridVDF: f is all zeros"))
+    iszero(scale) && throw(ArgumentError("SplineVDF: f is all zeros"))
     fit = fit_grid(method, vperp, vpara, f ./ scale)
     n = 2π * moment(fit, (1, 0))
-    iszero(n) && throw(ArgumentError("GridVDF: projection has zero density"))
+    iszero(n) && throw(ArgumentError("SplineVDF: projection has zero density"))
     dgrad = (v, u) -> _grad2(fit, v, u)
     lims = domain(fit)
     para = promote(float(lims.para[1]), float(lims.para[2]))
@@ -38,14 +36,14 @@ function GridVDF(vperp, vpara, f; rtol = 1.0e-3, method = nothing, regime = NonR
     else
         (; n = oftype(para[1], n), bernstein33 = _bernstein_rel(cpl))
     end
-    return GridVDF(fit, PreparedVDF(cpl, cache))
+    return SplineVDF(fit, PreparedVDF(cpl, cache))
 end
 
 # Exact parallel moments make the tensor projection faster than the generic coupled path.
 # Relativistic grids route through the coupled (p⊥,p∥) path: it integrates exactly the
 # grid rectangle (only p∥ goes complex, at the near-axis poles), so the spline is never
 # probed off-grid.
-function contribution(d::GridVDF, s, ω, k; closure::IntegralClosure = HarmonicSum())
+function contribution(d::SplineVDF, s, ω, k; closure::IntegralClosure = HarmonicSum())
     if closure isa HarmonicSum && regime(d) isa NonRelativistic
         return _grid_contribution(d.fit, d, s, complex(float(ω)), k)
     end
@@ -56,7 +54,7 @@ _grid_contribution(fit, d, s, ω, k; kw...) =
     contribution(d.coupled, s, ω, k; closure = HarmonicSum(), kw...)
 
 function _grid_contribution(fit::TensorSplineFit, d, s, ω, k; rtol = 1.0e-6)
-    Ω, kz, kperp = s.Omega, para(k), perp(k)
+    Ω, kz, kperp = s.Omega, k.k_para, k.k_perp
     a = kperp / Ω
     nmax = nmax_bessel(a^2 * abs(d.coupled.cache.pperp2_mean) / 2)
     f = n -> _grid_harmonic(n, fit, ω, Ω, kz, a)

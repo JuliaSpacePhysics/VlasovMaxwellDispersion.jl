@@ -81,7 +81,7 @@ function _cycle_contribution(c::PreparedVDF, s, ω, k; mueff = nothing, scaledUc
         quad = BoxQuad(_GL24, _GL32), rtol = 1.0e-6, kwargs...)
     box = c.vdf
     denergy = box.denergy
-    Ω, kz, kperp = s.Omega, para(k), perp(k)
+    Ω, kz, kperp = s.Omega, k.k_para, k.k_perp
     a = kperp / Ω
     if isnothing(scaledUcov)
         scaledUcov = (γ, u, σ) -> begin

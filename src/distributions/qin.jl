@@ -5,7 +5,7 @@
 # the second is a 1-D p⊥ integral carrying the analytic pole + Landau residue
 function _coupled_contribution(::Newberger, ::NonRelativistic, c::PreparedVDF, s, ω, k; rtol = 1.0e-6, norm = NORM)
     d = c.vdf
-    Ω, kz, kperp = s.Omega, para(k), perp(k)
+    Ω, kz, kperp = s.Omega, k.k_para, k.k_perp
     lo, hi = d.para
     qlo, qhi = d.perp
     # kz=0: a=ω/Ω is u-independent — no p∥ resonance poles, nothing to peel
@@ -40,7 +40,7 @@ const _GL64 = GaussLegendre(64)
 # The resonant denominator D_n is shared with the HarmonicSum path.
 function _coupled_contribution(::Newberger, ::Relativistic, c::PreparedVDF, s, ω, k; quad = BoxQuad(_GL32, _GL64))
     d = c.vdf
-    Ω, kz, kperp = s.Omega, para(k), perp(k)
+    Ω, kz, kperp = s.Omega, k.k_para, k.k_perp
     a = kperp / Ω
     nΩmax = nmax_bessel(a^2 * d.perp[2]^2 / 2) * abs(Ω)
     _warn_damped_superluminal(ω, kz, nΩmax)

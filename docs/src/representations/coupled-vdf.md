@@ -4,7 +4,7 @@ A gyrotropic `f₀(p⊥,p∥)` that does not factor as `f⊥(p⊥)·f∥(p∥)` 
 a bi-kappa, anything measured — is the expensive case. This page explains why, defines
 the one quantity that decides the cost (the **separation rank**), compares the four
 representations the package offers, and shows why the tabulated-spline route
-([`GridVDF`](@ref)) silently returns wrong damping rates.
+([`SplineVDF`](@ref)) silently returns wrong damping rates.
 
 ## Where the cost comes from
 
@@ -58,7 +58,7 @@ This also means **you must never run an adaptive quadrature to a tolerance tight
 
 ## The four representations
 
-### Separable families — [`Maxwellian`](@ref), [`ProductBiKappa`](@ref), [`SeparableVDF`](@ref)
+### Separable families — `BiMaxwellian`, `ProductBiKappa`, [`SeparableVDF`](@ref)
 
 The parallel Cauchy moments close analytically for Gaussian and kappa factors; arbitrary
 [`SeparableVDF`](@ref) factors use a Landau quadrature. Perpendicular Bessel moments are
@@ -70,7 +70,7 @@ cached once per fixed `k`.
   the analytic continuation to damped `ω` is the true one. This is the **reference**.
 - **Con:** ~1e5 `f₀`-evaluations per `ω`; 2.6–42 ms for Case 5. Unusable for a survey.
 
-### [`GridVDF`](@ref) — tensor spline of tabulated data
+### [`SplineVDF`](@ref) — tensor spline of tabulated data
 
 - **Pro:** the only option when `f₀` *is* data (spacecraft, PIC output). `f₀` becomes
   piecewise-polynomial, so the parallel Hilbert transform closes per cell.
@@ -113,12 +113,12 @@ Replace the true `g` by a surrogate `ĝ` with `‖g−ĝ‖∞ = ε` on the real
 
 The controlling ratio is `d/h = |Im ω| / (|k∥|·h∥)`, cells deep. For Case 5 with a
 161×321 grid: `h∥ ≈ 8.8e-5`, `k∥ = 32.3`, and at `Im ω = −0.06`, `d = 1.9e-3` — **21 cells
-below the axis**, extrapolated with a cubic. Measured relative error of `GridVDF`'s `χ`
+below the axis**, extrapolated with a cubic. Measured relative error of `SplineVDF`'s `χ`
 against the exact path (with a tight `rtol=1e-7` fit, so this is *not* fit error):
 
 | `Im ω` | `+0.02` | `0` | `−0.005` | `−0.02` | `−0.06` |
 |---|---|---|---|---|---|
-| `GridVDF` rel. error | 1.2e-3 | 3.0e-3 | 1.8e-4 | 6.4e-3 | **0.90** |
+| `SplineVDF` rel. error | 1.2e-3 | 3.0e-3 | 1.8e-4 | 6.4e-3 | **0.90** |
 | `LowRankVDF` rel. error | — | — | 3e-9 | 2e-9 | 4e-8 |
 
 Two things worth internalizing:
@@ -126,9 +126,9 @@ Two things worth internalizing:
 1. **Refining the grid makes it worse, not better.** Refining shrinks `h`, which *raises*
    `d/h`. There is no grid at which a compactly-supported real-axis surrogate learns the
    continuation. This is structural, not a tuning failure.
-2. It is silent. `GridVDF` returns a finite, plausible `χ`; only the imaginary part is wrong.
+2. It is silent. `SplineVDF` returns a finite, plausible `χ`; only the imaginary part is wrong.
 
-**Practical rule:** `GridVDF` is for real or very weakly damped `ω` (`|Im ω| ≲ |k∥|·h∥`).
+**Practical rule:** `SplineVDF` is for real or very weakly damped `ω` (`|Im ω| ≲ |k∥|·h∥`).
 If `f₀` is tabulated *and* damping matters, fit an analytic model first (a sum of
 Gaussians or kappas, whose continuations are known in closed form) and feed that to
 `LowRankVDF` or a sum of [`SeparableVDF`](@ref)s.
@@ -160,7 +160,7 @@ so no continuation exists at all beyond `|Im ω| < |k∥|·√a∥`.
 | `f₀` factors | [`SeparableVDF`](@ref) |
 | coupled analytic `f₀`, want speed (surveys) | [`LowRankVDF`](@ref) |
 | coupled analytic `f₀`, want a certified reference | [`CoupledVDF`](@ref) |
-| tabulated `f₀`, real / weakly damped `ω` | [`GridVDF`](@ref) |
+| tabulated `f₀`, real / weakly damped `ω` | [`SplineVDF`](@ref) |
 | tabulated `f₀`, damped roots matter | fit an analytic model, then `LowRankVDF` |
 
 Cross-check by construction: `LowRankVDF` of a separable `f₀` returns rank 1 and

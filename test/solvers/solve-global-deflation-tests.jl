@@ -1,6 +1,6 @@
 @testitem "GRPF deflates the ω=0 light-term pole" begin
-    using VlasovMaxwellDispersion: NormalizedSpecies, Wavenumber, ColdVDF,
-        GlobalDispersionProblem, GRPF, solve, dispersion_tensor,
+    using VlasovMaxwellDispersion: NormalizedPopulation, Wavevector, Cold,
+        DispersionProblem, GRPF, solve, dispersion_tensor,
         wave_dispersion_tensor
     using RootsAndPoles
     using LinearAlgebra
@@ -8,10 +8,10 @@
     # Cold e-p plasma dense enough (low vA) that its parallel modes sit near ω=0.
     mp_me = 1836.15
     plasma = (
-        NormalizedSpecies(-1.0, 100.0, ColdVDF()),
-        NormalizedSpecies(1 / mp_me, 100.0 / mp_me, ColdVDF()),
+        NormalizedPopulation(-1.0, 100.0, Cold()),
+        NormalizedPopulation(1 / mp_me, 100.0 / mp_me, Cold()),
     )
-    k = Wavenumber(0.0, 2.0)
+    k = Wavevector(0.0, 2.0)
     region = (-0.08 - 0.03im, 0.08 + 0.03im)   # straddles ω=0
     tol = 0.004
 
@@ -30,7 +30,7 @@
     @test any(p -> abs(p) < 0.02, pD)
 
     # Fix: the deflated global solver is pole-free at the origin
-    sol = solve(GlobalDispersionProblem(plasma, region, k), GRPF(; tol))
+    sol = solve(DispersionProblem(plasma, region, k), GRPF(; tol))
     # The genuine symmetric ±kvA root pair is recovered.
     @test count(ω -> abs(ω[]) > 0.02, sol.roots) ≥ 2
 end

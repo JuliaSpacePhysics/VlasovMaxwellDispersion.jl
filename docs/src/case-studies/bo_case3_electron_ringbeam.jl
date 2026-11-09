@@ -7,29 +7,32 @@
 # Reference: Guo (Case 3, arXiv:2606.14439)
 
 using VlasovMaxwellDispersion
+using PlasmaPopulations: gyrofrequency, plasma_frequency, thermal_speed
 using VlasovMaxwellDispersion: isgrowing
 using Unitful, Printf
 using CairoMakie
 
 # ## Plasma setup
 #
-# `GaussianRing` is the literal shifted-Gaussian, `f ∝ exp[-(v∥-v_dz)²/c∥² - (v⊥-v_dr)²/c⊥²]`,
-# with `c∥ = c⊥ = vth = √(2qT/m)` from `T` and the drifts in `c`.
+# The ring beam is a `GaussianRing` with ring speed `vr_perp`, the literal shifted Gaussian
+# `f ∝ exp[-(v∥-vd_para)²/vth² - (v⊥-vr_perp)²/w_perp²]`, with `w_perp = vth = √(2qT/m)`.
 
 B0 = 9.6e-8u"T"
+e = Electron()
+vth = thermal_speed(e, 51u"eV")
 plasma = Plasma(
-    Species(Electron(), sc -> GaussianRing(sc; vd=0.1, vr=0.05); n=1.0e5u"m^-3", T=51u"eV"),
-    Species(Electron(); n=9.0e5u"m^-3", T=51u"eV");
+    Population(e, GaussianRing(; vr_perp = 0.05u"c", w_perp = vth, vth_para = vth, vd_para = 0.1u"c"); n = 1.0e5u"m^-3"),
+    Population(e, BiMaxwellian(; vth); n = 9.0e5u"m^-3");
     B0,
 )
 
 # ## Seedless survey
 
-de = 1 / plasma_gyro_ratio(1.0e6u"m^-3", mass(Electron()), B0)
+de = abs(gyrofrequency(e, B0)) / plasma_frequency(e, 1.0e6u"m^-3")  # c/ωpe in units of c/ωce
 ks = range(0.5, 35.0, 128) ./ de
 region = (-1.0 - 1.5im, 10.0 + 0.6im)
 geom = AngleSweep(k=ks, theta=deg2rad(40))
-sol = solve(DispersionProblem(plasma, region, geom))
+sol = solve(DispersionProblem(NormalizedPlasma(plasma), region, geom))
 
 # The survey resolves three growing branches. Here we compare their peak growth rates and the wavenumbers of those peaks.
 

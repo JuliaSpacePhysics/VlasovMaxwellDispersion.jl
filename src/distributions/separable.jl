@@ -7,7 +7,7 @@
 #   perp_moments(prepared, n, β)  -> (P∂, PF)
 
 """Separable(fperp, fpar) -> f = fperp ⊗ fpar"""
-struct Separable{Q,P} <: AbstractVDF
+struct Separable{Q,P} <: SolverVDF
     fperp::Q
     fpara::P
 end
@@ -102,11 +102,11 @@ function plan_contribution(
     c::PreparedVDF{<:Separable}, s, k; rtol=1.0e-8, kwargs...
 )
     d = c.vdf
-    β = perp(k) / s.Omega
+    β = k.k_perp / s.Omega
     fperp = perp_setup(d.fperp, β)
     nmax = _nmax(c.cache, fperp, β)
     moments = _plan_perp_moments(fperp, β, nmax; rtol)
-    return SeparablePlan(c, s, moments, para(k), rtol)
+    return SeparablePlan(c, s, moments, k.k_para, rtol)
 end
 
 function (p::SeparablePlan)(ω)

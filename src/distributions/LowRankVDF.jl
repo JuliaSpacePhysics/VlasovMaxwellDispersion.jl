@@ -16,7 +16,7 @@ quadrature, 10–300× faster per ω (the win grows with `k⊥`). Coupled VDFs a
 rank — a bi-kappa and a spherical shell are both ≈ 10.
 
 `f0` must be evaluable at complex `p∥`: each `bₛ(u)=f₀(vₛ,u)` is a literal `f₀` slice, so unlike a
-fitted surrogate ([`GridVDF`](@ref)), which exists only on the real axis, it can be continued.
+fitted surrogate ([`SplineVDF`](@ref)), which exists only on the real axis, it can be continued.
 
 $(RANGE_DOC)
 
@@ -30,7 +30,7 @@ A CROSSED Landau pole is different — it picks up the residue `f₀(p⊥,ζ)` a
 bounded by `rtol`, and eventually makes the surrogate's det gain exact zeros that are not modes of
 `f₀`. Surveys drop those via [`trusted`](@ref); [`trust_error`](@ref) measures the horizon.
 """
-struct LowRankVDF{F, G, H, T, C} <: AbstractVDF
+struct LowRankVDF{F, G, H, T, C} <: SolverVDF
     f0::F
     dgrad::G
     bd::H                  # (v,u) ↦ (f₀, ∂∥f₀) for the ω hot path
@@ -203,12 +203,12 @@ end
 # A root is only as trustworthy as the surrogate is AT THE ζ IT SAMPLES
 const _LR_TRUST = 1.0e4
 function trusted(d::LowRankVDF, s, ω, k)
-    kz = para(k)
+    kz = k.k_para
     iszero(kz) && return true
     sign(kz) * imag(ω) / kz < 0 || return true # growing side: no residue is taken
     lo, hi = d.para
     tol = _LR_TRUST * d.cache.rtol
-    nmax = nmax_bessel((perp(k) / s.Omega)^2 * abs(d.cache.pperp2_mean) / 2)
+    nmax = nmax_bessel((k.k_perp / s.Omega)^2 * abs(d.cache.pperp2_mean) / 2)
     return all((-nmax):nmax) do n
         ζ = (ω - n * s.Omega) / kz
         lo < real(ζ) < hi || return true    # pole outside the p∥ range: no residue
@@ -236,8 +236,8 @@ plan_contribution(c::PreparedVDF{<:LowRankVDF}, s, k; kw...) =
 function plan_contribution(d::LowRankVDF, s, k; kw...)
     c = d.cache
     gl = c.gl
-    Ω, kz = s.Omega, para(k)
-    a = perp(k) / Ω
+    Ω, kz = s.Omega, k.k_para
+    a = k.k_perp / Ω
     R = rank(d)
     nmax = nmax_bessel(a^2 * abs(c.pperp2_mean) / 2)
     ns = (-nmax):nmax
@@ -246,7 +246,7 @@ function plan_contribution(d::LowRankVDF, s, k; kw...)
     # is the only k-dependent thing about the perp grid (a quadrature rule sized for f₀
     # alone cannot see that oscillation).
     vpan = _refine(c.vpan, abs(a))   # Bessel wavelength π/|a|; negative Ω must still refine
-    T = typeof(float(perp(k)))
+    T = typeof(float(k.k_perp))
     Pd = zeros(SMatrix{3, 3, T, 9}, length(ns), R)
     Pf = zeros(SMatrix{3, 3, T, 9}, length(ns), R)
     Jv = Vector{T}(undef, nmax + 2)

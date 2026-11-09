@@ -4,12 +4,12 @@ using VlasovMaxwellDispersion: DispersionFunction
 using RationalFunctionApproximation: approximate, poles
 using Printf
 
-pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
+pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
 plasma2 = pair(MaxwellJuttner(mu = 2.0))
 plasma10 = pair(MaxwellJuttner(mu = 10.0))
 
-vmd_det(plasma, kz) = DispersionFunction(plasma, Wavenumber(0.0, kz); mode = :L, deflate = false)
-vmd_defl(plasma, kz) = DispersionFunction(plasma, Wavenumber(0.0, kz); mode = :L, deflate = true)
+vmd_det(plasma, kz) = DispersionFunction(plasma, Wavevector(0.0, kz); mode = :L, deflate = false)
+vmd_defl(plasma, kz) = DispersionFunction(plasma, Wavevector(0.0, kz); mode = :L, deflate = true)
 
 println("== VMD roots via Muller on L-mode factor, seeded from both candidates ==")
 for (kz, seeds) in ((0.5, [("Lopez-desc",0.124-0.136im),("VMD-riser",0.163-0.110im)]),

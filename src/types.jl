@@ -7,12 +7,17 @@ abstract type Regime end
 struct NonRelativistic <: Regime end
 struct Relativistic <: Regime end
 
-abstract type ParameterGeometry end
+"""
+    SolverVDF
+
+Supertype of VDFs in the solver's own representation, momenta in units of `mc`.
+"""
+abstract type SolverVDF end
 
 """
     Seed(omega0, at=nothing)
 
-A single root near `omega0` where optional `at` anchors it to a wavenumber.
+A single root near `omega0` where optional `at` anchors it to a wavevector.
 """
 struct Seed{W,K}
     omega0::W
@@ -28,72 +33,31 @@ end
 Base.iterate(r::Region, state=1) = iterate(r.box, state)
 Base.getindex(r::Region, i) = r.box[i]
 
-"""
-    Wavenumber(kperp, kz)
-    Wavenumber(; kz, kperp=zero(kz))
-
-Dimensionless wavevector `k c / Omega_ref`, `(kperp, kz)`.
-"""
-struct Wavenumber{T}
-    kperp::T
-    kz::T
-end
-Wavenumber(kperp, kz) = Wavenumber(promote(kperp, kz)...)
-Wavenumber(; kz, kperp=zero(kz)) = Wavenumber(kperp, kz)
-
-Base.eltype(::Type{Wavenumber{T}}) where {T} = T
-Base.convert(::Type{Wavenumber{T}}, k::Wavenumber) where {T} = Wavenumber{T}(k.kperp, k.kz)
-Base.broadcastable(k::Wavenumber) = Ref(k)
-
-@inline para(k::Wavenumber) = k.kz
-@inline perp(k::Wavenumber) = k.kperp
-@inline Base.abs2(k::Wavenumber) = k.kz^2 + k.kperp^2
-@inline Base.angle(k::Wavenumber) = atan(k.kperp, k.kz)  # propagation angle to B0
-@inline vec3(k::Wavenumber) = SVector(k.kperp, zero(k.kperp), k.kz)
-
-"""
-    AngleSweep(k, theta)   /   AngleSweep(; k, theta)
-
-Polar k-space geometry: `|k|` and radian angle `θ` to `B₀` so that `𝐤 = (k sinθ, k cosθ)`.
-Each axis is a fixed scalar or swept — a vector of sample values, or a `(lo, hi)` tuple.
-"""
-struct AngleSweep{K,T} <: ParameterGeometry
-    k::K
-    theta::T
-end
-AngleSweep(; k, theta) = AngleSweep(k, theta)
-
-"""CartesianSweep(kx, kz)   /   CartesianSweep(; kx=false, kz)"""
-struct CartesianSweep{P,Z} <: ParameterGeometry
-    kx::P
-    kz::Z
-end
-# kx=false: Bool is the weakest promoting Number, so kz's type wins.
-CartesianSweep(; kx=false, kz) = CartesianSweep(kx, kz)
+@inline vec3(k::Wavevector) = SVector(k.k_perp, zero(k.k_perp), k.k_para)
 
 _as_tuple(x::T) where {T} = Tuple{fieldtypes(T)...}(getfield(x, i) for i in 1:fieldcount(T))
 
-_isswept(x) = x isa Union{Tuple,AbstractVector}
-_wavenumber(::AngleSweep, k, θ) = Wavenumber(k .* sincos(θ)...)
-_wavenumber(::CartesianSweep, kx, kz) = Wavenumber(kx, kz)
-_wavenumber(::Wavenumber, kperp, kz) = Wavenumber(kperp, kz)
+_isswept(::AbstractVector) = true
+_isswept(::Number) = false
+_isswept(x) = throw(ArgumentError("sweep axis must be a number or a vector of values, got $(typeof(x))"))
+_wavevector(::AngleSweep, k, θ) = Wavevector(k .* sincos(θ)...)
+_wavevector(::CartesianSweep, kperp, kpara) = Wavevector(kperp, kpara)
+_wavevector(::Wavevector, kperp, kpara) = Wavevector(kperp, kpara)
 
 # fixed axis emits its scalar; swept axis takes the next param, returning the rest.
 _pick(axis::Number, ps) = (axis, ps)
-_pick(axis, ps) = (first(ps), Base.tail(ps))
+_pick(::AbstractVector, ps) = (first(ps), Base.tail(ps))
 
 function wavefun(g)
     a, b = _as_tuple(g)
     return function (ps...)
         va, rest = _pick(a, ps)
         vb, _ = _pick(b, rest)
-        return _wavenumber(g, va, vb)
+        return _wavevector(g, va, vb)
     end
 end
 
-_paramgrid(axis::AbstractVector) = axis
-_paramgrid(axis::Tuple) = range(axis...; length=61)
-paramgrids(g) = map(_paramgrid, filter(_isswept, _as_tuple(g)))
+paramgrids(g) = filter(_isswept, _as_tuple(g))
 
 # Real float type carried by a value/type — the element-type anchor so user
 # number types (Float32, BigFloat, …) flow into solution containers.
@@ -104,54 +68,47 @@ _realtype(g::ParameterGeometry) = _realtype(_as_tuple(g))
 _complex_nan(x) = oftype(complex(x), complex(NaN, NaN))
 
 """
-    NormalizedSpecies(Omega, Pi2, vdf)
+    NormalizedPopulation(Omega, Pi2, vdf)
 
-Solver's dimensionless per-species representation. `Omega = Ω_s/Ω_ref`; `Pi2 = (ω_ps/Ω_ref)^2`.
+Solver's dimensionless per-population representation. `Omega = Ω_s/Ω_ref`; `Pi2 = (ω_ps/Ω_ref)^2`, negative for a
+negative-density population.
+A PlasmaPopulations `vdf` takes speeds in units of `c` here and is converted by [`solver_vdf`](@ref).
 """
-Base.@kwdef struct NormalizedSpecies{T,V}
+struct NormalizedPopulation{T,V}
     Omega::T
     Pi2::T
     vdf::V
+    global _normalized_population(Omega::T, Pi2::T, vdf::V) where {T,V} = new{T,V}(Omega, Pi2, vdf)
 end
 
-"""
-    NormalizedSpecies(s::Species, scale)
+NormalizedPopulation(Omega, Pi2, vdf) = _normalized_population(Omega, Pi2, vdf, 1)
+_normalized_population(Omega, Pi2, vdf, vc) =
+    _normalized_population(promote(Omega, Pi2)..., solver_vdf(vdf, vc))
 
-Normalize one physical `Species` against a [`scales`](@ref) view `scale = scales(plasma, i)`:
-`Omega = Ω_s/Ω_ref`, `Pi2 = (ω_ps/Ω_ref)²`, and the VDF resolved against `scale`.
-"""
-NormalizedSpecies(s::Species, scale) =
-    NormalizedSpecies(scale.wc, scale.wp^2, resolve(_vdf_of(s), scale))
-
-resolve(v::AbstractVDF, _) = v
-resolve(f, sc) = f(sc)
-_vdf_of(s::Species) = @something(distribution(s), isempty(s.thermal) ? ColdVDF() : Maxwellian)
-
-regime(d::NormalizedSpecies) = regime(d.vdf)
+regime(d::NormalizedPopulation) = regime(d.vdf)
 
 """
-    NormalizedPlasma(species...)
-    NormalizedPlasma(plasma::Plasma)
+    NormalizedPlasma(populations...)
+    NormalizedPlasma(plasma::Plasma; ref)
 
-Solver's dimensionless container: a bag of [`NormalizedSpecies`](@ref),
-buildable from a physical [`Plasma`](@ref).
+Solver's dimensionless container: a bag of [`NormalizedPopulation`](@ref), buildable from a
+physical `Plasma` with frequencies normalized to `Ω_ref`, see [`scales`](@ref).
 """
-struct NormalizedPlasma{S,C} <: AbstractPlasma
-    species::S
+struct NormalizedPlasma{S,C}
+    populations::S
     scales::C
 end
-NormalizedPlasma(species) = NormalizedPlasma(species, nothing)
-NormalizedPlasma(species::NormalizedSpecies...) = NormalizedPlasma(Tuple(species), nothing)
+NormalizedPlasma(populations) = NormalizedPlasma(populations, nothing)
+NormalizedPlasma(populations::NormalizedPopulation...) = NormalizedPlasma(Tuple(populations), nothing)
 NormalizedPlasma(p::NormalizedPlasma) = p
 
-
-prepare(s::NormalizedSpecies, args...; kw...) =
-    NormalizedSpecies(s.Omega, s.Pi2, prepare(s.vdf, args...; kw...))
+prepare(s::NormalizedPopulation, args...; kw...) =
+    _normalized_population(s.Omega, s.Pi2, prepare(s.vdf, args...; kw...))
 prepare(p::NormalizedPlasma, args...; kw...) =
-    NormalizedPlasma(map(s -> prepare(s, args...; kw...), p.species), p.scales)
+    NormalizedPlasma(map(s -> prepare(s, args...; kw...), p.populations), p.scales)
 
 """VDF spec plus its `precompute`d (ω,k)-independent constants."""
-struct PreparedVDF{V,C} <: AbstractVDF
+struct PreparedVDF{V,C} <: SolverVDF
     vdf::V
     cache::C
 end

@@ -1,10 +1,10 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-BracketingNonlinearSolve = "70df07ce-3d50-431d-a3e7-ca6ddb60ac1e"
 Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Gamma = "a0844989-3bd2-4988-8bea-c9407ab0941b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+PlasmaPopulations = "19fe0aba-210f-40e6-8711-72208e0968be"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
@@ -17,9 +17,11 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VlasovMaxwellDispersion = "cdafd680-06b3-5be4-9326-1ea31d308873"
 
+[sources]
+PlasmaPopulations = {rev = "main", url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl"}
+
 [compat]
 Aqua = "0.8"
-BracketingNonlinearSolve = "1"
 Chairmarks = "1"
 DelimitedFiles = "1"
 Gamma = "1"

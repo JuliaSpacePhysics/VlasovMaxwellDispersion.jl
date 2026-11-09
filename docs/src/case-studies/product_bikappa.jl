@@ -20,19 +20,19 @@ using CairoMakie
 #
 # `κ = 5.5` product-bi-kappa protons with `T∥p = 2 T⟂p` plus Maxwellian electrons.
 
+p, e = Proton(), Electron()
 plasma = Plasma(
-    Species(Proton(), sc -> ProductBiKappa(sc; kappa=5.5);
-        n=5.0e19u"m^-3", T=(993.367, 1986.734) .* u"eV"),
-    Species(Electron(); n=5.0e19u"m^-3", T=496.683u"eV"),
-    B0=0.1u"T",
+    Population(p, ProductBiKappa; T_perp = 993.367u"eV", T_para = 1986.734u"eV", kappa_perp = 5.5, kappa_para = 5.5, n = 5.0e19u"m^-3"),
+    Population(e, BiMaxwellian; T = 496.683u"eV", n = 5.0e19u"m^-3");
+    B0 = 0.1u"T",
 )
 
 # `k` is swept over `k·dᵢ ∈ [0.01, 0.5]`, `dᵢ = c/ωpp = vA/ωcp`.
 
-di = scales(plasma, 1).d
+di = scales(plasma).populations[1].d
 region = (-0.1 - 0.25im, 0.5 + 0.12im)
-geom = AngleSweep(k=(0.01, 0.5) ./ di, theta=deg2rad(45))
-sol = solve(DispersionProblem(plasma, region, geom))
+geom = AngleSweep(k=range(0.01, 0.5; length=61) ./ di, theta=deg2rad(45))
+sol = solve(DispersionProblem(NormalizedPlasma(plasma), region, geom))
 
 # ## Verification against PlasmaBO
 #
@@ -93,13 +93,16 @@ fig
 # ALPS/benchmark curves. Normalized to `|ωce|`, so `ref = Electron()`.
 
 κs = (3.0, 7.0, Inf)
-vdf(κ) = isinf(κ) ? Maxwellian : sc -> ProductBiKappa(sc; kappa=κ)
+function vdf(particle, Tperp, Tpara, κ)
+    isinf(κ) && return BiMaxwellian(particle; T_perp = Tperp, T_para = Tpara)
+    return ProductBiKappa(particle; T_perp = Tperp, T_para = Tpara, kappa_perp = κ, kappa_para = κ)
+end
 
 plasmas = map(κs) do κ
     Plasma(
-        Species(Proton(), vdf(κ); n=1.0e7u"m^-3", T=50u"eV"),
-        Species(Electron(), vdf(κ); n=1.0e7u"m^-3", T=(408, 102) .* u"eV"),
-        B0=1.0e-8u"T", ref=Electron(),
+        Population(p, vdf(p, 50u"eV", 50u"eV", κ); n = 1.0e7u"m^-3"),
+        Population(e, vdf(e, 408u"eV", 102u"eV", κ); n = 1.0e7u"m^-3");
+        B0 = 1.0e-8u"T",
     )
 end
 
@@ -107,11 +110,11 @@ end
 # the `ω` box spans the whistler band `0 < Re ω < |ωce|` up to the strongly
 # growing peak `γ ≳ ωce` together with the damped branches around it.
 
-de = scales(first(plasmas), 2).d
+de = scales(first(plasmas); ref = e).populations[2].d
 region = (-0.2 - 0.5im, 1.0 + 1.5im)
-geom = CartesianSweep(kz=vcat(0.01:0.005:0.3, 0.32:0.02:2.8) ./ de)
+geom = CartesianSweep(k_para=vcat(0.01:0.005:0.3, 0.32:0.02:2.8) ./ de)
 
-sols = map(pl -> solve(DispersionProblem(pl, region, geom)), plasmas)
+sols = map(pl -> solve(DispersionProblem(NormalizedPlasma(pl; ref = e), region, geom)), plasmas)
 
 # ## Verification against PlasmaBO
 #
@@ -123,7 +126,7 @@ sols = map(pl -> solve(DispersionProblem(pl, region, geom)), plasmas)
 # `k` the nearest surveyed root is compared over the whole complex plane.
 
 ref = readdlm(joinpath(@__DIR__, "bo_case2_ref.tsv"); comments=true)
-kde(b) = [para(k) * de for k in b.k]
+kde(b) = [k.k_para * de for k in b.k]
 for (κ, sol) in zip(κs, sols)
     rows = ref[ref[:, 4] .== κ, :]
     Δmax = 0.0

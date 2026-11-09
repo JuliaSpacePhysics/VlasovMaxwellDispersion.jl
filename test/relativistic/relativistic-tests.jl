@@ -3,8 +3,9 @@
 @testitem "Relativistic CoupledVDF reproduces Maxwell–Jüttner" begin
     μ = 40.0
     L = sqrt((1 + 25 / μ)^2 - 1)
-    ref = MaxwellJuttner(mu=μ)
-    rel = CoupledVDF(ref; para=L, perp=L, regime=Relativistic())
+    ref = MaxwellJuttner(; theta = 1 / μ)
+    f0(q, u) = exp(-μ * sqrt(1 + q^2 + u^2))
+    rel = CoupledVDF(f0; para=L, perp=L, regime=Relativistic())
 
     groups = (
         ((0.3 - 0.005im, 0.3 + 0.05im), (0.0, 0.3, 0.6, 0.7), 1.0e-5, 1.0e-5),
@@ -12,7 +13,7 @@
         ((0.3 - 0.05im,), (1.2, 2.0, 3.5), 1.0e-4, sqrt(eps())),
     )
     for (ωs, kperps, rtolA, rtolB) in groups, ω in ωs, kperp in kperps
-        k = Wavenumber(kperp, 0.4)
+        k = Wavevector(kperp, 0.4)
         χA = contribution(rel, ω, k; closure=Newberger())
         χB = contribution(rel, ω, k)
         χref = contribution(ref, ω, k)
@@ -24,16 +25,17 @@ end
 # Strongly-relativistic (μ=2) regime with resonances INSIDE the support
 @testitem "Relativistic CoupledVDF matches Swanson at μ=2 (subluminal, any damping)" begin
     μ = 2.0
-    ref = MaxwellJuttner(mu=μ)
+    ref = MaxwellJuttner(; theta = 1 / μ)
+    f0(q, u) = exp(-μ * sqrt(1 + q^2 + u^2))
     P = 8.0
-    rel = CoupledVDF(ref; para=P, perp=P, regime=Relativistic())
+    rel = CoupledVDF(f0; para=P, perp=P, regime=Relativistic())
 
     pperp = range(0.0, 5.0, length=61)
     ppar = range(-5.0, 5.0, length=121)
-    F = [ref(w, u) for w in pperp, u in ppar]
-    grel = GridVDF(pperp, ppar, F; rtol=1.0e-4, regime=Relativistic())
+    F = [f0(w, u) for w in pperp, u in ppar]
+    grel = SplineVDF(pperp, ppar, F; rtol=1.0e-4, regime=Relativistic())
 
-    k = Wavenumber(0.7, 0.4)
+    k = Wavevector(0.7, 0.4)
     for ω in (0.3 + 0.0im, 0.3 + 0.05im, 0.3 - 0.001im, 0.3 - 0.005im, 0.3 - 0.02im, 0.3 - 0.1im, 0.3 - 0.15im)
         χB = contribution(rel, ω, k)
         χA = contribution(rel, ω, k; closure=Newberger())
@@ -44,7 +46,7 @@ end
         @test_broken χg ≈ χref rtol = 1.0e-3
     end
     # parallel propagation and oblique, damped
-    for (kk, ω) in ((Wavenumber(0.0, 0.4), 0.3 - 0.01im), (Wavenumber(0.2, 0.6), 0.5 - 0.02im))
+    for (kk, ω) in ((Wavevector(0.0, 0.4), 0.3 - 0.01im), (Wavevector(0.2, 0.6), 0.5 - 0.02im))
         χB = contribution(rel, ω, kk)
         χref = contribution(ref, ω, kk)
         @test χB ≈ χref rtol = 1.0e-4
@@ -52,8 +54,9 @@ end
 end
 
 @testitem "MaxwellJuttner parallel continuation vs corrected López" begin
-    pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
-    plasma = pair(MaxwellJuttner(mu=2.0))
+    using VlasovMaxwellDispersion: DispersionFunction
+    pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
+    plasma = pair(MaxwellJuttner(; theta = 1 / 2.0))
     # Corrected López report §4.1 fixtures: first two are inside the resonance
     # band 0 < Re(ω)²-k∥² < 1; remaining points are beyond its upper edge.
     fixtures = (
@@ -63,7 +66,7 @@ end
         (6.0, 6.2 - 0.1im, -0.01702911735814406 - 2.3655114970848774im),
     )
     for (kz, ω, ref) in fixtures
-        f = DispersionFunction(plasma, Wavenumber(0.0, kz); mode=:L, deflate=false)
+        f = DispersionFunction(plasma, Wavevector(0.0, kz); mode=:L, deflate=false)
         @test f(ω) ≈ ref rtol=1.0e-10
     end
 end
@@ -75,16 +78,16 @@ end
 @testitem "Damped superluminal apex: momentum path wrong-sheet, energy path correct" begin
     using LinearAlgebra: norm
     μ = 2.0
-    ref = MaxwellJuttner(mu=μ)
+    ref = MaxwellJuttner(; theta = 1 / μ)
     P = sqrt((1 + 16 / μ)^2 - 1)
     en = CoupledVDF((γ, u) -> exp(-μ * γ); para=P, perp=P, coords=:energy, regime=Relativistic())
-    mom = CoupledVDF(ref; para=P, perp=P, regime=Relativistic())  # momentum coords: no denergy → no cycles
+    mom = CoupledVDF((q, u) -> exp(-μ * sqrt(1 + q^2 + u^2)); para=P, perp=P, regime=Relativistic())  # momentum coords: no denergy → no cycles
     
     # momentum-coords VDF at damped-superluminal ω has no analytic continuation → warns
-    @test_logs (:warn, r"damped superluminal") contribution(mom, 0.7 - 0.1im, Wavenumber(0.0, 0.5))
+    @test_logs (:warn, r"damped superluminal") contribution(mom, 0.7 - 0.1im, Wavevector(0.0, 0.5))
 
     # in band (√(ωr²−k∥²) ≤ |Ω|): the germ and the Landau sheet differ by O(1)
-    let k = Wavenumber(0.0, 0.5), ω = 0.7 - 0.1im
+    let k = Wavevector(0.0, 0.5), ω = 0.7 - 0.1im
         χref = contribution(ref, ω, k)
         @test contribution(en, ω, k) ≈ χref rtol = 1.0e-4
         @test_broken contribution(en, ω, k; path=:landau) ≈ χref rtol = 0.5  # momentum: wrong sheet
@@ -92,7 +95,7 @@ end
 
     # deep damping (kz=2.5, ω=2.5766−0.4536im): the two sheets nearly coincide, so BOTH
     # paths match — pinning the error to the apex/wrong-sheet, not a generic bug
-    let k = Wavenumber(0.0, 2.5), ω = 2.5766 - 0.4536im
+    let k = Wavevector(0.0, 2.5), ω = 2.5766 - 0.4536im
         χref = contribution(ref, ω, k)
         @test contribution(en, ω, k) ≈ χref rtol = 1.0e-4
         @test contribution(en, ω, k; path=:landau) ≈ χref rtol = 1.0e-3
@@ -106,12 +109,12 @@ end
 @testitem "Above the cyclotron band: no continuation term, O-mode is real" begin
     using LinearAlgebra: norm
     μ = 2.0
-    ref = MaxwellJuttner(mu=μ)
+    ref = MaxwellJuttner(; theta = 1 / μ)
     P = sqrt((1 + 16 / μ)^2 - 1)
     en = CoupledVDF((γ, u) -> exp(-μ * γ); para=P, perp=P, coords=:energy, regime=Relativistic())
-    mom = CoupledVDF(ref; para=P, perp=P, regime=Relativistic())
+    mom = CoupledVDF((q, u) -> exp(-μ * sqrt(1 + q^2 + u^2)); para=P, perp=P, regime=Relativistic())
 
-    k = Wavenumber(0.0, 0.5)
+    k = Wavevector(0.0, 0.5)
     ω = 1.2 - 0.1im                      # √(ωr²−k∥²) = 1.09 > |Ω|: above the n=1 band
     χ = contribution(mom, ω, k)
     @test contribution(en, ω, k) ≈ χ rtol = 1.0e-8              # coords must not pick the sheet
@@ -122,9 +125,9 @@ end
     @test norm(χgerm - χ) > 1                                    # ...and it is another sheet
 
     # O-mode of the pair plasma: the transverse L(=R) branch above the band
-    pair(vdf) = (NormalizedSpecies(1.0, 1.0, vdf), NormalizedSpecies(-1.0, 1.0, vdf))
-    sol = solve(DispersionProblem(pair(mom), Seed(1.0933 + 0.0im, Wavenumber(0.0, 0.02)),
-        Wavenumber.(0.0, [0.02, 0.62, 1.22]); mode=:L))
+    pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
+    sol = solve(DispersionProblem(pair(mom), Seed(1.0933 + 0.0im, Wavevector(0.0, 0.02)),
+        Wavevector.(0.0, [0.02, 0.62, 1.22]); mode=:L))
     @test all(<(1.0e-10), sol.resid)
     @test real.(sol.omega) ≈ [1.093268, 1.258110, 1.637947] rtol = 1.0e-5
     @test maximum(abs ∘ imag, sol.omega) < 1.0e-10
@@ -134,33 +137,33 @@ end
 # oblique k⊥. Math: docs/src/relativistic.typ.
 @testitem "MaxwellJuttner superluminal continuation: transported residue cycles" begin
     using LinearAlgebra: norm
-    using VlasovMaxwellDispersion: _mj_cycle_contribution
+    using VlasovMaxwellDispersion: _mj_cycle_contribution, Juttner
     let μ = 2.0
-    mj = MaxwellJuttner(mu=μ)
-    sp = NormalizedSpecies(1.0, 1.0, mj)
+    mj = Juttner(μ)
+    sp = NormalizedPopulation(1.0, 1.0, mj)
     rel(A, B) = norm(A - B) / norm(B)
     # subluminal damped: cycles reduce to the certified (p⊥,p∥) Landau rule
-    @test _mj_cycle_contribution(mj, sp, 0.3 - 0.05im, Wavenumber(0.7, 0.4)) ≈
-        contribution(sp, 0.3 - 0.05im, Wavenumber(0.7, 0.4)) rtol = 1.0e-3
+    @test _mj_cycle_contribution(mj, sp, 0.3 - 0.05im, Wavevector(0.7, 0.4)) ≈
+        contribution(sp, 0.3 - 0.05im, Wavevector(0.7, 0.4)) rtol = 1.0e-3
     # parallel superluminal: cycles reproduce the certified Swanson continuation
     for (kz, ω) in ((0.5, 0.7 - 0.1im), (0.5, 0.7 - 0.4im), (2.5, 2.5766 - 0.4536im))
-        @test _mj_cycle_contribution(mj, sp, ω, Wavenumber(0.0, kz)) ≈
-            contribution(sp, ω, Wavenumber(0.0, kz)) rtol = 1.0e-4
+        @test _mj_cycle_contribution(mj, sp, ω, Wavevector(0.0, kz)) ≈
+            contribution(sp, ω, Wavevector(0.0, kz)) rtol = 1.0e-4
     end
     ω, kz = 2.5766 - 0.4536im, 2.5
     # Oblique light-line seam continuity (|Δ| ∝ δ) and holomorphy.
     kp = 0.5
-    seam(δ) = rel(_mj_cycle_contribution(mj, sp, ω, Wavenumber(kp, real(ω) - δ)),
-        _mj_cycle_contribution(mj, sp, ω, Wavenumber(kp, real(ω) + δ)))
+    seam(δ) = rel(_mj_cycle_contribution(mj, sp, ω, Wavevector(kp, real(ω) - δ)),
+        _mj_cycle_contribution(mj, sp, ω, Wavevector(kp, real(ω) + δ)))
     @test seam(0.005) < 0.05
     h = 1.0e-4
-    k = Wavenumber(kp, kz)
+    k = Wavevector(kp, kz)
     dre = (_mj_cycle_contribution(mj, sp, ω + h, k) - _mj_cycle_contribution(mj, sp, ω - h, k)) / (2h)
     dim = (_mj_cycle_contribution(mj, sp, ω + im * h, k) - _mj_cycle_contribution(mj, sp, ω - im * h, k)) / (2im * h)
     @test norm(dre - dim) / norm(dre) < 1.0e-4
     # A/IC root continues beyond the old k⊥ ceiling
-    pair2 = (NormalizedSpecies(1.0, 1.0, mj), NormalizedSpecies(-1.0, 1.0, mj))
-    sol = solve(DispersionProblem(pair2, 2.5766 - 0.4536im, Wavenumber(0.5, 2.5)))
+    pair2 = (NormalizedPopulation(1.0, 1.0, mj), NormalizedPopulation(-1.0, 1.0, mj))
+    sol = solve(DispersionProblem(pair2, 2.5766 - 0.4536im, Wavevector(0.5, 2.5)))
     @test sol.resid < 1.0e-10
     @test abs(sol.omega - (2.549295 - 0.4004106im)) < 1.0e-3
     end
@@ -173,13 +176,13 @@ end
     using LinearAlgebra: norm
     using VlasovMaxwellDispersion: _MJ_CYCLE_QUAD
     μ = 2.0
-    ref = MaxwellJuttner(mu=μ)
+    ref = MaxwellJuttner(; theta = 1 / μ)
     P = sqrt((1 + 16 / μ)^2 - 1)
     rel = CoupledVDF((γ, u) -> exp(-μ * γ); para=P, perp=P,
         coords=:energy, regime=Relativistic())
     ω = 2.5766 - 0.4536im
     for (kperp, tol) in ((0.0, 1.0e-4), (0.2, 5.0e-4), (0.6, 1.0e-6))
-        k = Wavenumber(kperp, 2.5)
+        k = Wavevector(kperp, 2.5)
         χ = contribution(rel, ω, k; quad=_MJ_CYCLE_QUAD)
         χref = contribution(ref, ω, k)       # Swanson (k⊥=0) / MJ cycles (k⊥≠0)
         @test norm(χ - χref) / norm(χref) < tol
@@ -188,14 +191,14 @@ end
 
 @testitem "Residue cycles preserve negative-kparallel parity" begin
     using LinearAlgebra: Diagonal
-    using VlasovMaxwellDispersion: _mj_cycle_contribution, NormalizedSpecies
+    using VlasovMaxwellDispersion: _mj_cycle_contribution, NormalizedPopulation, Juttner
 
-    mj = MaxwellJuttner(mu=2.0)
-    sp = NormalizedSpecies(1.0, 1.0, mj)
+    mj = Juttner(2.0)
+    sp = NormalizedPopulation(1.0, 1.0, mj)
     ω = 2.5766 - 0.4536im
     S = Diagonal([1, 1, -1])
-    χp = _mj_cycle_contribution(mj, sp, ω, Wavenumber(0.5, 2.5))
-    χm = _mj_cycle_contribution(mj, sp, ω, Wavenumber(0.5, -2.5))
+    χp = _mj_cycle_contribution(mj, sp, ω, Wavevector(0.5, 2.5))
+    χm = _mj_cycle_contribution(mj, sp, ω, Wavevector(0.5, -2.5))
     @test χm ≈ S * χp * S
 end
 
@@ -229,5 +232,4 @@ end
     scaledUcov = (γ, u, σ) -> exp(-γ + σ)
     χ = _cycle_harmonic(0, scaledUcov, 1.0, ω, Ω, kz, 0.0)
     @test all(isfinite, χ)
-    @test scaledUcov(800, 0, 800) == 1
 end
