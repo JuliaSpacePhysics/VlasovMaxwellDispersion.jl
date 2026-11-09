@@ -118,8 +118,8 @@ successful_retcode(sol) = successful_retcode(sol.retcode)
 
 Result of a seeded `solve`. `omega` is a root for point refinement or a vector
 of roots for continuation, in the units of the problem's plasma; `prob` is that problem.
-`resid` is the scale-invariant [`residual`](@ref) at the root(s),
-mirroring the shape of `omega` (`NaN` for non-converged entries).
+`resid` is the scale-invariant [`residual`](@ref) of the planned `𝒟` the solver used at the
+root(s), mirroring the shape of `omega` (`NaN` for non-converged entries).
 """
 struct DispersionSolution{T,R,S,Pr,A}
     omega::T
@@ -146,8 +146,6 @@ struct SurveySolution{BR,S,Pr,A} <: AbstractVector{BR}
 end
 
 _seed_solution(prob, ω, resid, stats, code, alg) = DispersionSolution(ω, resid, stats, code, prob, alg)
-_seed_solution(prob, ω, stats, code, alg) =
-    _seed_solution(prob, ω, residual(prob.plasma, ω, prob.k; closure = prob.closure), stats, code, alg)
 
 # Prune branches post hoc, e.g. filter(b -> count(isfinite, b.omega) ≥ 5, sol)
 Base.filter(pred, s::SurveySolution) = SurveySolution(

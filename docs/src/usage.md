@@ -139,7 +139,7 @@ For custom root finding, diagnostics, or determinant maps:
 
 ```julia
 dispersion_tensor(plasma, ω, k)   # 𝒟, also `VlasovMaxwellDispersion.𝒟`
-residual(plasma, ω, k)
+residual(plasma, ω, k)            # direct path, independent of the plan behind `sol.resid`
 electrostatic_det(plasma, ω, k)   # k̂·ε·k̂, zero at electrostatic modes
 
 # Callable scalar function with frequency-independent work planned once; normalized plasma only.

@@ -25,15 +25,16 @@ function CommonSolve.solve!(cache::SurveyCache)
     kf = wavefun(prob.k)
     ks = map(c -> kf(map(getindex, grids, Tuple(c))...), CartesianIndices(map(length, grids)))
     zv = similar(ks, Vector{ComplexF64})
+    rv = similar(ks, Vector{Float64})
     nev = similar(ks, Int)
     conv = similar(ks, Bool)
     _unblas() do
         Threads.@threads for i in eachindex(ks)
-            zv[i], nev[i], conv[i] = _pointroots(prob, alg, refine, ks[i])
+            zv[i], rv[i], nev[i], conv[i] = _pointroots(prob, alg, refine, ks[i])
         end
     end
     stats = SolveStats(sum(nev), (time_ns() - t0) / 1.0e9)
-    return build_solution(cache, ks, zv, stats, all(conv))
+    return build_solution(cache, ks, zv, rv, stats, all(conv))
 end
 
 function _unblas(f)
@@ -61,7 +62,8 @@ function _pointroots(prob, alg, refine, k)
     filter!(trust, zs)
     zs, n2 = polish!(f, zs, refine)
     filter!(z -> isfinite(z) && _in_box(region, z) && abs(z) > gate0 && trust(z), zs)
-    return consolidate(zs; atol = 1.0e-4 * diag), n1 + n2, converged
+    zs = consolidate(zs; atol = 1.0e-4 * diag)
+    return zs, map(z -> residual(f0, z), zs), n1 + n2, converged
 end
 
 _trusted(plasma, ω, k) = all(s -> trusted(s.vdf, s, ω, k), NormalizedPlasma(plasma).populations)
@@ -70,26 +72,23 @@ _trusted(plasma, ω, k) = all(s -> trusted(s.vdf, s, ω, k), NormalizedPlasma(pl
 _scalarize(x::AbstractArray{<:Any, 0}) = x[]
 _scalarize(x) = x
 
-function build_solution(cache::SurveyCache, ks, values, stats, converged = true)
+function build_solution(cache::SurveyCache, ks, roots, resids, stats, converged = true)
     (; prob, alg) = cache
-    sheets = link(values; cache.linking...)
-    filter!(sh -> any(_in_box.(Ref(prob.target), sh)), sheets)
-    roots = _branches(prob, sheets, _scalarize(ks), _realtype(prob))
-    return SurveySolution(roots, stats, _retcode(roots, converged), prob, alg)
+    sheets = link(roots; cache.linking...)
+    branches = _branches(roots, resids, sheets, _scalarize(ks), _realtype(prob))
+    filter!(b -> any(_in_box.(Ref(prob.target), b.omega)), branches)
+    return SurveySolution(branches, stats, _retcode(branches, converged), prob, alg)
 end
 
 # Inference-friendly by construction: the ::Type{T} barrier keeps T static
-function _branches(prob, sheets, ks, ::Type{T}) where {T}
+function _branches(roots, resids, sheets, ks, ::Type{T}) where {T}
     return map(sheets) do sheet
-        ωs = _scalarize(Complex{T}.(sheet))
-        DispersionBranch(ωs, ks, _residuals(prob, ωs, ks, T), true)
+        ωs = _scalarize(_gather(roots, sheet, Complex{T}(NaN, NaN)))
+        DispersionBranch(ωs, ks, _scalarize(_gather(resids, sheet, T(NaN))), true)
     end
 end
 
-_residuals(prob, ω::Complex, k, ::Type{T}) where {T} =
-    isfinite(ω) ? residual(prob.plasma, ω, k; closure = prob.closure) : T(NaN)
-_residuals(prob, ωs, ks, ::Type{T}) where {T} =
-    broadcast!((ω, k) -> _residuals(prob, ω, k, T), similar(ωs, T), ωs, ks)
+_gather(vals, sheet, nan) = map((v, i) -> iszero(i) ? nan : oftype(nan, v[i]), vals, sheet)
 
 _boxdiag((ll, ur)) = abs(ur - ll)
 

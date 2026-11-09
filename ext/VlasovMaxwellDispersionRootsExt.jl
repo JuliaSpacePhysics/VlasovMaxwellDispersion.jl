@@ -21,7 +21,7 @@ function _solve(prob::DispersionProblem{<:Seed, <:Wavevector}, alg::Roots.Abstra
     end
     ok = isfinite(ω)
     stats = SolveStats(nevals[], (time_ns() - t0) / 1.0e9)
-    return _seed_solution(prob, ω, stats, ok ? ReturnCode.Success : ReturnCode.Failure, alg)
+    return _seed_solution(prob, ω, residual(rawf, ω), stats, ok ? ReturnCode.Success : ReturnCode.Failure, alg)
 end
 
 end

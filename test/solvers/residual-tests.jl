@@ -40,3 +40,13 @@ end
     @test bsol.retcode == ReturnCode.Success
     @test only(bsol.resid) < 1.0e-10
 end
+
+# `resid` reads the fixed-node plan the solver used; the direct (adaptive) path must agree that the
+# root is one, or the plan under-resolved f₀.
+@testitem "planned residual agrees with the independent direct-path residual" begin
+    vdf = CoupledVDF((v, u) -> exp(-(u^2 + 0.5v^2)); para = 8.0, perp = 8.0)   # T⊥/T∥ = 2
+    sol = solve(DispersionProblem(NormalizedPopulation(-1.0, 4.0, vdf), 0.4 + 0.01im, Wavevector(1.0, 0.5)))
+    @test sol.retcode == ReturnCode.Success
+    @test sol.resid < 1.0e-9
+    @test residual(sol.prob, sol.omega) < 1.0e-6
+end

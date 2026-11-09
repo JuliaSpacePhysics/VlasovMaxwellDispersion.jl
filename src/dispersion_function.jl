@@ -67,6 +67,7 @@ function _tensor(D::DispersionFunction, ω)
     end
 end
 (D::DispersionFunction)(ω) = D.mode(_tensor(D, ω), D.k) / D.scale
+residual(D::DispersionFunction, ω) = isfinite(ω) ? _resid(_tensor(D, ω)) : NaN
 
 "`false` for plans that approximate (fit) the susceptibility; gates polish on `exact(D)`."
 isexact(x) = true

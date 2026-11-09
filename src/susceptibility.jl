@@ -90,19 +90,19 @@ end
 """
     residual(plasma, ω, k; closure=HarmonicSum())
     residual(prob, ω)
+    residual(D::DispersionFunction, ω)
 
 Relative Eckart–Young distance to singularity, `σ_min(𝒟)/σ_max(𝒟) ∈ [0,1]`,
 is used as the scale-invariant residual. `NaN` for non-finite `ω` or `𝒟`.
 
+The first two forms evaluate `𝒟` through the direct per-ω path; the last reads the planned `𝒟`.
+
 Known blind spot: as `ω → 0` transverse terms inflate, causing `σ_max ∝ 1/ω²`.
 The determinant's structural origin zero reads small but may not be a true root.
 """
-function residual(plasma, ω, k; closure=HarmonicSum())
-    isfinite(ω) || return NaN
-    D = dispersion_tensor(plasma, ω, k; closure)
-    all(isfinite, D) || return NaN
-    return _sigma_ratio(D)
-end
+residual(plasma, ω, k; closure=HarmonicSum()) =
+    isfinite(ω) ? _resid(dispersion_tensor(plasma, ω, k; closure)) : NaN
+_resid(D) = all(isfinite, D) ? _sigma_ratio(D) : NaN
 
 # σ(adj D) = {σ₁σ₂, σ₁σ₃, σ₂σ₃} ⇒ σ₃/σ₁ = |det D| / (σ_max(adj D)·σ_max(D)).
 # σ_max via the normal matrix is cancellation-safe — only the *smallest* eigenvalue of D'D is not.
