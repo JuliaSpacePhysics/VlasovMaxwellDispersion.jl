@@ -110,8 +110,8 @@ function _lr_cache(d::LowRankVDF, gl, rtol)
     for (v, w) in zip(gl_nodes(vpan, QuadGK.gauss(gl)...)...)
         av = _perp_factors(d, v)[1]
         for s in 1:rank(d)
-            n += 2π * w * v * av[s] * pa.raw[s][1]
-            p2 += 2π * w * v^3 * av[s] * pa.raw[s][1]
+            n += 2π * w * v * av[s] * pa.mom[1, s][1]
+            p2 += 2π * w * v^3 * av[s] * pa.mom[1, s][1]
         end
     end
     # ãₛ at a few perp probes, so `trust_error` costs O(nprobe + rank) f₀ evaluations per u
