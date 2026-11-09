@@ -51,6 +51,12 @@ end
     @test sc.vdf.cache.table.backend == coarse
     @test plan_contribution(sc, k; backend = coarse)(ω) ≈ χ rtol = 1.0e-6
     @test isnothing(prepare(s; backend = AdaptiveEval()).vdf.cache.table)
+    # a problem prepares its populations, given as a tuple too, with its own backend
+    sep = NormalizedPopulation(1.0, 1.0, SeparableVDF(Gaussian(0.1) ⊗ Kappa(0.1, 4); para = 1.0, perp = 1.0))
+    prob = DispersionProblem((s, sep), (0.5 - 0.1im, 1.5 + 0.1im), k; backend = coarse)
+    prepped = VlasovMaxwellDispersion.pointsolver(prob, AAA(); prob.kwargs...).prob.plasma.populations
+    @test prepped[1].vdf.cache.table.backend == coarse
+    @test prepped[2].vdf isa VlasovMaxwellDispersion.PreparedVDF
 
     mx = BiMaxwellian(; vth_perp = 0.05, vth_para = 0.1)
     rel = CoupledVDF((q, u) -> pdf(mx, q, u); para = 0.6, perp = 0.6, regime = Relativistic())

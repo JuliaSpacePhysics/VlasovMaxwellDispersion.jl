@@ -50,8 +50,8 @@ end
 # FixedNodeEval builds the fixed-node plan (non-relativistic only); AdaptiveEval and the
 # relativistic regime fall back to the per-ω adaptive `GenericKPlan`.
 function plan_contribution(c::PreparedVDF{<:CoupledVDF}, s, k;
-    backend::ChiBackend = FixedNodeEval(), closure = HarmonicSum(), kw...)
-    (backend isa FixedNodeEval && regime(c) isa NonRelativistic) || return GenericKPlan(s, k, closure)
+    backend::ChiBackend = FixedNodeEval(), kw...)
+    (backend isa FixedNodeEval && regime(c) isa NonRelativistic) || return GenericKPlan(s, k, _closure(backend))
     t = get(c.cache, :table, nothing)
     (isnothing(t) || t.backend != backend) && (t = CoupledTable(c.vdf, backend))
     Ω = s.Omega
@@ -65,5 +65,5 @@ function plan_contribution(c::PreparedVDF{<:CoupledVDF}, s, k;
     residue = ((j, ζ) -> d.dgrad(vs[j], ζ), (2π .* ws') .* K, (2π .* ws' .* vs') .* K)
     return TablePlan(t.para, P∂, PF, ns, Ω, k.k_para, s.Pi2 / c.cache.n; residue)
 end
-plan_contribution(d::CoupledVDF, s, k; closure = HarmonicSum(), kw...) =
-    plan_contribution(prepare(d, closure), s, k; closure, kw...)
+plan_contribution(d::CoupledVDF, s, k; backend = FixedNodeEval(), kw...) =
+    plan_contribution(prepare(d; backend), s, k; backend, kw...)

@@ -3,7 +3,7 @@
 
 Susceptibility χ_s(ω,k) from one population or vdf.
 """
-@inline contribution(s, ω, k; kwargs...) = contribution(s.vdf, s, ω, k; kwargs...)
+@inline contribution(s, ω, k; kwargs...) = (s = _solver_population(s); contribution(s.vdf, s, ω, k; kwargs...))
 
 function contribution(vdf::Union{AbstractVDF, SolverVDF}, ω, k; kw...)
     return contribution(NormalizedPopulation(1.0, 1.0, vdf), ω, k; kw...)
@@ -11,7 +11,7 @@ end
 
 # ω̃²·χ_s
 @inline scaled_contribution(s, ω, k; kwargs...) =
-    scaled_contribution(s.vdf, s, ω, k; kwargs...)
+    (s = _solver_population(s); scaled_contribution(s.vdf, s, ω, k; kwargs...))
 scaled_contribution(vdf, s, ω, k; kwargs...) =
     complex(ω)^2 * contribution(vdf, s, ω, k; kwargs...)
 
@@ -67,9 +67,8 @@ end
 # The tensors are dimensionless, so only the arguments change unit.
 for f in (:dielectric, :dispersion_tensor, :wave_dispersion_tensor, :electrostatic_det, :residual)
     @eval function $f(plasma::Plasma, ω, k::Wavevector; kwargs...)
-        normalized = NormalizedPlasma(plasma)
-        u = _physical_units(normalized)
-        return $f(normalized, ω / u.omega, _scale_k(k, inv(u.k)); kwargs...)
+        p, _ = normalized(DispersionProblem(plasma, Seed(ω), k))
+        return $f(p.plasma, p.target.omega0, p.k; kwargs...)
     end
 end
 
@@ -95,7 +94,8 @@ end
 Relative Eckart–Young distance to singularity, `σ_min(𝒟)/σ_max(𝒟) ∈ [0,1]`,
 is used as the scale-invariant residual. `NaN` for non-finite `ω` or `𝒟`.
 
-The first two forms evaluate `𝒟` through the direct per-ω path; the last reads the planned `𝒟`.
+The first two forms evaluate `𝒟` through the direct per-ω path, the second with the closure of the
+problem's `backend`; the last reads the planned `𝒟`.
 
 Known blind spot: as `ω → 0` transverse terms inflate, causing `σ_max ∝ 1/ω²`.
 The determinant's structural origin zero reads small but may not be a true root.

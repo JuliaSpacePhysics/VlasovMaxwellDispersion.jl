@@ -28,6 +28,11 @@ end
         χA = contribution(s, ω, k; closure = Newberger())
         @test χA ≈ χB
     end
+
+    # A solve takes the closure from the adaptive backend; fixed-node tables are harmonic sums
+    prob = DispersionProblem(s, 1.2 - 0.05im, Wavevector(0.3, 0.4))
+    ωB = solve(prob, Muller()).omega
+    @test solve(prob, Muller(); backend = AdaptiveEval(closure = Newberger())).omega ≈ ωB rtol = 1.0e-8
 end
 
 

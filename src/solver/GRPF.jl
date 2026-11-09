@@ -1,18 +1,19 @@
 using RootsAndPoles
 
 """
-    GRPF(; tol=1e-3, meshtol=nothing, params=nothing)
+    GRPF(; tol=1e-3, meshtol=nothing, params=nothing, refine=Muller())
 
 Global Roots-and-Poles Finder (argument principle) solver. `tol` is the
 refinement accuracy; `meshtol` the *initial* mesh spacing (`nothing` ⇒ a coarse
 fraction of the box); `params::GRPFParams` overrides the defaults. Searches the
 deflated pole-free `det(ω̃²𝒟)` and drops roots within `2tol` of `ω=0` together
-with the deflation's origin artifact.
+with the deflation's origin artifact. `refine` polishes the roots as for [`AAA`](@ref).
 """
-Base.@kwdef struct GRPF{P}
+Base.@kwdef struct GRPF{P, R}
     tol::Float64 = 1.0e-3
     meshtol::Union{Nothing, Float64} = nothing
     params::P = nothing
+    refine::R = Muller()
 end
 
 function discover(alg::GRPF, f0, region; keep = Returns(true))

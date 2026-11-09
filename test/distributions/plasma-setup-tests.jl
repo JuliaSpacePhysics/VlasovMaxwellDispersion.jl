@@ -2,7 +2,7 @@
 
 @testitem "physical setup reproduces bo_case1's hand normalization" begin
     using Unitful
-    using VlasovMaxwellDispersion: solver_vdf
+    using VlasovMaxwellDispersion: solver_vdf, _solver_population
     c0, qe, mp, me, eps0, mu0 = 2.99792458e8, 1.602176634e-19, 1.67262192369e-27, 9.1093837015e-31, 8.8541878128e-12, 1.25663706212e-6
     B0, n = 0.1, 5.0e19
     wcp = qe * B0 / mp
@@ -15,7 +15,7 @@
         Population(e, BiMaxwellian; T = 496.683, n = 5.0e19);
         B0 = 0.1u"T",
     )
-    sp, se = NormalizedPlasma(plasma).populations
+    sp, se = map(_solver_population, NormalizedPlasma(plasma).populations)
     @test sp.Omega == 1.0
     @test sp.Pi2 ≈ Pi2(mp)
     @test se.Omega ≈ -mp / me
@@ -58,18 +58,18 @@ end
 end
 
 @testitem "SolverVDFs pass through; models convert or are rejected" begin
-    using VlasovMaxwellDispersion: Juttner, Oriented
+    using VlasovMaxwellDispersion: Juttner, Oriented, _solver_population
     p = Proton()
-    plasma(vdf) = Plasma(Population(p, vdf; n = 1.0e6); B0 = 1.0e-8)
+    vdf_of(vdf) = _solver_population(only(NormalizedPlasma(Plasma(Population(p, vdf; n = 1.0e6); B0 = 1.0e-8)).populations)).vdf
     sep = Gaussian(0.1) ⊗ Gaussian(0.1)
-    @test NormalizedPlasma(plasma(sep)).populations[1].vdf === sep
-    @test isnothing(scales(plasma(sep)).populations[1].vth_para)
-    @test NormalizedPlasma(plasma(MaxwellJuttner(; theta = 0.1))).populations[1].vdf == Juttner(10.0)
-    @test NormalizedPlasma(plasma(Cold())).populations[1].vdf isa Cold
-    @test_throws ArgumentError NormalizedPlasma(plasma(Cold(; vd_para = 1.0e3)))
-    @test_throws ArgumentError NormalizedPlasma(plasma(BiKappa(; vth = 1.0e4, kappa = 3, vd_para = 1.0e3)))
-    @test_throws ArgumentError NormalizedPlasma(plasma(ProductBiKappa(; vth = 1.0e4, kappa_perp = 3, kappa_para = 3, loss_cone = 1)))
-    @test_throws ArgumentError NormalizedPlasma(plasma(Oriented(Cold(), [1.0, 0, 0])))
+    @test vdf_of(sep) === sep
+    @test isnothing(scales(Plasma(Population(p, sep; n = 1.0e6); B0 = 1.0e-8)).populations[1].vth_para)
+    @test vdf_of(MaxwellJuttner(; theta = 0.1)) == Juttner(10.0)
+    @test vdf_of(Cold()) isa Cold
+    @test_throws ArgumentError vdf_of(Cold(; vd_para = 1.0e3))
+    @test_throws ArgumentError vdf_of(BiKappa(; vth = 1.0e4, kappa = 3, vd_para = 1.0e3))
+    @test_throws ArgumentError vdf_of(ProductBiKappa(; vth = 1.0e4, kappa_perp = 3, kappa_para = 3, loss_cone = 1))
+    @test_throws ArgumentError vdf_of(Oriented(Cold(), [1.0, 0, 0]))
 end
 
 @testitem "GridVDF converts to the SplineVDF of its data" begin
@@ -106,22 +106,21 @@ end
     k̃ = Wavevector(0.0, 0.5 * normalized.scales.populations[1].wp)
     ω̃ = 0.65 - 0.001im
     prob = DispersionProblem(plasma, ω̃ * Ω, SI(k̃))
-    @test prob.omega0 == ω̃ * Ω && prob.k == SI(k̃)
-    point = solve(prob)
+    @test prob.target.omega0 == ω̃ * Ω && prob.k == SI(k̃)
+    point = solve(prob, Muller())
     @test point.prob === prob
-    @test point.omega ≈ Ω * solve(DispersionProblem(normalized, ω̃, k̃)).omega
-    @test VlasovMaxwellDispersion.solve!(VlasovMaxwellDispersion.init(prob)).omega == point.omega
+    @test point.omega ≈ Ω * solve(DispersionProblem(normalized, ω̃, k̃), Muller()).omega
     @test point.resid < 1.0e-10
     @test VlasovMaxwellDispersion.residual(point.prob, point.omega) ≈ point.resid atol = 1.0e-10
 
     path̃ = [Wavevector(0.0, f * k̃.k_para) for f in (0.9, 1.0, 1.1)]
-    tracked = solve(DispersionProblem(plasma, Seed(ω̃ * Ω, SI(path̃[2])), SI.(path̃)))
-    @test tracked.omega ≈ Ω .* solve(DispersionProblem(normalized, Seed(ω̃, path̃[2]), path̃)).omega
+    tracked = solve(DispersionProblem(plasma, Seed(ω̃ * Ω, SI(path̃[2])), SI.(path̃)), Continuation())
+    @test tracked.omega ≈ Ω .* solve(DispersionProblem(normalized, Seed(ω̃, path̃[2]), path̃), Continuation()).omega
 
     box̃ = (0.0 - 0.3im, 1.1 + 0.05im)
     sweep̃ = CartesianSweep(; k_para = [0.9, 1.0] .* k̃.k_para)
     sweep = CartesianSweep(; k_para = [0.9, 1.0] .* k̃.k_para .* ku)
-    survey, reference = solve(DispersionProblem(plasma, box̃ .* Ω, sweep)), solve(DispersionProblem(normalized, box̃, sweep̃))
+    survey, reference = link(solve(DispersionProblem(plasma, box̃ .* Ω, sweep), AAA())), link(solve(DispersionProblem(normalized, box̃, sweep̃), AAA()))
     same(a, b) = isnan.(a) == isnan.(b) && filter(isfinite, a) ≈ filter(isfinite, b)   # NaN marks missing branch points
     @test length(survey) == length(reference) > 0
     @test all(zip(survey, reference)) do (b, r)
@@ -130,7 +129,7 @@ end
     # The growth margin stays relative to Ω_ref rather than becoming an absolute rate
     @test map(isgrowing, survey) == map(isgrowing, reference)
     polar = AngleSweep(; k = [0.9, 1.0] .* k̃.k_para .* ku, theta = 0.0)
-    @test same(solve(DispersionProblem(plasma, box̃ .* Ω, polar))[1].omega, survey[1].omega)
+    @test same(link(solve(DispersionProblem(plasma, box̃ .* Ω, polar), AAA()))[1].omega, survey[1].omega)
 
     @test dielectric(plasma, ω̃ * Ω, SI(k̃)) ≈ dielectric(normalized, ω̃, k̃)
     @test_throws ArgumentError VlasovMaxwellDispersion.DispersionFunction(plasma, SI(k̃))

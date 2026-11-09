@@ -37,7 +37,7 @@ end
     auto = ReducedVDF(fsk; para = (-10.0, 12.0))
     manual = ReducedVDF(fsk; para = (-10.0, 12.0), df = dfsk)
     k = Wavevector(0.0, 0.5)
-    ωa = solve(DispersionProblem(NormalizedPopulation(-1.0, 1.0, auto), 1.3 - 0.1im, k)).omega
-    ωm = solve(DispersionProblem(NormalizedPopulation(-1.0, 1.0, manual), 1.3 - 0.1im, k)).omega
+    ωa = solve(DispersionProblem(NormalizedPopulation(-1.0, 1.0, auto), 1.3 - 0.1im, k), Muller()).omega
+    ωm = solve(DispersionProblem(NormalizedPopulation(-1.0, 1.0, manual), 1.3 - 0.1im, k), Muller()).omega
     @test abs(ωa - ωm) < 1.0e-12
 end

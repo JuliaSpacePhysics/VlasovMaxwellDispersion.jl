@@ -32,7 +32,7 @@ de = abs(gyrofrequency(e, B0)) / plasma_frequency(e, 1.0e6u"m^-3")  # c/ωpe in 
 ks = range(0.5, 35.0, 128) ./ de
 region = (-1.0 - 1.5im, 10.0 + 0.6im)
 geom = AngleSweep(k=ks, theta=deg2rad(40))
-sol = solve(DispersionProblem(NormalizedPlasma(plasma), region, geom))
+sol = link(solve(DispersionProblem(NormalizedPlasma(plasma), region, geom), AAA()))
 
 # The survey resolves three growing branches. Here we compare their peak growth rates and the wavenumbers of those peaks.
 

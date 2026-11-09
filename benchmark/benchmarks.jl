@@ -26,7 +26,7 @@ let g = SUITE["separable"]
     plan = plan_contribution(ssep, k)
     g["evaluate"] = CAV.@benchmarkable $plan(1.3 - 0.05im)
     prob = DispersionProblem(ssep, REGION, Wavevector(1.0, 0.4))
-    g["global_solve"] = CAV.@benchmarkable solve($prob)
+    g["global_solve"] = CAV.@benchmarkable solve($prob, AAA())
 end
 
 let g = SUITE["kappa"]
@@ -57,7 +57,7 @@ let g = SUITE["Nonrelativistic/coupled"]
     g["evaluate/undamped"] = CAV.@benchmarkable $plan(1.2 + 0.05im)
     g["evaluate/damped"] = CAV.@benchmarkable $plan(1.2 - 0.05im)   # adds the exact Landau residue
     prob = DispersionProblem(sp, REGION, Wavevector(1.0, 0.4))
-    g["global_solve"] = CAV.@benchmarkable solve($prob)
+    g["global_solve"] = CAV.@benchmarkable solve($prob, AAA())
     k1 = Wavevector(1.0, 0.4)
     g["adaptive/B_truncated"] = CAV.@benchmarkable contribution($sp, 1.2 + 0.05im, $k1)
     g["adaptive/A_newberger"] = CAV.@benchmarkable contribution($sp, 1.2 + 0.05im, $k1; closure=Newberger())
@@ -76,7 +76,7 @@ let g = SUITE["Nonrelativistic/lowrank"]
     plan = plan_contribution(s, k)
     g["evaluate"] = CAV.@benchmarkable $plan(1.3 - 0.02im)
     prob = DispersionProblem(s, REGION, Wavevector(2.0, 1.0))
-    g["global_solve"] = CAV.@benchmarkable solve($prob)
+    g["global_solve"] = CAV.@benchmarkable solve($prob, AAA())
 end
 
 let g = SUITE["Relativistic"], regime = Relativistic()
@@ -103,18 +103,18 @@ let g = SUITE["local_solve"]
     s = NormalizedPopulation(-1.0, 1.0, BiMaxwellian(; vth_perp = 1.2, vth_para = 0.9))
     k = Wavevector(0.01, 0.5)
     prob = DispersionProblem(s, 0.6, k)
-    g["muller_native"] = CAV.@benchmarkable solve($prob)
+    g["muller_native"] = CAV.@benchmarkable solve($prob, Muller())
 end
 
 let g = SUITE["branch_solve"]
     s = NormalizedPopulation(-1.0, 1.0, BiMaxwellian(; vth_perp = 1.2, vth_para = 0.9))
     ks = [Wavevector(0.01, kz) for kz in range(0.3, 0.8; length=64)]
     prob = DispersionProblem(s, 0.6, ks)
-    g["arc_length/64"] = CAV.@benchmarkable solve($prob)
+    g["arc_length/64"] = CAV.@benchmarkable solve($prob, Continuation())
 end
 
 let g = SUITE["global_solve"]
     s = NormalizedPopulation(-1.0, 1.0, BiMaxwellian(; vth_perp = 1.2, vth_para = 0.9))
     prob = DispersionProblem(s, REGION, Wavevector(0.01, 0.5))
-    g["Default/fixed_k"] = CAV.@benchmarkable solve($prob)
+    g["Default/fixed_k"] = CAV.@benchmarkable solve($prob, AAA())
 end

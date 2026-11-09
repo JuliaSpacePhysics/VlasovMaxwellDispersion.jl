@@ -1,6 +1,7 @@
 # Advanced usage
 
-See [README](https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl#readme) for conventions, plasma construction, distribution selection and result shapes. 
+See [README](https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl#readme) for plasma construction, distribution selection and algorithms, and
+[PlasmaDispersionBase.jl](https://github.com/JuliaPlasma/PlasmaDispersionBase.jl#readme) for problems, wavevectors, units and result shapes.
 This page covers controls beyond that default workflow.
 
 ## Constructor details
@@ -62,39 +63,26 @@ Representation-specific behavior lives in:
 - [SplineVDF projection](representations/grid-vdf.md)
 - [Low-rank susceptibility](representations/lowrank-susceptibility.md)
 
-## Sweep geometry
-
-Each `AngleSweep` or `CartesianSweep` axis is a fixed scalar or a sample vector.
-
-```julia
-ks = [Wavevector(0.0, kz) for kz in 0.3:0.05:1.0]
-angle = AngleSweep(k = range(0.01, 0.6; length = 60), theta = deg2rad(45))
-cartesian = CartesianSweep(k_para = 0.01:0.008:1.0)
-surface = CartesianSweep(k_perp = range(0.0, 1.0; length = 41), k_para = range(0.0, 1.0; length = 41))
-```
-
-Surveys accept two swept axes. Seeded continuation accepts one.
-
 ## Algorithms
 
-Defaults follow target and geometry:
+Surveys accept sweeps with two swept axes; `Continuation` accepts one.
 
-| target | default | main controls |
-|---|---|---|
-| seed at fixed `k` | `Muller()` | `atol`, `maxiter` |
-| seed along path | `Continuation()` | `base`, `order`, `reltol`, `abstol`, `maxsubdiv` |
-| frequency box | `AAA()` | `n = (nRe,nIm)`, `tol`, `max_degree` |
-
-Override default by passing an algorithm:
+| algorithm | main controls |
+|---|---|
+| `Muller()` | `atol`, `maxiter` |
+| `Continuation()` | `base`, `order`, `reltol`, `abstol`, `maxsubdiv` |
+| `AAA()`, `GRPF()` | `n = (nRe,nIm)`, `tol`, `max_degree`, `refine` |
 
 ```julia
 solve(problem, AAA(n = (80, 80)))
 ```
 
-Survey-only keywords control polishing and branch linking:
+`AAA` and `GRPF` polish their roots with `refine` (`Muller()` default, `nothing` keeps raw roots);
+`link` joins a survey's roots into branches:
 
 ```julia
-solve(problem; refine = Muller(), linking = (;))
+survey = solve(problem, AAA(refine = Muller(atol = 1e-12)))
+link(survey; gate = 0.05)
 ```
 
 `mode = :det` is valid for every geometry. Cheaper polarization factors have
@@ -119,19 +107,11 @@ problem = DispersionProblem(
 
 ## Return codes and operation
 
-| code | meaning |
-|---|---|
-| `Success` | every requested root converged |
-| `Partial` | branch tracked, but some wavevectors contain `NaN` |
-| `Saturated` | survey fit stopped before tolerance and may have missed roots |
-| `MaxIters` | root polisher reached iteration limit |
-| `Failure` | no root found |
-
-For `Saturated`, shrink frequency box or increase `AAA(n = ...)`.
-`VlasovMaxwellDispersion.successful_retcode(solution)` tests for full convergence.
+Codes are `ReturnCode`'s (see its docstring). Here `Saturated` means the `AAA` fit or `GRPF` mesh
+stopped short of its tolerance and may have missed roots: shrink the frequency box or increase
+`AAA(n = ...)`. `Partial` means `Continuation` left some wavevectors `NaN`.
 
 Surveys are threaded over wavevector points; start Julia with `-t auto`.
-`Region` boundaries are soft, so branches may continue slightly past box edges.
 
 ## Diagnostic API
 
@@ -152,3 +132,6 @@ contribution(pop, ω, k)
 # Bare distribution at Ω̃ = Π̃² = 1.
 contribution(vdf, ω, k)
 ```
+
+These convert each population's model to this solver's form on every call. For repeated
+evaluation, convert once with `prepare(plasma)`; for a `GridVDF`, conversion is a spline fit.

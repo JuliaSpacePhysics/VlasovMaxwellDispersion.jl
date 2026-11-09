@@ -4,13 +4,18 @@
     @test_throws ArgumentError TensorReduction(:Z)
     @test_throws ArgumentError Circular(2)
     cold = (NormalizedPopulation(1.0, 1.0, Cold()), NormalizedPopulation(-1.0, 1836.0, Cold()))
-    # eager geometry validation at problem construction, not mid-sweep
-    prob = DispersionProblem(cold, 0.5 + 0im, [Wavevector(0.0, kz) for kz in 0.3:0.1:0.5]; mode=:L)
-    @test prob.mode === Circular(-1)
+    # options are solve keywords: misspelled ones are errors on every path
+    path = [Wavevector(0.0, kz) for kz in 0.3:0.1:0.5]
+    box = (0.1 - 0.1im, 1.0 + 0.1im)
+    @test_throws ArgumentError solve(DispersionProblem(cold, 0.5 + 0im, path; mdoe=:L), Continuation())
+    @test_throws ArgumentError solve(DispersionProblem(cold, box, Wavevector(0.0, 0.4)), AAA(); mdoe=:L)
+    # a mode invalid anywhere on k fails the solve up front, not mid-path or inside the threaded survey
+    @test_throws ArgumentError solve(DispersionProblem(cold, 0.5 + 0im, [path; Wavevector(0.3, 0.6)]; mode=:L), Continuation())
+    @test_throws ArgumentError solve(DispersionProblem(cold, box, AngleSweep(; k = 0.5, theta = [0.0, 0.3]); mode=:L), AAA())
     @test TensorReduction(:R) === Circular(+1)
     @test_throws ArgumentError DispersionFunction(cold, Wavevector(0.1, 0.5); mode=:L)
     # rounded axis points (k⊥ = k sinθ at θ ≈ 0 or π) still qualify as parallel
-    @test DispersionProblem(cold, 0.5 + 0im, AngleSweep(1.0, [Float64(π)]); mode=:L).mode === Circular(-1)
+    @test DispersionFunction(cold, Wavevector(sincos(Float64(π))...); mode=:L).mode === Circular(-1)
     # Longitudinal is valid at any k: exact P factor at k⊥=0, electrostatic
     # approximation obliquely (same zeros as electrostatic_det)
     ko = Wavevector(0.4, 0.5)
@@ -60,7 +65,7 @@ end
     pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
     p2 = pair(MaxwellJuttner(; theta = 1 / 2.0))
     # ALPS test_relativistic root at exact parallel
-    s = solve(DispersionProblem(p2, complex(3.9621e-2, -2.6e-6), Wavevector(0.0, 0.1); mode=:L))
+    s = solve(DispersionProblem(p2, complex(3.9621e-2, -2.6e-6), Wavevector(0.0, 0.1); mode=:L), Muller())
     @test successful_retcode(s)
     @test real(s.omega) ≈ 0.039185 atol = 1.0e-5
     @test s.resid < 1.0e-10
@@ -69,7 +74,7 @@ end
     # Continuation predictor gate must not.
     p10 = pair(MaxwellJuttner(; theta = 1 / 10.0))
     ks = [Wavevector(0.0, kz) for kz in 3.6:-0.1:3.0]
-    sc = solve(DispersionProblem(p10, complex(0.0, -2.767), ks; mode=:L))
+    sc = solve(DispersionProblem(p10, complex(0.0, -2.767), ks; mode=:L), Continuation())
     @test successful_retcode(sc)
     @test maximum(abs ∘ real, sc.omega) < 1.0e-8         # stays purely imaginary
     @test imag(sc.omega[end]) ≈ -4.334 atol = 5.0e-3     # deep-family value at k=3
@@ -85,7 +90,7 @@ end
         p = pair(MaxwellJuttner(; theta = 1 / μ))
         # k→0 aperiodic ladder: γ_n = −2μΩ/(π(2n−1)); n=1 member at k=0.05
         # carries only the O(k²) finite-k shift
-        s = solve(DispersionProblem(p, complex(0.0, -2μ / π), Wavevector(0.0, 0.05); mode=:L))
+        s = solve(DispersionProblem(p, complex(0.0, -2μ / π), Wavevector(0.0, 0.05); mode=:L), Muller())
         @test abs(s.omega + im * 2μ / π) < 5.0e-3 * μ
         # superluminal EM branch: ω² − k² → 2Π²K₁(μ)/K₂(μ) on the real axis,
         # where F_L is real beyond the band; located by bisection there. The
@@ -112,7 +117,7 @@ end
             (2.5, 2.57742 - 0.46394im),   # A/IC branch beyond the light line
             (3.0, 3.02819 - 0.18609im),   # second family traversing the band
         )
-        sS = solve(DispersionProblem(p2s, ωref, Wavevector(0.0, kz); mode=:L))
+        sS = solve(DispersionProblem(p2s, ωref, Wavevector(0.0, kz); mode=:L), Muller())
         @test abs(sS.omega - ωref) < 2.0e-5
         @test sS.resid < 1.0e-10
     end

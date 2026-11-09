@@ -94,7 +94,7 @@ Perpendicular Bessel moments are cached once per fixed `k`.
   fixed-node plan, most at large `k⊥` (undamped `ω` cost the same). Crucially, the parallel factors are **literal
   slices of the true `f₀`**, so the Landau residue is exact and damped roots are as
   accurate as the reference path.
-- **Con:** approximate (`isexact` is `false`); accuracy is capped by `rtol` and its
+- **Con:** approximate; accuracy is capped by `rtol` and its
   conditioning; needs a bounded box, so heavy tails must be truncated.
 
 A cross approximation is used rather than an SVD precisely because an SVD's factors are

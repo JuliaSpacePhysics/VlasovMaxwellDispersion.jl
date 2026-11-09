@@ -85,11 +85,9 @@ end
     @test contribution(snl, ωh, kh) ≈ contribution(snc, ωh, kh) rtol = 1.0e-6
 end
 
-@testitem "LowRankVDF: rtol drives rank and accuracy; plan is approximate" begin
-    using VlasovMaxwellDispersion: plan_contribution
+@testitem "LowRankVDF: rtol drives rank and accuracy" begin
     using PlasmaPopulations: pdf
     using LinearAlgebra: rank
-    using VlasovMaxwellDispersion: isexact
     vthz, vthp = 0.2, 0.3
     bk = BiKappa(; vth_perp = vthp, vth_para = vthz, kappa = 3.0)
     sb = NormalizedPopulation(1.0, 1.0, bk)
@@ -102,9 +100,6 @@ end
     end
     @test err[2][1] > err[1][1]        # tighter rtol ⇒ higher rank
     @test err[2][2] < err[1][2] / 10   # ⇒ at least an order more accurate
-    lr = LowRankVDF((q, u) -> pdf(bk, q, u); para = 20vthz, perp = 20vthp)
-    plan = plan_contribution(prepare(NormalizedPopulation(1.0, 1.0, lr)), k)
-    @test !isexact(plan)
 end
 
 @testitem "LowRankVDF: survey drops roots the surrogate cannot resolve" begin
@@ -133,7 +128,7 @@ end
         @test residual(exact, ω_fake, k) > 1.0e-3
     end
 
-    sol = solve(DispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), k))
+    sol = link(solve(DispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), k), AAA()))
     for b in sol
         @test trusted(d, s, b.omega, k)
         @test residual(exact, b.omega, k) < 1.0e-6

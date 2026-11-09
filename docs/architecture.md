@@ -14,7 +14,7 @@ closed form).
 | trait | values | drives |
 |---|---|---|
 | `Regime` | `NonRelativistic` / `Relativistic` | active coordinates, `γ`, pole map |
-| `IntegralClosure` | `HarmonicSum` / `Newberger` | harmonic truncation vs. closed-orbit `T(a,z)`; damping via Landau contour vs. residue extraction |
+| `IntegralClosure` | `HarmonicSum` / `Newberger` | harmonic truncation vs. closed-orbit `T(a,z)`. Adaptive only: `AdaptiveEval(; closure)`, or the direct `contribution` |
 | `ChiBackend` | `FixedNodeEval` / `AdaptiveEval` | whether a per-`k` plan hoists the ω-independent work onto fixed nodes, or the adaptive quadrature re-runs at every ω |
 
 Specializations are trait combinations: 

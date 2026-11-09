@@ -30,7 +30,7 @@
     @test any(p -> abs(p) < 0.02, pD)
 
     # Fix: the deflated global solver is pole-free at the origin
-    sol = solve(DispersionProblem(plasma, region, k), GRPF(; tol))
+    sol = link(solve(DispersionProblem(plasma, region, k), GRPF(; tol)))
     # The genuine symmetric ±kvA root pair is recovered.
-    @test count(ω -> abs(ω[]) > 0.02, sol.roots) ≥ 2
+    @test count(ω -> abs(ω[]) > 0.02, sol.branches) ≥ 2
 end

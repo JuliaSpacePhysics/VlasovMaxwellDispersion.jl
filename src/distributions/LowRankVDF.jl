@@ -165,7 +165,7 @@ function trusted(d::LowRankVDF, s, ω, k)
     end
 end
 
-prepare(d::LowRankVDF, args...; kw...) = PreparedVDF(d, d.cache)
+prepare(d::LowRankVDF; kw...) = PreparedVDF(d, d.cache)
 
 plan_contribution(c::PreparedVDF{<:LowRankVDF}, s, k; kw...) =
     plan_contribution(c.vdf, s, k; kw...)
@@ -183,7 +183,7 @@ function plan_contribution(d::LowRankVDF, s, k; kw...)
     α = stack(last, fac; dims = 1)       # ãₛ′(vⱼ)
     β = stack(first, fac; dims = 1)      # ãₛ(vⱼ)
     P∂, PF = _perp_tensors(_bessel_tensors(a, ns, vs), vs, ws, α, β)
-    return TablePlan(c.para, P∂, PF, ns, Ω, k.k_para, s.Pi2 / c.n; exact = false)
+    return TablePlan(c.para, P∂, PF, ns, Ω, k.k_para, s.Pi2 / c.n)
 end
 
 contribution(d::LowRankVDF, s, ω, k; kw...) = plan_contribution(d, s, k; kw...)(ω)

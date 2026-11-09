@@ -30,13 +30,13 @@ end
     k = Wavevector(0.01 / vA, 0.01 / vA)
     ωref = 9.9881e-3 - 2.3132e-7im
 
-    gsol = solve(DispersionProblem(plasma, (0.008 - 0.001im, 0.012 + 0.001im), k), GRPF(; tol = 1.0e-4))
+    gsol = link(solve(DispersionProblem(plasma, (0.008 - 0.001im, 0.012 + 0.001im), k), GRPF(; tol = 1.0e-4)))
     @test gsol.retcode == ReturnCode.Success
-    groots = gsol.roots
+    groots = gsol.branches
     @test !isempty(groots)
     @test all(x -> 0 <= x.resid < 1.0e-2, groots)
 
-    bsol = solve(DispersionProblem(plasma, ωref, [k]))
+    bsol = solve(DispersionProblem(plasma, ωref, [k]), Continuation())
     @test bsol.retcode == ReturnCode.Success
     @test only(bsol.resid) < 1.0e-10
 end
@@ -45,7 +45,7 @@ end
 # root is one, or the plan under-resolved f₀.
 @testitem "planned residual agrees with the independent direct-path residual" begin
     vdf = CoupledVDF((v, u) -> exp(-(u^2 + 0.5v^2)); para = 8.0, perp = 8.0)   # T⊥/T∥ = 2
-    sol = solve(DispersionProblem(NormalizedPopulation(-1.0, 4.0, vdf), 0.4 + 0.01im, Wavevector(1.0, 0.5)))
+    sol = solve(DispersionProblem(NormalizedPopulation(-1.0, 4.0, vdf), 0.4 + 0.01im, Wavevector(1.0, 0.5)), Muller())
     @test sol.retcode == ReturnCode.Success
     @test sol.resid < 1.0e-9
     @test residual(sol.prob, sol.omega) < 1.0e-6

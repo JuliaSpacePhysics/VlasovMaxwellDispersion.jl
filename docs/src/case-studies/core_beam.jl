@@ -31,7 +31,7 @@ dp = gyrofrequency(p, B0) / plasma_frequency(p, (2.53e9 + 2.17e9)u"m^-3")  # c/Ï
 region = (-0.55 - 0.1im, 0.55 + 0.06im)
 geom = CartesianSweep(k_para=(0.01:0.008:1.0) ./ dp)
 
-sol = solve(DispersionProblem(NormalizedPlasma(plasma), region, geom))
+sol = link(solve(DispersionProblem(NormalizedPlasma(plasma), region, geom), AAA()))
 
 
 # ## Dispersion diagram

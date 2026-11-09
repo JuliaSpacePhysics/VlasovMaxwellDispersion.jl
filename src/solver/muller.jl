@@ -19,25 +19,8 @@ end
 # ω0===0 has no scale ⇒ small absolute step.
 _seed_offset(ω0) = iszero(ω0) ? 1.0e-3 : min(1.0e-3 * max(abs(ω0), 1.0), 0.1 * abs(ω0))
 
-struct MullerCache{P, A, D, F}
-    prob::P
-    alg::A
-    D::D
-    f::F     # D but type-erased
-end
-
-function _init(prob::DispersionProblem{<:Seed, <:Wavevector}, alg::Muller)
-    p = prepare(prob)
-    D = DispersionFunction(p)
-    return MullerCache(p, alg, D, erase_cf(D))
-end
-
-function CommonSolve.solve!(cache::MullerCache)
-    (; prob, alg, f) = cache
-    t = @elapsed ω, nevals, code = _muller(f, prob.target[]; alg.atol, alg.maxiter)
-    stats = SolveStats(nevals, t)
-    return _seed_solution(prob, ω, residual(cache.D, ω), stats, code, alg)
-end
+seedsolver(prob, alg::Muller; kw...) = _seedsolver(prob, alg, _options(kw))
+findroot(alg::Muller, D, ω0) = _muller(erase_cf(D), ω0; alg.atol, alg.maxiter)
 
 function polish!(f, ωs, alg::Muller = Muller())
     n = 0

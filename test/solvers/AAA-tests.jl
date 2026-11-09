@@ -12,12 +12,12 @@
     region = (-0.08 - 0.03im, 0.08 + 0.03im)   # straddles ω=0
     prob = DispersionProblem(plasma, region, k)
 
-    sol = solve(prob, AAA())
+    sol = link(solve(prob, AAA()))
     @test sol.retcode == ReturnCode.Success
 
     # The genuine symmetric ±kvA root pair is found off the origin
-    @test count(b -> abs(b.omega) > 0.02, sol.roots) ≥ 2
-    @test all(b.resid < 1.0e-4 for b in sol.roots)
+    @test count(b -> abs(b.omega) > 0.02, sol.branches) ≥ 2
+    @test all(b.resid < 1.0e-4 for b in sol.branches)
 end
 
 @testitem "AAA per-slice (m=1) tracks a root branch" begin
@@ -31,10 +31,15 @@ end
     region = (0.05 - 0.05im, 1.2 + 0.05im)
     prob = DispersionProblem(cold, region, CartesianSweep(; k_para=range(0.3, 3.0; length=61)))
 
-    sp = solve(prob, AAA())
+    survey = solve(prob, AAA())
+    sp = link(survey)
     @test sp.retcode == ReturnCode.Success
-    @test !isempty(sp.roots)
-    rb = argmax(b -> count(isfinite, b.omega), sp.roots)
+    @test !isempty(sp.branches)
+    # Polished roots refine to themselves, before or after linking
+    same(a, b) = isnan.(a) == isnan.(b) && filter(isfinite, a) ≈ filter(isfinite, b)
+    @test same(refine(sp, Muller()).omega, sp.omega)
+    @test same(link(refine(survey, Muller())).omega, sp.omega)
+    rb = argmax(b -> count(isfinite, b.omega), sp.branches)
     valid = isfinite.(rb.omega)
     # Every sample Muller-polished to a genuine zero of det𝒟.
     @test maximum(rb.resid[valid]) < 1.0e-6
@@ -44,8 +49,8 @@ end
 
     # Cross-check a mid-sweep sample against an independent fixed-k GRPF survey.
     i = argmin(i -> valid[i] ? abs(kz[i] - 1.5) : Inf, eachindex(kz))
-    sg = solve(DispersionProblem(cold, region, rb.k[i]), GRPF())
-    @test minimum(abs(b.omega - rb.omega[i]) for b in sg.roots) < 1.0e-6
+    sg = link(solve(DispersionProblem(cold, region, rb.k[i]), GRPF()))
+    @test minimum(abs(b.omega - rb.omega[i]) for b in sg.branches) < 1.0e-6
 end
 
 @testitem "AAA and padded GRPF swept surveys agree" begin
@@ -61,17 +66,17 @@ end
     # The σ_min/σ_max residual stays ~ε (asserted below).
     region = (0.05 - 0.05im, 4.5 + 0.05im)
     prob = DispersionProblem(cold, region, CartesianSweep(; k_para=range(0.3, 3.0, length=9)))
-    sa = solve(prob, AAA())
-    sg_exact = solve(prob, GRPF())
+    sa = link(solve(prob, AAA()))
+    sg_exact = link(solve(prob, GRPF()))
     ll, ur = region
     margin = 0.15 * (ur - ll)
     padded = (ll - margin, ur + margin)
-    sg_padded = solve(DispersionProblem(cold, padded, prob.k), GRPF())
+    sg_padded = link(solve(DispersionProblem(cold, padded, prob.k), GRPF()))
     @test sa.retcode == sg_exact.retcode == sg_padded.retcode == ReturnCode.Success
-    @test length(sa.roots) == 4
+    @test length(sa.branches) == 4
 
     inbox(ω) = real(ll) ≤ real(ω) ≤ real(ur) && imag(ll) ≤ imag(ω) ≤ imag(ur)
-    samples(sol) = [(k.k_para, ω) for b in sol.roots for (k, ω) in zip(b.k, b.omega) if inbox(ω)]
+    samples(sol) = [(k.k_para, ω) for b in sol.branches for (k, ω) in zip(b.k, b.omega) if inbox(ω)]
     sA, sG_exact, sG = samples(sa), samples(sg_exact), samples(sg_padded)
     # GRPF misses two roots near boundaries
     @test length(sG_exact) < length(sA) == length(sG)
@@ -79,9 +84,9 @@ end
     dist(x, S) = minimum(hypot(x[1] - y[1], abs(x[2] - y[2])) for y in S)
     @test maximum(dist(x, sG) for x in sA) < 1.0e-8
     @test maximum(dist(x, sA) for x in sG) < 1.0e-8
-    @test any(b -> all(ω -> abs(ω - sqrt(10.005446)) < 1.0e-3, filter(isfinite, b.omega)), sa.roots)
+    @test any(b -> all(ω -> abs(ω - sqrt(10.005446)) < 1.0e-3, filter(isfinite, b.omega)), sa.branches)
     # σ-ratio residual is ~ε on every branch, including row-vanishing Langmuir.
-    @test all(maximum(filter(isfinite, b.resid)) < 1.0e-6 for b in sa.roots)
+    @test all(maximum(filter(isfinite, b.resid)) < 1.0e-6 for b in sa.branches)
 end
 
 @testitem "AAA keeps genuine low-frequency sheets in a wide ω box" begin
@@ -99,14 +104,14 @@ end
     region = (1.0e-4 - 0.05im, 3.0 + 0.01im)
     # Sweep resolution is the geometry's: an explicit k grid replaces any solver knob.
     geom = AngleSweep(k=range(0.02, 2.0, length=31), theta=0.001)
-    sol = solve(DispersionProblem(plasma, region, geom), AAA())
+    sol = link(solve(DispersionProblem(plasma, region, geom), AAA()))
     @test sol.retcode == ReturnCode.Success
-    @test any(b -> maximum(abs, filter(isfinite, b.omega)) < 3.0e-3, sol.roots)
-    @test all(maximum(filter(isfinite, b.resid)) < 1.0e-4 for b in sol.roots)
+    @test any(b -> maximum(abs, filter(isfinite, b.omega)) < 3.0e-3, sol.branches)
+    @test all(maximum(filter(isfinite, b.resid)) < 1.0e-4 for b in sol.branches)
 
     # Post-hoc pruning without re-solving.
     long = filter(b -> count(isfinite, b.omega) ≥ 10, sol)
-    @test all(count(isfinite, b.omega) ≥ 10 for b in long.roots)
+    @test all(count(isfinite, b.omega) ≥ 10 for b in long.branches)
 end
 
 @testitem "AAA rejects the deflated det's structural ω=0 zero (kinetic)" begin
@@ -124,10 +129,10 @@ end
     @test residual(plasma, 1.0e-5 + 0im, k) < 1.0e-4   # residual gate blind here
 
     region = (-0.02 - 0.02im, 0.35 + 0.01im)           # straddles the origin
-    sol = solve(DispersionProblem(plasma, region, k), AAA())
+    sol = link(solve(DispersionProblem(plasma, region, k), AAA()))
     diag = hypot(0.37, 0.03)
-    @test all(abs(b.omega) > 1.0e-6 * diag for b in sol.roots)
-    @test all(b.resid < 1.0e-4 for b in sol.roots)
+    @test all(abs(b.omega) > 1.0e-6 * diag for b in sol.branches)
+    @test all(b.resid < 1.0e-4 for b in sol.branches)
 end
 
 @testitem "survey reports Saturated when the fit stops short of tol" begin
@@ -142,7 +147,7 @@ end
     prob = DispersionProblem(plasma, (-0.08 - 0.03im, 0.08 + 0.03im), Wavevector(0.0, 2.0))
 
     # Tight degree cap fails to reach `tol` => may be missing roots
-    sol = solve(prob, AAA(; max_degree=2))
+    sol = link(solve(prob, AAA(; max_degree=2)))
     @test sol.retcode == ReturnCode.Saturated
     @test !successful_retcode(sol)
     @test successful_retcode(solve(prob, AAA()))

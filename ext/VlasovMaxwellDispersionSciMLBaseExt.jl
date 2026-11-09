@@ -4,27 +4,20 @@ module VlasovMaxwellDispersionSciMLBaseExt
 # (Halley, Newton, Broyden, …) through the same `solve(prob, alg)` verb.
 # Caveat: det 𝒟 ∈ ℂ; solvers that assume a real residual
 # (Broyden/DFSane compare |f| via `isless`) will error. Halley works.
-using VlasovMaxwellDispersion: _seed_solution, DispersionProblem, DispersionSolution, SolveStats, Seed, Wavevector, DispersionFunction,
-    residual, prepare, ReturnCode
-import VlasovMaxwellDispersion: _solve
+using VlasovMaxwellDispersion: _seedsolver, _split_options, ReturnCode
+import VlasovMaxwellDispersion: findroot
+import PlasmaDispersionBase: seedsolver
 import SciMLBase
 
-function _solve(prob::DispersionProblem{<:Seed, <:Wavevector}, alg::SciMLBase.AbstractNonlinearAlgorithm; kwargs...)
-    t0 = time_ns()
+seedsolver(prob, alg::SciMLBase.AbstractNonlinearAlgorithm; kw...) = _seedsolver(prob, alg, _split_options(kw)...)
+
+function findroot(alg::SciMLBase.AbstractNonlinearAlgorithm, D, ω0; kw...)
     nevals = Ref(0)
-    f = DispersionFunction(prepare(prob))
-    np = SciMLBase.NonlinearProblem((ω, _) -> (nevals[] += 1; f(ω)), complex(prob.target.omega0))
-    sol = SciMLBase.solve(np, alg; kwargs...)
-    ω = sol.u
-    code = if SciMLBase.successful_retcode(sol)
-        ReturnCode.Success
-    elseif sol.retcode === SciMLBase.ReturnCode.MaxIters
-        ReturnCode.MaxIters
-    else
-        ReturnCode.Failure
-    end
-    stats = SolveStats(nevals[], (time_ns() - t0) / 1.0e9)
-    return _seed_solution(prob, ω, residual(f, ω), stats, code, alg)
+    np = SciMLBase.NonlinearProblem((ω, _) -> (nevals[] += 1; D(ω)), complex(ω0))
+    sol = SciMLBase.solve(np, alg; kw...)
+    code = SciMLBase.successful_retcode(sol) ? ReturnCode.Success :
+        sol.retcode === SciMLBase.ReturnCode.MaxIters ? ReturnCode.MaxIters : ReturnCode.Failure
+    return sol.u, nevals[], code
 end
 
 end

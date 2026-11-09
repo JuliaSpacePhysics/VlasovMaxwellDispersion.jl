@@ -43,7 +43,7 @@ end
     D = dispersion_tensor(s, ω, k)
     @test all(x -> isnan(real(x)), D)
     @test isnan(real(electrostatic_det(s, ω, k)))  # guard sits in dielectric: covers this too
-    sol = solve(DispersionProblem(s, ω, k))  # seeded in the overflow region
+    sol = solve(DispersionProblem(s, ω, k), Muller())  # seeded in the overflow region
     @test sol.retcode === ReturnCode.Failure && isnan(sol.resid)
 
     # Same overflow, coupled quadrature path

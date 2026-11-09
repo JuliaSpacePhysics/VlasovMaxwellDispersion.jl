@@ -17,9 +17,10 @@ Base.@kwdef struct Continuation{B, T}
     maxsubdiv::Int = 10
 end
 
-mutable struct ContinuationCache{P, A, KV, KE, W, R}
+mutable struct ContinuationCache{P, A, B, KV, KE, W, R}
     prob::P
     alg::A
+    base::B             # `alg.base`'s seeded solver
     ks::KV
     omega::Vector{W}
     resid::Vector{R}
@@ -29,25 +30,23 @@ mutable struct ContinuationCache{P, A, KV, KE, W, R}
     nevals::Int
 end
 
-_saveat(ks) = collect(ks)
-_saveat(k::Wavevector) = [k]
-function _saveat(g::ParameterGeometry)
-    grids = paramgrids(g)
-    length(grids) == 1 || throw(ArgumentError("higher-dimensional sweeps are not supported yet"))
-    return map(wavefun(g), only(grids))
+function _saveat(k)
+    ks = wavevectors(k)
+    ndims(ks) ≤ 1 || throw(ArgumentError("higher-dimensional sweeps are not supported yet"))
+    return collect(vec(ks))
 end
 
 # Seed anchored mid-path (`at`): track outward both ways and stitch to path order.
-function _solve(prob::DispersionProblem{<:Seed}, alg::Continuation)
-    isnothing(prob.target.at) && return solve!(_init(prob, alg))
+function __solve(prob::DispersionProblem{<:Seed}, alg::Continuation; kw...)
+    isnothing(prob.target.at) && return _run!(_cache(prob, alg; kw...))
+    prob = _prepare(prob, _options(kw))   # once for both directions
     ks = _saveat(prob.k)
-    j = argmin(i -> _dist(prob.target.at, ks[i]), eachindex(ks))
-    fwd = solve!(_init(_reseed(prob, ks[j:end]), alg))
-    bwd = solve!(_init(_reseed(prob, reverse(ks[1:j])), alg))
+    j = argmin(i -> norm(prob.target.at - ks[i]), eachindex(ks))
+    fwd = _run!(_cache(_reseed(prob, ks[j:end]), alg; kw...))
+    bwd = _run!(_cache(_reseed(prob, reverse(ks[1:j])), alg; kw...))
     return _splice(bwd, fwd, prob, alg)
 end
-_reseed(prob, ks) =
-    DispersionProblem(prob.plasma, Seed(prob.target.omega0), ks, prob.closure, prob.mode, prob.backend, prob.ref)
+_reseed(prob, ks) = remake(prob; target = Seed(prob.target.omega0), k = ks)
 
 # bwd runs anchor→start over the reversed path; drop its anchor node (fwd owns it).
 function _splice(bwd, fwd, prob, alg)
@@ -55,36 +54,30 @@ function _splice(bwd, fwd, prob, alg)
     resid = vcat(reverse(bwd.resid)[1:end-1], fwd.resid)
     stats = bwd.stats + fwd.stats
     code = successful_retcode(fwd) && successful_retcode(bwd) ? ReturnCode.Success : ReturnCode.Partial
-    return _seed_solution(prob, omega, resid, stats, code, alg)
+    return DispersionSolution(omega, resid, stats, code, prob, alg)
 end
 
-function _init(prob::DispersionProblem{<:Seed}, alg::Continuation)
-    p = prepare(prob)
+function _cache(prob, alg::Continuation; kw...)
+    opts = _options(kw)
+    p = _prepare(prob, opts)
     ks = _saveat(p.k)
     ω0 = p.target.omega0
     CT = complex(float(typeof(ω0)))
     RT = real(CT)
-    return ContinuationCache(p, alg, ks, CT[], RT[], CT(ω0), similar(ks, 0), CT[], 0)
+    return ContinuationCache(p, alg, seedsolver(p, alg.base; opts...), ks, CT[], RT[], CT(ω0), similar(ks, 0), CT[], 0)
 end
 
-function CommonSolve.step!(cache::ContinuationCache)
-    i = length(cache.omega) + 1
-    i > length(cache.ks) && return cache
-    ω, res = _advance!(cache, cache.ks[i], 0)
-    push!(cache.omega, ω)
-    push!(cache.resid, res)
-    return cache
-end
-
-function CommonSolve.solve!(cache::ContinuationCache)
+function _run!(cache::ContinuationCache)
     t0 = time_ns()
-    while length(cache.omega) < length(cache.ks)
-        step!(cache)
+    for k in cache.ks
+        ω, res = _advance!(cache, k, 0)
+        push!(cache.omega, ω)
+        push!(cache.resid, res)
     end
     time = (time_ns() - t0) / 1.0e9
     (; prob, alg, omega, resid) = cache
     code = all(isfinite, omega) ? ReturnCode.Success : ReturnCode.Partial
-    return _seed_solution(prob, omega, resid, SolveStats(cache.nevals, time), code, alg)
+    return DispersionSolution(omega, resid, SolveStats(cache.nevals, time), code, prob, alg)
 end
 
 # Step to `kt`, bisecting the interval from the last accepted point on rejection.
@@ -104,10 +97,9 @@ function _advance!(cache, kt, depth)
 end
 
 function _refine(cache, kt, guess)
-    (; prob, alg) = cache
-    sol = _solve(DispersionProblem(prob.plasma, Seed(guess), kt, prob.closure, prob.mode, prob.backend, prob.ref), alg.base)
-    cache.nevals += sol.stats.nevals
-    return sol.omega, sol.resid
+    r = cache.base(kt, guess)
+    cache.nevals += r.nevals
+    return r.omega, r.resid
 end
 
 function _push_accepted!(cache, kt, ω)
@@ -130,11 +122,10 @@ end
 # The origin is arbitrary (here, the oldest retained node): polynomial extrapolation
 # is invariant under an affine shift of the abscissa, so only differences matter and
 # no coordinate has to be carried across the track.
-_dist(a::Wavevector, b::Wavevector) = hypot(a.k_perp - b.k_perp, a.k_para - b.k_para)
 function _arclengths!(s, khist)
     s[1] = zero(eltype(s))
     for i in 2:length(khist)
-        s[i] = s[i - 1] + _dist(khist[i - 1], khist[i])
+        s[i] = s[i - 1] + norm(khist[i] - khist[i - 1])
     end
     return s
 end
@@ -146,9 +137,9 @@ function _predict(cache, kt)
     _established(cache) || return last(whist)
     n = length(whist)
     return @no_escape begin
-        s = @alloc(typeof(_dist(kt, kt)), n)
+        s = @alloc(typeof(norm(kt)), n)
         c = @alloc(eltype(whist), n)
-        st = _arclengths!(s, khist)[n] + _dist(last(khist), kt)
+        st = _arclengths!(s, khist)[n] + norm(kt - last(khist))
         copyto!(c, whist)
         for j in 2:n, i in n:-1:j
             c[i] = (c[i] - c[i - 1]) / (s[i] - s[i - j + 1])

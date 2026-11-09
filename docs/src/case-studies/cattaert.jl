@@ -37,7 +37,7 @@ i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 ttrack = @elapsed ωs = map(1:4) do ib
     rows = ref[ref[:, 2] .== ib, :]
     seed = complex(rows[i0, 3], rows[i0, 4])
-    ω = solve(DispersionProblem(NormalizedPlasma(plasma), Seed(seed, ks[i0]), ks)).omega  # fans out both ways from kρ≈0.1
+    ω = solve(DispersionProblem(NormalizedPlasma(plasma), Seed(seed, ks[i0]), ks), Continuation()).omega  # fans out both ways from kρ≈0.1
     ωref = complex.(rows[:, 3], rows[:, 4])
     dre = abs.(abs.(real.(ω)) .- abs.(real.(ωref)))
     dim = abs.(imag.(ω) .- imag.(ωref))
@@ -80,7 +80,7 @@ fig
 region = (0.005 - 0.16im, 3.05 + 0.02im)
 geom = AngleSweep(k=range(0.05 / vtp * 0.1, 0.3 / vtp; length=61), theta=θ)
 prob = DispersionProblem(NormalizedPlasma(plasma), region, geom)
-sol = solve(prob)
+sol = link(solve(prob, AAA()))
 
 # `dispersion_diagram` plots the surveyed branches: `Re ω(kρ)` and `Im ω(kρ)`,
 # one colour per discovered branch. The four tabulated branches appear as

@@ -134,7 +134,7 @@ end
     # O-mode of the pair plasma: the transverse L(=R) branch above the band
     pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
     sol = solve(DispersionProblem(pair(mom), Seed(1.0933 + 0.0im, Wavevector(0.0, 0.02)),
-        Wavevector.(0.0, [0.02, 0.62, 1.22]); mode=:L))
+        Wavevector.(0.0, [0.02, 0.62, 1.22]); mode=:L), Continuation())
     @test all(<(1.0e-10), sol.resid)
     @test real.(sol.omega) ≈ [1.093268, 1.258110, 1.637947] rtol = 1.0e-5
     @test maximum(abs ∘ imag, sol.omega) < 1.0e-10
@@ -170,7 +170,7 @@ end
     @test norm(dre - dim) / norm(dre) < 1.0e-4
     # A/IC root continues beyond the old k⊥ ceiling
     pair2 = (NormalizedPopulation(1.0, 1.0, mj), NormalizedPopulation(-1.0, 1.0, mj))
-    sol = solve(DispersionProblem(pair2, 2.5766 - 0.4536im, Wavevector(0.5, 2.5)))
+    sol = solve(DispersionProblem(pair2, 2.5766 - 0.4536im, Wavevector(0.5, 2.5)), Muller())
     @test sol.resid < 1.0e-10
     @test abs(sol.omega - (2.549295 - 0.4004106im)) < 1.0e-3
     end
