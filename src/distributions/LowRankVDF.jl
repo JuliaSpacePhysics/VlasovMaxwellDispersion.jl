@@ -11,9 +11,9 @@ Separable surrogate `f₀ ≈ Σₛ ãₛ(p⊥)·bₛ(p∥)` of a coupled gyrotr
 adaptive cross approximation to relative tolerance `rtol` (rank capped by `rmax`, 
 pivots searched on a `probe = (nperp, npara)` grid).
 
-Drop-in for [`CoupledVDF`](@ref): χ costs `O(rank · nmax)` per ω instead of a 2-D adaptive
-quadrature, 10–300× faster per ω (the win grows with `k⊥`). Coupled VDFs are typically very low
-rank — a bi-kappa and a spherical shell are both ≈ 10.
+Drop-in for [`CoupledVDF`](@ref): Landau residues need `rank` slices per crossed harmonic
+instead of every Bessel-resolving perp node, so it gains most at large `k⊥`. Coupled VDFs are
+typically very low rank — a bi-kappa and a spherical shell are both ≈ 10.
 
 `f0` must be evaluable at complex `p∥`: each `bₛ(u)=f₀(vₛ,u)` is a literal `f₀` slice, so unlike a
 fitted surrogate ([`SplineVDF`](@ref)), which exists only on the real axis, it can be continued.
@@ -93,82 +93,31 @@ end
 # Parallel factor bₛ(u)=f₀(vpₛ,u) and its p∥-derivative bₛ′(u)=∂∥f₀(vpₛ,u)
 @inline _b(d::LowRankVDF, s, u) = d.f0(d.vp[s], u)
 @inline _bdb(d::LowRankVDF, s, u) = d.bd(d.vp[s], u)
-@inline _db(d::LowRankVDF, s, u) = _bdb(d, s, u)[2]
-
-# Neumann far-field is truncated at (1/THETA)^NMOM ≈ 1e-12.
-const _LR_THETA = 2.0
-const _LR_NMOM = 40
-# Plan-time quadratures must not be the accuracy bottleneck: the cross tolerance `rtol` is.
-const _LR_QRTOL = 1.0e-11
-# Panel discovery only needs to LOCATE structure; GL-12 per panel supplies the accuracy.
-const _LR_PRTOL = 1.0e-8
 
 # EVERYTHING parallel is k-independent — wavevector enters χ only through perpendicular
-# Bessel argument and the pole. Keeping the p∥ tables here (not in the per-k plan)
-# is what makes re-planning cheap; `residual` re-plans once per root, and an adaptive
-# moment quadrature there would dominate a whole survey.
-struct LowRankPara{T}
-    U::T                            # p∥ half-width: sets the far/near split
-    un::Vector{T}; uw::Vector{T}    # fixed p∥ nodes/weights (near field)
-    Bv::Matrix{T}; dBv::Matrix{T}   # [l,s] bₛ, bₛ′ at those nodes
-    nu::Matrix{T}; mu::Matrix{T}    # [p,s] scaled p∥ moments of bₛ, bₛ′ (far field)
-    I0::Vector{T}; I1::Vector{T}; I2::Vector{T}
-    J0::Vector{T}; J1::Vector{T}    # raw p∥ moments (moment recursion; k∥=0 path)
-end
-
-function LowRankPara(d::LowRankVDF, gl)
-    R = rank(d)
-    ulo, uhi = d.para
-    T = typeof(float(uhi))
-    U = max(abs(ulo), abs(uhi))
-    upan = _panels(u -> sum(s -> abs(_b(d, s, u)), 1:R), ulo, uhi, zero(U))
-    un, uw = gl_nodes(upan, QuadGK.gauss(gl)..., T)
-    L = length(un)
-    Bv = [_b(d, s, un[l]) for l in 1:L, s in 1:R]
-    dBv = [_db(d, s, un[l]) for l in 1:L, s in 1:R]
-    # Far-field moments νₚ = (1/U)∫(u/U)ᵖ bₛ du need their OWN quadrature: the weight
-    # (u/U)^40 is edge-peaked, so panels chosen for bₛ alone under-resolve them badly.
-    nu = zeros(T, _LR_NMOM + 1, R); mu = zeros(T, _LR_NMOM + 1, R)
-    for s in 1:R
-        nu[:, s] .= _scaled_moments(u -> _b(d, s, u), ulo, uhi, U)
-        blo, bhi = _b(d, s, ulo), _b(d, s, uhi)
-        for p in 1:(_LR_NMOM + 1)
-            edge = bhi * (uhi / U)^(p - 1) - blo * (ulo / U)^(p - 1)
-            mu[p, s] = (edge - (p - 1) * (p > 1 ? nu[p - 1, s] : zero(T))) / U
-        end
-    end
-    # ∫uᵖ b du = U^{p+1}·νₚ — the moment recursion's raw moments come free.
-    return LowRankPara(
-        U, un, uw, Bv, dBv, nu, mu,
-        U .* nu[1, :], U^2 .* nu[2, :], U^3 .* nu[3, :], U .* mu[1, :], U^2 .* mu[2, :]
-    )
-end
-
-_scaled_moments(b, lo, hi, U) = QuadGK.quadgk(lo, hi; rtol = _LR_QRTOL) do u
-    t = u / U
-    bu = b(u) / U
-    SVector(ntuple(p -> bu * t^(p - 1), Val(_LR_NMOM + 1)))
-end[1]
-
+# Bessel argument and the pole. Keeping the p∥ table in the cache (not in the per-k plan)
+# is what makes re-planning cheap.
+#
 # Density and ⟨p⊥²⟩ OF THE SURROGATE.
 # Both are FIXED-node Gauss–Legendre on the base panels, never adaptive: the ãₛ inherit
-# the cross's 1/rtol conditioning, so an adaptive rule targeting _LR_QRTOL on them would
+# the cross's 1/rtol conditioning, so an adaptive rule targeting tight tolerance on them would
 # chase round-off and subdivide without bound (as would a panel proxy built from them).
 function _lr_cache(d::LowRankVDF, gl, rtol)
-    pa = LowRankPara(d, gl)
-    vpan = _panels(v -> sum(u -> abs(d.f0(v, u)), d.up), d.perp..., zero(pa.U))
-    n = zero(pa.U); p2 = zero(n)
+    upan = _panels(u -> sum(s -> abs(_b(d, s, u)), 1:rank(d)), d.para..., zero(d.para[2]))
+    pa = ParaTable((s, u) -> _bdb(d, s, u), rank(d), upan, gl, FixedNodeEval().tol)
+    vpan = _panels(v -> sum(u -> abs(d.f0(v, u)), d.up), d.perp..., zero(d.para[2]))
+    n = zero(d.para[2]); p2 = zero(n)
     for (v, w) in zip(gl_nodes(vpan, QuadGK.gauss(gl)...)...)
         av = _perp_factors(d, v)[1]
         for s in 1:rank(d)
-            n += 2π * w * v * av[s] * pa.I0[s]
-            p2 += 2π * w * v^3 * av[s] * pa.I0[s]
+            n += 2π * w * v * av[s] * pa.raw[s][1]
+            p2 += 2π * w * v^3 * av[s] * pa.raw[s][1]
         end
     end
     # ãₛ at a few perp probes, so `trust_error` costs O(nprobe + rank) f₀ evaluations per u
     vprobe = collect(range(d.perp[1], d.perp[2], _LR_NPROBE))
     A = reduce(vcat, transpose(_perp_factors(d, v)[1]) for v in vprobe)
-    f0max = maximum(v -> abs(d.f0(v, zero(pa.U))), vprobe)
+    f0max = maximum(v -> abs(d.f0(v, zero(n))), vprobe)
     return (; n, pperp2_mean = p2 / n, para = pa, vpan, gl, rtol, vprobe, A, f0max)
 end
 
@@ -218,166 +167,23 @@ end
 
 prepare(d::LowRankVDF, args...; kw...) = PreparedVDF(d, d.cache)
 
-struct LowRankPlan{T, D, P}
-    vdf::D
-    pa::P                                 # k-independent p∥ tables
-    Ω::T; kz::T; Pi2::T
-    ns::UnitRange{Int}
-    Pd::Matrix{SMatrix{3, 3, T, 9}}       # [n,s] 2π ∫ ãₛ′(v)·Kₙ(v) dv
-    Pf::Matrix{SMatrix{3, 3, T, 9}}       # [n,s] 2π ∫ v·ãₛ(v)·Kₙ(v) dv
-    invn::T
-end
-
-isexact(::LowRankPlan) = false
-
 plan_contribution(c::PreparedVDF{<:LowRankVDF}, s, k; kw...) =
     plan_contribution(c.vdf, s, k; kw...)
 
 function plan_contribution(d::LowRankVDF, s, k; kw...)
     c = d.cache
-    gl = c.gl
-    Ω, kz = s.Omega, k.k_para
+    Ω = s.Omega
     a = k.k_perp / Ω
-    R = rank(d)
     nmax = nmax_bessel(a^2 * abs(c.pperp2_mean) / 2)
     ns = (-nmax):nmax
-
-    # The base panels resolve the vdf; refine to ≥2 panels per Bessel wavelength π/a, which
-    # is the only k-dependent thing about the perp grid (a quadrature rule sized for f₀
-    # alone cannot see that oscillation).
-    vpan = _refine(c.vpan, abs(a))   # Bessel wavelength π/|a|; negative Ω must still refine
-    T = typeof(float(k.k_perp))
-    Pd = zeros(SMatrix{3, 3, T, 9}, length(ns), R)
-    Pf = zeros(SMatrix{3, 3, T, 9}, length(ns), R)
-    Jv = Vector{T}(undef, nmax + 2)
-    for (v, w) in zip(gl_nodes(vpan, QuadGK.gauss(gl)..., T)...)
-        av, adv = _perp_factors(d, v)
-        besselj_ladder!(Jv, nmax + 1, a * v)
-        for (i, n) in enumerate(ns)
-            Jm, Jn, Jp = _jladder(Jv, n - 1), _jladder(Jv, n), _jladder(Jv, n + 1)
-            b1, b2 = v * (Jm + Jp) / 2, v * (Jm - Jp) / 2
-            K = _symmat(b1^2, b1 * b2, b1 * Jn, b2^2, b2 * Jn, Jn^2)
-            for r in 1:R
-                Pd[i, r] += (2π * w * adv[r]) * K
-                Pf[i, r] += (2π * w * v * av[r]) * K
-            end
-        end
-    end
-    return LowRankPlan(d, c.para, Ω, kz, s.Pi2, ns, Pd, Pf, 1 / c.n)
-end
-
-# Adaptive panel edges for `f` on [lo,hi]; `a>0` additionally caps panels at the Bessel
-# half-wavelength π/(2a), which adaptive quadrature on a non-oscillatory proxy cannot see.
-function _panels(f, lo, hi, a, rtol = _LR_PRTOL)
-    segs = QuadGK.quadgk_segbuf(f, lo, hi; rtol)[3]
-    e = sort!(unique!(vcat([s.a for s in segs], [s.b for s in segs])))
-    return _refine(e, a)
-end
-
-function _refine(e, a)
-    iszero(a) && return e
-    out = [e[1]]
-    for i in 2:length(e)
-        m = max(1, ceil(Int, a * (e[i] - e[i - 1]) / (π / 2)))
-        append!(out, range(e[i - 1], e[i]; length = m + 1)[2:end])
-    end
-    return out
-end
-
-# Landau integrals A₀ₛ=∫bₛ/(u−ζ)du, B₀ₛ=∫bₛ′/(u−ζ)du for ALL ranks at one ζ, σ=sign(k∥).
-# Batched over s because ζ is shared by the whole rank index: the node kernel wₗ=uwₗ/(uₗ−ζ)
-# — the only division in the ω evaluation — is built once and contracted with every column.
-# FAR speedup (|ζ|>θU): Neumann series in 1/ζ — no logs, no cancellation, ω-independent moments;
-#   When k∥·p∥max/Ω ≪ 1 (quasi-perpendicular propagation), all but a couple of harmonics take this branch.
-# NEAR: pole-subtracted fixed-node sum + the analytic log, with bₛ(ζ),
-#   bₛ′(ζ) from the TRUE f₀ slice ⇒ exact Landau residue.
-function _lr_cauchy!(A, B, w, d, pa::LowRankPara, ζ, σ)
-    lo, hi = d.para
-    if abs(ζ) > _LR_THETA * pa.U
-        invξ = pa.U / ζ
-        crossed = σ * imag(ζ) < 0 && lo < real(ζ) < hi
-        @inbounds for s in eachindex(A)
-            a = zero(ζ); b = zero(ζ)
-            for p in (_LR_NMOM + 1):-1:1
-                a = (a + pa.nu[p, s]) * invξ
-                b = (b + pa.mu[p, s]) * invξ
-            end
-            A[s] = -a; B[s] = -b
-            if crossed
-                bζ, dbζ = _bdb(d, s, ζ)
-                A[s] += σ * _2πim * bζ
-                B[s] += σ * _2πim * dbζ
-            end
-        end
-        return
-    end
-    # nodes at — or grazing — a real ζ are dropped as removable and restored per s
-    W, w0, hit = _node_kernel!(w, pa.un, pa.uw, ζ, _NODE_BAND * pa.U)
-    # The peel gate only needs the magnitude of φ on the real axis beside ζ, so read it off the
-    # node table (bracketing the clamped ζ)
-    j = searchsortedfirst(pa.un, clamp(real(ζ), lo, hi))
-    j1, j2 = clamp(j - 1, 1, length(pa.un)), clamp(j, 1, length(pa.un))
-    @inbounds for s in eachindex(A)
-        bζ, dbζ = _bdb(d, s, ζ)
-        # b″(ζ) is the removable value of the bₛ′ integral there; only a real ζ gets that close
-        d2 = hit ? _d2slice(d, s, real(ζ)) : dbζ
-        sb = max(abs(pa.Bv[j1, s]), abs(pa.Bv[j2, s]))
-        sdb = max(abs(pa.dBv[j1, s]), abs(pa.dBv[j2, s]))
-        A[s] = _cauchy_near(w, W, w0, pa.Bv, s, bζ, dbζ, ζ, lo, hi, σ, sb)
-        B[s] = _cauchy_near(w, W, w0, pa.dBv, s, dbζ, d2, ζ, lo, hi, σ, sdb)
-    end
-    return
-end
-
-# One near-field Landau-Cauchy transform ∫φ/(u−ζ)du from the shared kernel: Σₗwₗφₗ, minus
-# φ(ζ)·Σₗwₗ when the pole is peeled, plus the analytic log.
-@inline function _cauchy_near(w, W, w0, φl, s, φζ, dφζ, ζ, lo, hi, σ, scale)
-    S = zero(ζ)
-    @inbounds @simd for l in eachindex(w)
-        S += w[l] * φl[l, s]
-    end
-    peeled = _peel(φζ, scale)
-    peeled && (S += w0 * dφζ - φζ * W)
-    return S + φζ * _lpole_term(ζ, lo, hi, σ, peeled)
-end
-
-# b″(ζ) by central difference on the first-derivative slice.
-@inline _d2slice(d, s, x) = let h = 1.0e-4 * (1 + abs(x))
-    (_db(d, s, x + h) - _db(d, s, x - h)) / (2h)
-end
-
-# uʲ/(u−ζ) = ζʲ/(u−ζ) + (poly) ⇒ only TWO Cauchy transforms per (n,s); the u¹,u² moments
-# follow from the ω-independent raw moments.
-function (pl::LowRankPlan)(ω)
-    ωc = complex(float(ω))
-    pa = pl.pa
-    acc = zero(SVector{6, ComplexF64})
-    kz = pl.kz
-    z0 = iszero(kz)
-    σ = z0 ? one(kz) : sign(kz)
-    ik = z0 ? zero(kz) : -1 / kz
-    T = typeof(ωc / oneunit(kz))
-    A = similar(pa.I0, T); B = similar(pa.I0, T)   # per-rank Landau integrals at one ζ
-    w = similar(pa.un, T)                          # shared near-field node kernel
-    @inbounds for (i, n) in enumerate(pl.ns)
-        nΩ = n * pl.Ω
-        ζ = z0 ? ωc : (ωc - nΩ) / kz
-        z0 || _lr_cauchy!(A, B, w, pl.vdf, pa, ζ, σ)
-        for s in eachindex(pa.I0)
-            M = if z0
-                invΔ = 1 / (ωc - nΩ)
-                (pa.I0[s] * invΔ, pa.I1[s] * invΔ, pa.I2[s] * invΔ, pa.J0[s] * invΔ, pa.J1[s] * invΔ)
-            else
-                A0, B0 = A[s], B[s]
-                A1 = pa.I0[s] + ζ * A0
-                A2 = pa.I1[s] + ζ * A1
-                B1 = pa.J0[s] + ζ * B0
-                (ik * A0, ik * A1, ik * A2, ik * B0, ik * B1)
-            end
-            acc += _chi_mblock(M, pl.Pd[i, s], pl.Pf[i, s], ωc, kz, nΩ)
-        end
-    end
-    return (pl.Pi2 * pl.invn / ωc^2) * _antisymmat(acc)
+    # The base panels resolve the vdf; the Bessel wavelength π/a is the only k-dependent thing
+    # about the perp grid (negative Ω must still refine).
+    vs, ws = gl_nodes(_refine(c.vpan, abs(a)), QuadGK.gauss(c.gl)..., typeof(float(k.k_perp)))
+    fac = _perp_factors.(Ref(d), vs)
+    α = stack(last, fac; dims = 1)       # ãₛ′(vⱼ)
+    β = stack(first, fac; dims = 1)      # ãₛ(vⱼ)
+    P∂, PF = _perp_tensors(_bessel_tensors(a, ns, vs), vs, ws, α, β)
+    return TablePlan(c.para, P∂, PF, ns, Ω, k.k_para, s.Pi2 / c.n; exact = false)
 end
 
 contribution(d::LowRankVDF, s, ω, k; kw...) = plan_contribution(d, s, k; kw...)(ω)

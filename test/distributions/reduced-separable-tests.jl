@@ -5,13 +5,12 @@
     # upper, near-real, real, lower
     for ζ in (1.5 + 0.8im, 0.3 + 0.05im, 0.3, 0.0, 1.2 - 0.3im, 2.0 - 5.0im)
         @test landau(g, ζ, L, U) ≈ Z(ζ)
-        @test landau(g, [ζ], L, U) ≈ [Z(ζ)]    # vector path, single pole
     end
     # Far and near-but-unpeelable causal poles avoid `Inf * 0`.
     # Damped pole still carries its Landau residue.
     ζs = [80.0im, 30.0im, 1.2 - 0.3im]
     @test !isfinite(g(30.0im))
-    @test landau(g, ζs, L, U) ≈ Z.(ζs)
+    @test landau.(g, ζs, L, U) ≈ Z.(ζs)
     @test isnan(Z(1.0 - 30.0im))
     @test isnan(landau(g, 1.0 - 30.0im, L, U))
 end

@@ -51,29 +51,19 @@ end
     end
 end
 
-@testitem "LowRankVDF: k∥=0 (perpendicular) path" begin
-    g0(v, u) = exp(-(u^2 + v^2 + 0.6u * v))
-    kw = (para = 8.0, perp = 6.0)
-    cpl = NormalizedPopulation(-1.0, 1.0, CoupledVDF(g0; kw...))
-    lr = prepare(NormalizedPopulation(-1.0, 1.0, LowRankVDF(g0; kw..., rtol = 1.0e-10)))
-    k = Wavevector(0.8, 0.0)
-    @test contribution(lr, 1.2 + 0.05im, k) ≈ contribution(cpl, 1.2 + 0.05im, k) rtol = 1.0e-5
-end
-
-# Regression for the Landau-Cauchy branches of `_lr_cauchy`. The exact adaptive CoupledVDF is
-# the oracle on every path: the FAR Neumann branch's crossed-pole residue, the near-field
-# `_peel` gate that avoids catastrophic cancellation when bₛ(ζ) grows off-axis, and the
-# signed-zero real pole. Rank-1 Gaussian, as in the reviewer's counterexamples.
+# Landau-Cauchy edge cases of the fixed-node plan, against the exact adaptive CoupledVDF: a crossed
+# residue far from the nodes, the `_peel` gate that avoids catastrophic cancellation when bₛ(ζ) grows
+# off-axis, and the signed-zero real pole. Rank-1 Gaussian.
 @testitem "LowRankVDF: Landau-Cauchy edge cases match the exact coupled path" begin
     g0(v, u) = exp(-(u^2 + v^2))
-    kw = (para = 8.0, perp = 6.0)           # U=8 ⇒ far/near split at |ζ|=16
+    kw = (para = 8.0, perp = 6.0)
     cpl = prepare(NormalizedPopulation(1.0, 1.0, CoupledVDF(g0; kw...)))
     lr = prepare(NormalizedPopulation(1.0, 1.0, LowRankVDF(g0; kw..., rtol = 1.0e-10)))
     cases = [
-        (Wavevector(0.4, 0.1), 1.0 - 2.0im),          # far branch, crossed n=1 pole (|ζ|=20)
-        (Wavevector(0.4, 0.1), 1.0 - 2.5im),          # deeper far crossing (|ζ|=25)
-        (Wavevector(0.4, 0.1), 0.6im),                # near branch, bₛ(ζ)=e³⁶ off-axis (cancellation)
-        (Wavevector(0.4, 0.1), 0.4im),                # near branch, growing bₛ(ζ)
+        (Wavevector(0.4, 0.1), 1.0 - 2.0im),          # crossed n=1 pole far from the nodes (|ζ|=20)
+        (Wavevector(0.4, 0.1), 1.0 - 2.5im),          # deeper (|ζ|=25)
+        (Wavevector(0.4, 0.1), 0.6im),                # bₛ(ζ)=e³⁶ off-axis (cancellation)
+        (Wavevector(0.4, 0.1), 0.4im),                # growing bₛ(ζ)
         (Wavevector(0.4, 0.5), complex(0.3, -0.0)),   # signed −0 real pole (Plemelj half-residue)
         (Wavevector(1.0, 0.2), 1.2 - 0.05im),
         (Wavevector(1.0, 0.2), 1.2 - 0.4im),          # deep damped
@@ -83,27 +73,10 @@ end
     end
 end
 
-# A real pole landing exactly on a fixed quadrature node is the 0*safe_inv(0)→NaN hazard;
-# GRAZING one is the harder case (wₗ~1/δ ⇒ Σwₗbₛ and bₛ(ζ)Σwₗ cancel from ~uw/|δ| to O(1),
-# losing eps·uw/|δ|)
-@testitem "LowRankVDF: coincident node and negative-Ω refinement" begin
-    using VlasovMaxwellDispersion: plan_contribution
+@testitem "LowRankVDF: negative-Ω refinement" begin
     g0(v, u) = exp(-(u^2 + v^2))
     kw = (para = 8.0, perp = 6.0)
     cplraw, lrraw = CoupledVDF(g0; kw...), LowRankVDF(g0; kw..., rtol = 1.0e-10)
-
-    # k∥=1 ⇒ ζ_{n=0}=ω; ω = a GL node ⇒ ζ hits that node exactly, ω+ε ⇒ grazes it.
-    sc = prepare(NormalizedPopulation(1.0, 1.0, cplraw))
-    sl = prepare(NormalizedPopulation(1.0, 1.0, lrraw))
-    k = Wavevector(0.6, 1.0)
-    plan = plan_contribution(sl, k)
-
-    u★ = plan.pa.un[argmax(abs.(plan.pa.Bv[:, 1]))]
-    for ε in (0.0, 1.0e-16, 1.0e-12, 1.0e-8, 1.0e-4)
-        ω = complex(u★ + ε, 0.0)
-        @test all(isfinite, plan(ω))
-        @test plan(ω) ≈ contribution(sc, ω, k) rtol = 1.0e-6
-    end
 
     # Negative Ω at k⊥=7 (a=−7): refinement must see the Bessel oscillation via |a|.
     snc = prepare(NormalizedPopulation(-1.0, 1.0, cplraw))

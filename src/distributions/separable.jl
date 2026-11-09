@@ -52,9 +52,6 @@ perp_setup(perp, β) = perp
 _plan_perp_moments(perp, β, nmax; rtol) =
     [perp_moments(perp, n, β) for n in (-nmax):nmax]
 
-_plan_perp_moments(perp::AnalyticFactor, β, nmax; rtol) =
-    _quad_perp_moments(perp.fdf, perp.lo, perp.hi, β, nmax; rtol)
-
 function _quad_perp_moments(fdf, lo, hi, β, nmax; rtol)
     return map((-nmax):nmax) do n
         norm(m) = max(maximum(abs, m[1]), maximum(abs, m[2]))
@@ -68,18 +65,21 @@ function _quad_perp_moments(fdf, lo, hi, β, nmax; rtol)
     end
 end
 
-# Precompute the (ω,k)-independent normalization `n` (∫f=1) and,
-# for AnalyticFactor pairs, ⟨v⊥²⟩ setting the Bessel harmonic cap.
+# Precompute the (ω,k)-independent normalization `n` (∫f=1) and, for AnalyticFactor pairs,
+# ⟨v⊥²⟩ setting the Bessel harmonic cap plus the fixed-node tables of a one-column `TablePlan`.
 # Ring/table factors are self-normalized (n=1) with a closed-form cap from their perp context.
 prepare(d::Separable, args...) = PreparedVDF(d, (; n=1))
-function prepare(d::Separable{<:AnalyticFactor,<:AnalyticFactor}, args...; rtol=1.0e-10)
+function prepare(d::Separable{<:AnalyticFactor,<:AnalyticFactor}, args...; rtol=1.0e-10, backend=FixedNodeEval())
     p, q = d.fpara, d.fperp
     npara = QuadGK.quadgk(p, p.lo, p.hi; rtol)[1]
     I1, I3 = QuadGK.quadgk(q.lo, q.hi; rtol) do v
         f = q(v)
         SVector(v * f, v^3 * f)
     end[1]
-    return PreparedVDF(d, (; n=npara * 2π * I1, perp²=I3 / I1))
+    (; order, tol) = backend
+    para = ParaTable((_, u) -> p.fdf(u), 1, _panels(u -> abs(p(u)), p.lo, p.hi, zero(p.hi)), order, tol)
+    vpan = _panels(v -> abs(v * q(v)), q.lo, q.hi, zero(q.hi))
+    return PreparedVDF(d, (; n=npara * 2π * I1, perp²=I3 / I1, para, vpan, order))
 end
 
 contribution(d::Separable, s, ω, k; kw...) = contribution(prepare(d), s, ω, k; kw...)
@@ -87,12 +87,23 @@ contribution(d::Separable, s, ω, k; kw...) = contribution(prepare(d), s, ω, k;
 contribution(c::PreparedVDF{<:Separable}, s, ω, k; kw...) =
     plan_contribution(c, s, k; kw...)(ω)
 
-struct SeparablePlan{C,S,M,Z,R}
+function plan_contribution(c::PreparedVDF{<:Separable{<:AnalyticFactor,<:AnalyticFactor}}, s, k; kw...)
+    (; para, vpan, order) = c.cache
+    fperp = c.vdf.fperp
+    Ω = s.Omega
+    a = k.k_perp / Ω
+    nmax = _nmax(c.cache, fperp, a)
+    vs, ws = gl_nodes(_refine(vpan, abs(a)), QuadGK.gauss(order)..., typeof(float(k.k_perp)))
+    fdf = fperp.fdf.(vs)
+    P∂, PF = _perp_tensors(_bessel_tensors(a, (-nmax):nmax, vs), vs, ws, stack([last.(fdf)]), stack([first.(fdf)]))
+    return TablePlan(para, P∂, PF, (-nmax):nmax, Ω, k.k_para, s.Pi2 / c.cache.n)
+end
+
+struct SeparablePlan{C,S,M,Z}
     prepared::C
     species::S
     moments::M
     kz::Z
-    rtol::R
 end
 
 plan_contribution(d::Separable, s, k; kw...) =
@@ -106,20 +117,18 @@ function plan_contribution(
     fperp = perp_setup(d.fperp, β)
     nmax = _nmax(c.cache, fperp, β)
     moments = _plan_perp_moments(fperp, β, nmax; rtol)
-    return SeparablePlan(c, s, moments, k.k_para, rtol)
+    return SeparablePlan(c, s, moments, k.k_para)
 end
 
 function (p::SeparablePlan)(ω)
     c, s = p.prepared, p.species
-    (; moments, rtol, kz) = p
+    (; moments, kz) = p
     Ω = s.Omega
     nmax = length(moments) ÷ 2
-    ns = (-nmax):nmax
-    Ms = _para_moments_all(c.vdf.fpara, ω, kz, Ω, ns; rtol)
     X = sum(eachindex(moments)) do i
-        n = ns[i]
-        P∂, PF = p.moments[i]
-        _chi_mblock(Ms[i], P∂, PF, ω, kz, n * Ω)
+        nΩ = (i - nmax - 1) * Ω
+        P∂, PF = moments[i]
+        _chi_mblock(para_moments(c.vdf.fpara, ω - nΩ, kz), P∂, PF, ω, kz, nΩ)
     end
     return _antisymmat((s.Pi2 / (c.cache.n * ω^2)) * X)
 end
@@ -128,26 +137,6 @@ end
 # Ring/table/Kappa factors supply a closed-form `nmax_harm`; AnalyticFactor uses cached ⟨v⊥²⟩.
 _nmax(_cache, fperp, β) = nmax_harm(fperp, β)
 _nmax(cache, ::AnalyticFactor, β) = nmax_bessel(β^2 * abs(cache.perp²) / 2)
-
-_para_moments_all(p, ω, kz, Ω, ns; rtol=1.0e-8) = map(n -> para_moments(p, ω - n * Ω, kz), ns)
-
-# All parallel moments M_n in one u-quadrature.
-function _para_moments_all(p::AnalyticFactor, ω, kz, Ω, ns; rtol=1.0e-8)
-    @inline function _gpar(p, u)
-        fp, dp = p.fdf(u)
-        ufp = u * fp
-        return SVector(fp, ufp, ufp * u, dp, u * dp)
-    end
-
-    if iszero(kz)
-        # pole-free: one moment integral serves every harmonic, weighted 1/Δ_n
-        I = QuadGK.quadgk(u -> _gpar(p, u), p.lo, p.hi; rtol, norm=NORM)[1]
-        return [I ./ (ω - n * Ω) for n in ns]
-    end
-    ζs = [(ω - n * Ω) / kz for n in ns]
-    Is = plan_landau((p.lo, p.hi), ζs, sign(kz))(u -> _gpar(p, u); rtol)
-    return (-1 / kz) .* Is
-end
 
 # Builds one cyclotron-harmonic block χ_n by contracting the perp Bessel tensor
 # with the parallel Landau moments (derivation §5.1). Same algebra for every VDF;

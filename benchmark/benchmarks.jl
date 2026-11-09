@@ -5,13 +5,14 @@ using VlasovMaxwellDispersion: contribution, plan_contribution
 using PlasmaPopulations: pdf
 const SUITE = BenchmarkGroup()
 
+# A solve costs (χ evaluations) × (cost per evaluation), and a plan change can move the two in
+# opposite directions, so every plan-backed VDF carries a `global_solve` beside its `evaluate`.
+const REGION = (0.2 - 0.4im, 1.5 + 0.1im)
+
 # Maxwellian with closed Z/Γ_n harmonic sum
 let g = SUITE["Maxwellian"]
     s = NormalizedPopulation(-1.0, 1.0, BiMaxwellian(; vth_perp = 1.2, vth_para = 0.9))
-    for kp in (0.1, 1.0)
-        k = Wavevector(kp, 0.4)
-        g["kperp=$kp"] = CAV.@benchmarkable contribution($s, 1.3 - 0.05im, $k)
-    end
+    g["kperp=1.0"] = CAV.@benchmarkable contribution($s, 1.3 - 0.05im, $(Wavevector(1.0, 0.4)))
 end
 
 let g = SUITE["separable"]
@@ -20,11 +21,12 @@ let g = SUITE["separable"]
         Gaussian(vthq) ⊗ Gaussian(vthp, 0.0);
         para=14vthp, perp=14vthq
     )))
-    for (name, k) in (("moderate", Wavevector(1.0, 0.4)), ("many_harmonics", Wavevector(4.0, 0.1)))
-        g["plan/$name"] = CAV.@benchmarkable plan_contribution($ssep, $k)
-        plan = plan_contribution(ssep, k)
-        g["evaluate/$name"] = CAV.@benchmarkable $plan(1.3 - 0.05im)
-    end
+    k = Wavevector(4.0, 0.4)
+    g["plan"] = CAV.@benchmarkable plan_contribution($ssep, $k)
+    plan = plan_contribution(ssep, k)
+    g["evaluate"] = CAV.@benchmarkable $plan(1.3 - 0.05im)
+    prob = DispersionProblem(ssep, REGION, Wavevector(1.0, 0.4))
+    g["global_solve"] = CAV.@benchmarkable solve($prob)
 end
 
 let g = SUITE["kappa"]
@@ -42,18 +44,23 @@ let g = SUITE["kappa"]
     g["product/evaluate"] = CAV.@benchmarkable $plan($ω)
 end
 
-# CoupledVDF: the two closures (derivation.md §3) on an inseparable f₀.
+# CoupledVDF on an inseparable f₀: the default fixed-node plan, and the per-ω adaptive path
+# under both closures (derivation.md §3).
 let g = SUITE["Nonrelativistic/coupled"]
     g0(w, u) = exp(-(u^2 + w^2 + 0.6u * w))
-    kw = (para=8.0, perp=6.0)
-    s = NormalizedPopulation(-1.0, 1.0, CoupledVDF(g0; kw...))
+    s = NormalizedPopulation(-1.0, 1.0, CoupledVDF(g0; para=8.0, perp=6.0))
+    g["prepare"] = CAV.@benchmarkable prepare($s)
     sp = prepare(s)
-    ω = 1.2 + 0.05im
-    for kp in (1.0, 3.0)
-        k = Wavevector(kp, 0.4)
-        g["B_truncated/kperp=$kp"] = CAV.@benchmarkable contribution($sp, $ω, $k)
-        g["A_newberger/kperp=$kp"] = CAV.@benchmarkable contribution($sp, $ω, $k; closure=Newberger())
-    end
+    k = Wavevector(4.0, 0.4)
+    g["plan"] = CAV.@benchmarkable plan_contribution($sp, $k)
+    plan = plan_contribution(sp, k)
+    g["evaluate/undamped"] = CAV.@benchmarkable $plan(1.2 + 0.05im)
+    g["evaluate/damped"] = CAV.@benchmarkable $plan(1.2 - 0.05im)   # adds the exact Landau residue
+    prob = DispersionProblem(sp, REGION, Wavevector(1.0, 0.4))
+    g["global_solve"] = CAV.@benchmarkable solve($prob)
+    k1 = Wavevector(1.0, 0.4)
+    g["adaptive/B_truncated"] = CAV.@benchmarkable contribution($sp, 1.2 + 0.05im, $k1)
+    g["adaptive/A_newberger"] = CAV.@benchmarkable contribution($sp, 1.2 + 0.05im, $k1; closure=Newberger())
 end
 
 let g = SUITE["Nonrelativistic/lowrank"]
@@ -64,18 +71,18 @@ let g = SUITE["Nonrelativistic/lowrank"]
 
     vdf = LowRankVDF((q, u) -> pdf(bk, q, u); kw...)
     s = NormalizedPopulation(1.0, 1.0, vdf)
-    for (name, k) in (("moderate", Wavevector(2.0, 1.0)), ("many_harmonics", Wavevector(8.0, 0.1)))
-        g["plan/$name"] = CAV.@benchmarkable plan_contribution($s, $k)
-        plan = plan_contribution(s, k)
-        g["evaluate/$name"] = CAV.@benchmarkable $plan(1.3 - 0.02im)
-    end
-    prob = DispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), Wavevector(2.0, 1.0))
-    g["global_solve/moderate"] = CAV.@benchmarkable solve($prob)
+    k = Wavevector(8.0, 0.1)
+    g["plan"] = CAV.@benchmarkable plan_contribution($s, $k)
+    plan = plan_contribution(s, k)
+    g["evaluate"] = CAV.@benchmarkable $plan(1.3 - 0.02im)
+    prob = DispersionProblem(s, REGION, Wavevector(2.0, 1.0))
+    g["global_solve"] = CAV.@benchmarkable solve($prob)
 end
 
 let g = SUITE["Relativistic"], regime = Relativistic()
     γ(w, u) = sqrt(1 + u^2 + w^2)
-    for μ in (2.0, 40.0), kp in (0.7, 3.5)
+    kp = 0.7
+    for μ in (2.0, 40.0)
         f0(w, u) = exp(-μ * γ(w, u))
         L = sqrt((1 + 25 / μ)^2 - 1)
         vdf = prepare(CoupledVDF(f0; para=L, perp=L, regime))
@@ -108,6 +115,6 @@ end
 
 let g = SUITE["global_solve"]
     s = NormalizedPopulation(-1.0, 1.0, BiMaxwellian(; vth_perp = 1.2, vth_para = 0.9))
-    prob = DispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), Wavevector(0.01, 0.5))
+    prob = DispersionProblem(s, REGION, Wavevector(0.01, 0.5))
     g["Default/fixed_k"] = CAV.@benchmarkable solve($prob)
 end

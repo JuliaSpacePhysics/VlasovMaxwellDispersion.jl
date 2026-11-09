@@ -28,6 +28,7 @@ include("problems.jl")
 include("integrals.jl")
 include("perp_analytic.jl")    # perpendicular P⊥ Bessel-moment primitive
 include("projection.jl")
+include("table_plan.jl")
 include("distributions/distributions.jl")
 include("builders.jl")         # particle-identity + physical-unit Population adapters
 include("assemble.jl")

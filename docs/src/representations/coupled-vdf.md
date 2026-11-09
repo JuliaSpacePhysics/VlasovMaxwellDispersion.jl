@@ -61,14 +61,21 @@ This also means **you must never run an adaptive quadrature to a tolerance tight
 ### Separable families — `BiMaxwellian`, `ProductBiKappa`, [`SeparableVDF`](@ref)
 
 The parallel Cauchy moments close analytically for Gaussian and kappa factors; arbitrary
-[`SeparableVDF`](@ref) factors use a Landau quadrature. Perpendicular Bessel moments are
-cached once per fixed `k`.
+[`SeparableVDF`](@ref) factors use the fixed-node plan below with a single column.
+Perpendicular Bessel moments are cached once per fixed `k`.
 
-### [`CoupledVDF`](@ref) — adaptive 2-D quadrature
+### [`CoupledVDF`](@ref) — exact fixed-node plan
 
 - **Pro:** exact for any analytic `f₀`. The Landau residue is taken from `f₀` itself, so
-  the analytic continuation to damped `ω` is the true one. This is the **reference**.
-- **Con:** ~1e5 `f₀`-evaluations per `ω`; 2.6–42 ms for Case 5. Unusable for a survey.
+  the analytic continuation to damped `ω` is the true one.
+- **How (default `FixedNodeEval`):** `f₀`'s gradient is tabulated once on fixed p∥ nodes at
+  coarse perp nodes `vₘ`, both sized to *interpolate* it (to `tol = 1e-12`). Per `k`, the Bessel weights
+  are integrated against that interpolant and summed into per-harmonic parallel tables, so
+  an `ω` costs `O(nharm·L)` node sums; only a damped `ω` adds exact `f₀(v, ζ)` at the
+  Bessel-resolving perp nodes, for each harmonic whose pole is crossed (the Landau residue).
+- **Con:** a damped `ω` pays for the exact
+  residue (`LowRankVDF` needs only `R` slices there). `AdaptiveEval()` (per-`ω` 2-D adaptive
+  quadrature, ~1e5 `f₀`-evaluations) is the reference.
 
 ### [`SplineVDF`](@ref) — tensor spline of tabulated data
 
@@ -82,8 +89,9 @@ cached once per fixed `k`.
 
 `f₀ ≈ Σₛ ãₛ(p⊥)·bₛ(p∥)` with `bₛ(u) = f₀(vₛ,u)` and `ãₛ(v) = Σᵣ f₀(v,uᵣ)·M[r,s]`.
 
-- **Pro:** `O(R·nmax)` per `ω`; 117–313× faster than `CoupledVDF` on Case 5 (22–134 µs).
-  Construction ~8 ms, per-`k` plan ~2 ms. Crucially, the parallel factors are **literal
+- **Pro:** residues need only `R` slices per crossed harmonic, against `CoupledVDF`'s
+  Bessel-resolving perp nodes, so for damped `ω` it is several times faster than `CoupledVDF`'s
+  fixed-node plan, most at large `k⊥` (undamped `ω` cost the same). Crucially, the parallel factors are **literal
   slices of the true `f₀`**, so the Landau residue is exact and damped roots are as
   accurate as the reference path.
 - **Con:** approximate (`isexact` is `false`); accuracy is capped by `rtol` and its
@@ -158,8 +166,8 @@ so no continuation exists at all beyond `|Im ω| < |k∥|·√a∥`.
 |---|---|
 | `f₀` is in a closed-form family | that family — `Maxwellian`, `ProductBiKappa`, `BiKappa` |
 | `f₀` factors | [`SeparableVDF`](@ref) |
-| coupled analytic `f₀`, want speed (surveys) | [`LowRankVDF`](@ref) |
-| coupled analytic `f₀`, want a certified reference | [`CoupledVDF`](@ref) |
+| coupled analytic `f₀` | [`CoupledVDF`](@ref); `backend = AdaptiveEval()` for a reference |
+| coupled analytic `f₀`, damped-root surveys, tolerance ≳ `rtol` | [`LowRankVDF`](@ref) |
 | tabulated `f₀`, real / weakly damped `ω` | [`SplineVDF`](@ref) |
 | tabulated `f₀`, damped roots matter | fit an analytic model, then `LowRankVDF` |
 
