@@ -81,9 +81,15 @@ function _interp_panels(F, pan, xg, tol)
     return out
 end
 
+# A pole beyond `_FAR·U` (U = p∥ half-width) takes the node sum's own Laurent series
+# Σₗ uwₗQₗ/(uₗ−ζ) = −Σₚ Mₚ·(U/ζ)ᵖ/ζ, truncated at `_FAR^-_NMOM` ≈ 6e-14. The moments are of the
+# NODES, not of f₀, so the series and the node sum are one function and the switch is seamless.
+const _FAR = 2.0
+const _NMOM = 44
+
 """
 k-independent parallel side of a [`TablePlan`](@ref): fixed p∥ nodes, the column pairs
-`(g_c, h_c)` on them, their raw moments, and `φ(c, ζ) -> (g_c(ζ), h_c(ζ))` continued off the real axis.
+`(g_c, h_c)` on them, their moments, and `φ(c, ζ) -> (g_c(ζ), h_c(ζ))` continued off the real axis.
 `upan` only has to locate the columns' structure; it is bisected until they interpolate to `tol`.
 """
 struct ParaTable{T, F}
@@ -93,7 +99,7 @@ struct ParaTable{T, F}
     un::Vector{T}; uw::Vector{T}
     λ::Vector{T}                 # barycentric weights of one panel's nodes
     G::Matrix{SVector{2, T}}     # [l,c]
-    raw::Vector{SVector{5, T}}   # [c] ∫(g, ug, u²g, h, uh) du
+    mom::Matrix{SVector{2, T}}   # [p,c] Σₗ uwₗ·(uₗ/U)ᵖ⁻¹·(g_c, h_c)(uₗ)
 end
 
 function ParaTable(φ, ncol, upan, order, tol)
@@ -102,13 +108,9 @@ function ParaTable(φ, ncol, upan, order, tol)
     upan = _interp_panels(u -> [x for c in 1:ncol for x in φ(c, u)], upan, xg, tol)
     un, uw = gl_nodes(upan, xg, wg, T)
     G = [SVector{2, T}(φ(c, un[l])) for l in eachindex(un), c in 1:ncol]
-    raw = map(1:ncol) do c
-        sum(eachindex(un)) do l
-            g, h = G[l, c]; u = un[l]
-            uw[l] * SVector(g, u * g, u^2 * g, h, u * h)
-        end
-    end
-    return ParaTable(φ, (T(first(upan)), T(last(upan))), collect(T, upan), un, uw, _baryweights(T.(xg)), G, raw)
+    U = max(abs(first(upan)), abs(last(upan)))
+    mom = [sum(l -> (uw[l] * (un[l] / U)^(p - 1)) * G[l, c], eachindex(un)) for p in 1:(_NMOM + 1), c in 1:ncol]
+    return ParaTable(φ, (T(first(upan)), T(last(upan))), collect(T, upan), un, uw, _baryweights(T.(xg)), G, mom)
 end
 
 # Bessel bilinears Kₙ(v) for every n in ns at each perp node: K[i,j] = Kₙᵢ(vⱼ) (`_symmat` order).
@@ -150,7 +152,7 @@ struct TablePlan{PT, F, T}
     φ::F
     P∂::Matrix{S6{T}}; PF::Matrix{S6{T}}   # [n,j]: residue columns
     Q∂::Matrix{S6{T}}; QF::Matrix{S6{T}}   # [l,n]: Σ_c P[n,c]·(g_c, h_c)(uₗ)
-    R∂::Matrix{S6{T}}; RF::Matrix{S6{T}}   # [m,n]: Σ_c P[n,c]·raw moments
+    M∂::Matrix{S6{T}}; MF::Matrix{S6{T}}   # [p,n]: Σ_c P[n,c]·mom[p,c]
     ns::UnitRange{Int}
     Ω::T; kz::T; pref::T                   # pref = Π̃²/n
     exact::Bool
@@ -159,9 +161,8 @@ end
 function TablePlan(t::ParaTable, P∂, PF, ns, Ω, kz, pref; exact = true, residue = (t.φ, P∂, PF))
     Gg = first.(t.G); Gh = last.(t.G)
     Q∂ = permutedims(_contract(P∂, Gg)); QF = permutedims(_contract(PF, Gh))
-    R∂ = permutedims(_contract(P∂, stack(r -> r[1:3], t.raw)))
-    RF = permutedims(_contract(PF, stack(r -> r[4:5], t.raw)))
-    return TablePlan(t, residue..., Q∂, QF, R∂, RF, ns, promote(Ω, kz, pref)..., exact)
+    M∂ = permutedims(_contract(P∂, first.(t.mom))); MF = permutedims(_contract(PF, last.(t.mom)))
+    return TablePlan(t, residue..., Q∂, QF, M∂, MF, ns, promote(Ω, kz, pref)..., exact)
 end
 
 # out[n,l] = Σ_c P[n,c]·X[l,c]
@@ -200,6 +201,45 @@ end
     return d
 end
 
+# Σₗ uwₗ·Q[l,i]/(uₗ−ζ) for a far pole, from the node moments.
+@inline function _far_sums(pl, i, ζ, U)
+    ξ = U / ζ
+    S∂ = zero(eltype(pl.M∂)) * zero(ζ); SF = S∂
+    # terms until |ξ|ᴺ < 1e-13
+    @inbounds for q in min(_NMOM, ceil(Int, -60 / log(abs2(ξ)))):-1:0
+        S∂ = S∂ * ξ + pl.M∂[q + 1, i]; SF = SF * ξ + pl.MF[q + 1, i]
+    end
+    return -S∂ / ζ, -SF / ζ
+end
+
+# The same by the node sum; a pole near the nodes is peeled (adds the log, not the crossed residue).
+@inline function _node_sums(pl, w, i, ζ, σ, crossed, U)
+    t = pl.para; lo, hi = t.lims; x = real(ζ)
+    W, w0, hit = _node_kernel!(w, t.un, t.uw, ζ, _NODE_BAND * U)
+    S∂ = zero(eltype(pl.Q∂)) * zero(ζ); SF = S∂
+    @inbounds for l in eachindex(w)
+        S∂ += w[l] * pl.Q∂[l, i]; SF += w[l] * pl.QF[l, i]
+    end
+    p = clamp(searchsortedlast(t.upan, x), 1, length(t.upan) - 1)
+    _near(t.upan, p, ζ, lo, hi) || return S∂, SF
+    # Peel c = (panel interpolant)(ζ): Σₗwₗ(Qₗ − c) + c·log. An identity for any c, and
+    # this c is consistent with the Qₗ it is subtracted from, so a node grazing ζ
+    # (wₗ ~ 1/δ) amplifies nothing — an exact f₀(ζ) would differ from the table by its
+    # interpolation error, times 1/δ.
+    order = length(t.λ)
+    rng = ((p - 1) * order + 1):(p * order)
+    lg = _lpole_term(ζ, lo, hi, σ, true) - W
+    crossed && (lg -= σ * _2πim)
+    S∂ += lg * _interp(pl.Q∂, i, rng, t.un, t.λ, ζ)
+    SF += lg * _interp(pl.QF, i, rng, t.un, t.λ, ζ)
+    if hit   # removable value of the node `_node_kernel!` dropped
+        l = argmin(m -> abs(t.un[m] - x), rng)
+        S∂ += w0 * _dinterp(pl.Q∂, i, rng, t.un, t.λ, l)
+        SF += w0 * _dinterp(pl.QF, i, rng, t.un, t.λ, l)
+    end
+    return S∂, SF
+end
+
 function (pl::TablePlan)(ω)
     ωc = complex(float(ω)); kz = pl.kz; t = pl.para
     z0 = iszero(kz)
@@ -207,50 +247,31 @@ function (pl::TablePlan)(ω)
     CT = typeof(ωc)
     lo, hi = t.lims
     U = max(abs(lo), abs(hi))
-    L, nc, order = size(pl.Q∂, 1), size(pl.P∂, 2), length(t.λ)
-    w = Vector{CT}(undef, L)
-    Φ = Vector{SVector{2, CT}}(undef, nc)
+    w = Vector{CT}(undef, size(pl.Q∂, 1))
+    Φ = Vector{SVector{2, CT}}(undef, size(pl.P∂, 2))
     acc = zero(S6{CT})
     @inbounds for (i, n) in enumerate(pl.ns)
         nΩ = n * pl.Ω
+        # raw moments ∫(g, ug, u²g) and ∫(h, uh)
+        R∂0, R∂1, R∂2 = pl.M∂[1, i], U * pl.M∂[2, i], U^2 * pl.M∂[3, i]
+        RF0, RF1 = pl.MF[1, i], U * pl.MF[2, i]
         if z0
             iΔ = inv(ωc - nΩ)
-            MF0, MF1, MF2 = pl.R∂[1, i] * iΔ, pl.R∂[2, i] * iΔ, pl.R∂[3, i] * iΔ
-            MT0, MT1 = pl.RF[1, i] * iΔ, pl.RF[2, i] * iΔ
+            MF0, MF1, MF2 = R∂0 * iΔ, R∂1 * iΔ, R∂2 * iΔ
+            MT0, MT1 = RF0 * iΔ, RF1 * iΔ
         else
             ζ = (ωc - nΩ) / kz
-            W, w0, hit = _node_kernel!(w, t.un, t.uw, ζ, _NODE_BAND * U)
-            S∂ = zero(S6{CT}); SF = zero(S6{CT})
-            for l in 1:L
-                S∂ += w[l] * pl.Q∂[l, i]; SF += w[l] * pl.QF[l, i]
-            end
             x = real(ζ)
             crossed = σ * imag(ζ) < 0 && lo < x < hi
-            p = clamp(searchsortedlast(t.upan, x), 1, length(t.upan) - 1)
-            if _near(t.upan, p, ζ, lo, hi)
-                # Peel c = (panel interpolant)(ζ): Σₗwₗ(Qₗ − c) + c·log. An identity for any c, and
-                # this c is consistent with the Qₗ it is subtracted from, so a node grazing ζ
-                # (wₗ ~ 1/δ) amplifies nothing — an exact f₀(ζ) would differ from the table by its
-                # interpolation error, times 1/δ.
-                rng = ((p - 1) * order + 1):(p * order)
-                lg = _lpole_term(ζ, lo, hi, σ, true) - W
-                crossed && (lg -= σ * _2πim)
-                S∂ += lg * _interp(pl.Q∂, i, rng, t.un, t.λ, ζ)
-                SF += lg * _interp(pl.QF, i, rng, t.un, t.λ, ζ)
-                if hit   # removable value of the node `_node_kernel!` dropped
-                    l = argmin(m -> abs(t.un[m] - x), rng)
-                    S∂ += w0 * _dinterp(pl.Q∂, i, rng, t.un, t.λ, l)
-                    SF += w0 * _dinterp(pl.QF, i, rng, t.un, t.λ, l)
-                end
-            end
+            S∂, SF = abs2(ζ) > (_FAR * U)^2 ? _far_sums(pl, i, ζ, U) : _node_sums(pl, w, i, ζ, σ, crossed, U)
             if crossed
                 φ∂, φF = _column_values!(Φ, pl, i, ζ)
                 S∂ += (σ * _2πim) * φ∂; SF += (σ * _2πim) * φF
             end
             # uʲ/(u−ζ) = ζʲ/(u−ζ) + poly ⇒ higher moments from the raw ones
-            A1 = pl.R∂[1, i] + ζ * S∂
-            MF0, MF1, MF2 = ik * S∂, ik * A1, ik * (pl.R∂[2, i] + ζ * A1)
-            MT0, MT1 = ik * SF, ik * (pl.RF[1, i] + ζ * SF)
+            A1 = R∂0 + ζ * S∂
+            MF0, MF1, MF2 = ik * S∂, ik * A1, ik * (R∂1 + ζ * A1)
+            MT0, MT1 = ik * SF, ik * (RF0 + ζ * SF)
         end
         wF0 = ωc * MF0 - kz * MF1; wF1 = ωc * MF1 - kz * MF2
         acc += S6(
