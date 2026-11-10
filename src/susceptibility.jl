@@ -21,13 +21,20 @@ scaled_contribution(vdf, s, ω, k; kwargs...) =
 @inline function _guarded_sum(f, xs)
     _nan_tensor() = SMatrix{3,3,ComplexF64}(ntuple(_ -> complex(NaN, NaN), 9))
     return try
-        mapreduce(f, +, xs)
+        _sum(f, xs)
     catch err
         err isa DomainError && isdefined(err, :msg) &&
         startswith(err.msg, "integrand produced") || rethrow()
         _nan_tensor()
     end
 end
+
+# Unrolled over a tuple of differently typed plans: `mapreduce` there infers or boxes every
+# term depending on what was compiled before.
+_sum(f, xs) = mapreduce(f, +, xs)
+_sum(f, xs::Tuple) = _sum(f, f(first(xs)), Base.tail(xs))
+_sum(f, acc, xs::Tuple) = _sum(f, acc + f(first(xs)), Base.tail(xs))
+_sum(f, acc, ::Tuple{}) = acc
 
 # ε = I + Σ_s χ_s(ω,k)
 dielectric(plasma, ω, k; kwargs...) =

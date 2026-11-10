@@ -244,37 +244,40 @@ function (pl::TablePlan)(ω)
     CT = typeof(ωc)
     lo, hi = t.lims
     U = max(abs(lo), abs(hi))
-    w = Vector{CT}(undef, size(pl.Q∂, 1))
-    Φ = Vector{SVector{2, CT}}(undef, size(pl.P∂, 2))
-    acc = zero(S6{CT})
-    @inbounds for (i, n) in enumerate(pl.ns)
-        nΩ = n * pl.Ω
-        # raw moments ∫(g, ug, u²g) and ∫(h, uh)
-        R∂0, R∂1, R∂2 = pl.M∂[1, i], U * pl.M∂[2, i], U^2 * pl.M∂[3, i]
-        RF0, RF1 = pl.MF[1, i], U * pl.MF[2, i]
-        if z0
-            iΔ = inv(ωc - nΩ)
-            MF0, MF1, MF2 = R∂0 * iΔ, R∂1 * iΔ, R∂2 * iΔ
-            MT0, MT1 = RF0 * iΔ, RF1 * iΔ
-        else
-            ζ = (ωc - nΩ) / kz
-            x = real(ζ)
-            crossed = σ * imag(ζ) < 0 && lo < x < hi
-            S∂, SF = abs2(ζ) > (_FAR * U)^2 ? _far_sums(pl, i, ζ, U) : _node_sums(pl, w, i, ζ, σ, crossed, U)
-            if crossed
-                φ∂, φF = _column_values!(Φ, pl, i, ζ)
-                S∂ += (σ * _2πim) * φ∂; SF += (σ * _2πim) * φF
+    acc = @no_escape begin
+        w = @alloc(CT, size(pl.Q∂, 1))
+        Φ = @alloc(SVector{2, CT}, size(pl.P∂, 2))
+        acc = zero(S6{CT})
+        @inbounds for (i, n) in enumerate(pl.ns)
+            nΩ = n * pl.Ω
+            # raw moments ∫(g, ug, u²g) and ∫(h, uh)
+            R∂0, R∂1, R∂2 = pl.M∂[1, i], U * pl.M∂[2, i], U^2 * pl.M∂[3, i]
+            RF0, RF1 = pl.MF[1, i], U * pl.MF[2, i]
+            if z0
+                iΔ = inv(ωc - nΩ)
+                MF0, MF1, MF2 = R∂0 * iΔ, R∂1 * iΔ, R∂2 * iΔ
+                MT0, MT1 = RF0 * iΔ, RF1 * iΔ
+            else
+                ζ = (ωc - nΩ) / kz
+                x = real(ζ)
+                crossed = σ * imag(ζ) < 0 && lo < x < hi
+                S∂, SF = abs2(ζ) > (_FAR * U)^2 ? _far_sums(pl, i, ζ, U) : _node_sums(pl, w, i, ζ, σ, crossed, U)
+                if crossed
+                    φ∂, φF = _column_values!(Φ, pl, i, ζ)
+                    S∂ += (σ * _2πim) * φ∂; SF += (σ * _2πim) * φF
+                end
+                # uʲ/(u−ζ) = ζʲ/(u−ζ) + poly ⇒ higher moments from the raw ones
+                A1 = R∂0 + ζ * S∂
+                MF0, MF1, MF2 = ik * S∂, ik * A1, ik * (R∂1 + ζ * A1)
+                MT0, MT1 = ik * SF, ik * (RF0 + ζ * SF)
             end
-            # uʲ/(u−ζ) = ζʲ/(u−ζ) + poly ⇒ higher moments from the raw ones
-            A1 = R∂0 + ζ * S∂
-            MF0, MF1, MF2 = ik * S∂, ik * A1, ik * (R∂1 + ζ * A1)
-            MT0, MT1 = ik * SF, ik * (RF0 + ζ * SF)
+            wF0 = ωc * MF0 - kz * MF1; wF1 = ωc * MF1 - kz * MF2
+            acc += S6(
+                wF0[1] + kz * MT0[1], im * (wF0[2] + kz * MT0[2]), wF1[3] + kz * MT1[3],
+                wF0[4] + kz * MT0[4], im * (wF1[5] + kz * MT1[5]), nΩ * MF2[6] + (ωc - nΩ) * MT1[6],
+            )
         end
-        wF0 = ωc * MF0 - kz * MF1; wF1 = ωc * MF1 - kz * MF2
-        acc += S6(
-            wF0[1] + kz * MT0[1], im * (wF0[2] + kz * MT0[2]), wF1[3] + kz * MT1[3],
-            wF0[4] + kz * MT0[4], im * (wF1[5] + kz * MT1[5]), nΩ * MF2[6] + (ωc - nΩ) * MT1[6],
-        )
+        acc
     end
     return (pl.pref / ωc^2) * _antisymmat(acc)
 end
