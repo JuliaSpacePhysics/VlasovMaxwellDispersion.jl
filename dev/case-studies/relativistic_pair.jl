@@ -41,25 +41,25 @@ plasma10 = pair(MaxwellJuttner(; theta = 1 / 10.0))  ## β = 0.2
 ## μ=2 propagating (A/IC): from the ALPS k∥=0.1 seed down to 0.05 and up to the
 ## last subluminal point k∥=1.85 (crosses ωr = k∥c near 1.9).
 kz2p = collect(0.05:0.05:1.85)
-ω2p = solve(DispersionProblem(plasma2, Seed(3.9621e-2 - 2.644e-6im, Wavevector(0.0, 0.1)), Wavevector.(0.0, kz2p); mode=:L)).omega
+ω2p = solve(DispersionProblem(plasma2, Seed(3.9621e-2 - 2.644e-6im, Wavevector(0.0, 0.1)), Wavevector.(0.0, kz2p); mode=:L), Continuation()).omega
 
 ## μ=2 purely imaginary (aperiodic) family, both ways from k∥=0.85.
 kz2d = collect(0.05:0.05:3.0)
-ω2d = solve(DispersionProblem(plasma2, Seed(1.0e-4 - 0.478im, Wavevector(0.0, 0.85)), Wavevector.(0.0, kz2d); mode=:L)).omega
+ω2d = solve(DispersionProblem(plasma2, Seed(1.0e-4 - 0.478im, Wavevector(0.0, 0.85)), Wavevector.(0.0, kz2d); mode=:L), Continuation()).omega
 
 ## μ=10 propagating: from a robust k∥=0.3 seed
 kz10 = collect(0.1:0.05:4.5)
-ω10 = solve(DispersionProblem(plasma10, Seed(0.155 - 1.0e-4im, Wavevector(0.0, 0.3)), Wavevector.(0.0, kz10); mode=:L)).omega
+ω10 = solve(DispersionProblem(plasma10, Seed(0.155 - 1.0e-4im, Wavevector(0.0, 0.3)), Wavevector.(0.0, kz10); mode=:L), Continuation()).omega
 
 ## μ=10 aperiodic family. Anchoring near its minimum (k∥=3.9) lets adaptive
 ## continuation stay on the axis through the close pass with the propagating root.
 kap10 = collect(0.05:0.05:4.5)
-ωap10 = solve(DispersionProblem(plasma10, Seed(-2.73im, Wavevector(0.0, 3.9)), Wavevector.(0.0, kap10); mode=:L)).omega
+ωap10 = solve(DispersionProblem(plasma10, Seed(-2.73im, Wavevector(0.0, 3.9)), Wavevector.(0.0, kap10); mode=:L), Continuation()).omega
 
 ## μ=2 A/IC light-line continuation (direct trace on the continued L-mode):
 ## stays slightly superluminal (ωr/k∥ → 1.04) with slowly recovering damping.
 kz2c = collect(1.9:0.1:3.0)
-ω2c = solve(DispersionProblem(plasma2, ω2p[end], Wavevector.(0.0, kz2c); mode=:L)).omega;
+ω2c = solve(DispersionProblem(plasma2, ω2p[end], Wavevector.(0.0, kz2c); mode=:L), Continuation()).omega;
 
 # ## O-mode
 #
@@ -75,8 +75,8 @@ function relbox(μ)
 end
 kzo = collect(0.02:0.2:3.0)
 kzo10 = collect(0.02:0.2:4.42)
-ωo2 = solve(DispersionProblem(relbox(2.0), Seed(1.0933 + 0.0im, Wavevector(0.0, 0.02)), Wavevector.(0.0, kzo); mode=:L)).omega
-ωo10 = solve(DispersionProblem(relbox(10.0), Seed(1.5122 + 0.0im, Wavevector(0.0, 0.02)), Wavevector.(0.0, kzo10); mode=:L)).omega
+ωo2 = solve(DispersionProblem(relbox(2.0), Seed(1.0933 + 0.0im, Wavevector(0.0, 0.02)), Wavevector.(0.0, kzo); mode=:L), Continuation()).omega
+ωo10 = solve(DispersionProblem(relbox(10.0), Seed(1.5122 + 0.0im, Wavevector(0.0, 0.02)), Wavevector.(0.0, kzo10); mode=:L), Continuation()).omega
 
 ## Digitized Verscharen (2018) Fig. 5, plotted as ×-crosses.
 ref = readdlm(joinpath(@__DIR__, "relativistic_pair_verscharen18.tsv"); comments=true)
@@ -163,8 +163,8 @@ fig
 kzt = collect(0.1:0.05:4.5)
 ks = Wavevector.(0.0, kzt)
 mus = (2.0, 5.0, 10.0, 25.0)
-ωmj = [solve(DispersionProblem(pair(MaxwellJuttner(; theta = 1 / μ)), 0.04 - 1.0e-4im, ks; mode=:L)).omega for μ in mus]
-ωmx = [solve(DispersionProblem(pair(BiMaxwellian(; vth = sqrt(2 / μ))), 0.04 - 1.0e-4im, ks; mode=:L)).omega for μ in mus];
+ωmj = [solve(DispersionProblem(pair(MaxwellJuttner(; theta = 1 / μ)), 0.04 - 1.0e-4im, ks; mode=:L), Continuation()).omega for μ in mus]
+ωmx = [solve(DispersionProblem(pair(BiMaxwellian(; vth = sqrt(2 / μ))), 0.04 - 1.0e-4im, ks; mode=:L), Continuation()).omega for μ in mus];
 
 # At `μ = 25` the curves agree through `k∥ ≈ 3.5`; cooling postpones the
 # relativistic turn to larger `k∥`, but never removes it.
