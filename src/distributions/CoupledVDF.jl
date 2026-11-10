@@ -53,15 +53,13 @@ function contribution(d::CoupledVDF, s, ω, k; closure=HarmonicSum(), kw...)
     return contribution(prepare(d; backend = AdaptiveEval(; closure)), s, ω, k; closure, kw...)
 end
 
-density(d::CoupledVDF; rtol=1.0e-9) = 2π * QuadGK.quadgk(
-    q -> q * QuadGK.quadgk(u -> d.f0(q, u), d.para...; rtol)[1],
+_perp_moment(d::CoupledVDF, m::Int, rtol) = 2π * QuadGK.quadgk(
+    erase_rr(q -> q^m * QuadGK.quadgk(u -> d.f0(q, u), d.para...; rtol)[1], d.perp[2]),
     d.perp...; rtol
 )[1]
 
-pperp2_mean(d::CoupledVDF, n=density(d); rtol=1.0e-3) = 2π * QuadGK.quadgk(
-    q -> q^3 * QuadGK.quadgk(u -> d.f0(q, u), d.para...; rtol)[1],
-    d.perp...; rtol
-)[1] / n
+density(d::CoupledVDF; rtol=1.0e-9) = _perp_moment(d, 1, rtol)
+pperp2_mean(d::CoupledVDF, n=density(d); rtol=1.0e-3) = _perp_moment(d, 3, rtol) / n
 
 prepare(d::CoupledVDF; backend=FixedNodeEval(), kw...) =
     PreparedVDF(d, precompute(regime(d), _closure(backend), d; backend, kw...))

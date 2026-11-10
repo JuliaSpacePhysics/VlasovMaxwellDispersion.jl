@@ -23,7 +23,7 @@ _marg(g, lo, hi, np) = sum(x -> abs(g(x)), range(lo, hi, np))
 # Adaptive panel edges for `f` on [lo,hi]; `a>0` additionally caps panels at the Bessel
 # half-wavelength π/(2a), which adaptive quadrature on a non-oscillatory proxy cannot see.
 function _panels(f, lo, hi, a, rtol = _PANEL_RTOL)
-    segs = QuadGK.quadgk_segbuf(f, lo, hi; rtol)[3]
+    segs = QuadGK.quadgk_segbuf(erase_rr(f, hi), lo, hi; rtol)[3]
     e = sort!(unique!(vcat([s.a for s in segs], [s.b for s in segs])))
     return _refine(e, a)
 end
