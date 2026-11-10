@@ -1,18 +1,3 @@
-@testitem "muller non-finite guards" begin
-    using VlasovMaxwellDispersion: muller
-
-    @test isnan(muller(x -> ComplexF64(Inf, Inf), 1.0, 1.1, 1.2))
-    @test isnan(muller(x -> ComplexF64(NaN, NaN), 1.0, 1.1, 1.2))
-
-    # flat tail: quadratic model extrapolates huge steps into overflow;
-    # muller should contract overshooting trial steps.
-    hits = Ref(0)
-    fovf(x) = (v = exp(10x) - 1; isfinite(v) || (hits[] += 1); v)
-    r = muller(fovf, -2.0, -1.9, -1.8)
-    @test abs(r) < 1.0e-10
-    @test hits[] > 0
-end
-
 @testitem "Polishes |ω|≪1 roots (relative seed spread)" begin
     # Dense cold e-p plasma: EMIC/Alfvén root near ω≈8.6e-5 (≪ 1).
     mp_me = 1836.15

@@ -5,7 +5,7 @@ using PlasmaPopulations: C_SI, kappa_widths
 using Reexport: @reexport
 @reexport using PlasmaDispersionBase
 using PlasmaDispersionBase: ParameterGeometry, DispersionSolution, SurveySolution, BranchSolution, DispersionBranch, SolveStats,
-    successful_retcode, wavevectors, remake, window, normalized
+    successful_retcode, wavevectors, remake, window, normalized, muller
 import PlasmaDispersionBase: __solve, pointsolver, seedsolver
 using LinearAlgebra
 using StaticArrays

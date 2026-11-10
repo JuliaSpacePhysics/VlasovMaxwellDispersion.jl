@@ -1,6 +1,7 @@
 module VlasovMaxwellDispersionRootsExt
 
-using VlasovMaxwellDispersion: _seedsolver, _seed_offset, _split_options, ReturnCode
+using VlasovMaxwellDispersion: _seedsolver, _split_options, ReturnCode
+using PlasmaDispersionBase: _seed_offset
 import VlasovMaxwellDispersion: findroot
 import PlasmaDispersionBase: seedsolver
 import Roots

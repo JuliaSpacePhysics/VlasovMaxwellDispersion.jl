@@ -90,7 +90,7 @@ end
         k = Wavevector(0.0, kzv)
         f = omega -> electrostatic_det(pl, omega, k) / abs2(k)
         seed = sqrt(Complex(Pi2 + 3 * kzv^2 * vth^2 / 2)) - 0.01im
-        muller(f, seed)
+        first(muller(f, seed))
     end
     rp, rm = root(kz), root(-kz)
     @test !isnan(rp) && imag(rp) < 0

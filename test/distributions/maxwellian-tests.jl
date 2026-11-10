@@ -30,8 +30,8 @@ end
     f_std(omega) = 1 + (1 / (kz^2 * lambdaD2)) * (1 + (omega / (kz * vth)) * Z(omega / (kz * vth)))
 
     omega_BG = sqrt(Complex(Pi2 + 3 * kz^2 * vth^2 / 2))  # Bohm-Gross seed
-    r_es = VM.muller(f_es, omega_BG)
-    r_std = VM.muller(f_std, omega_BG)
+    r_es = first(VM.muller(f_es, omega_BG))
+    r_std = first(VM.muller(f_std, omega_BG))
 
     @test !isnan(r_es)
     @test isapprox(r_es, r_std; atol = 1.0e-9)        # k*lambdaD ~ 0.71: damped root, exact Z-formula match
