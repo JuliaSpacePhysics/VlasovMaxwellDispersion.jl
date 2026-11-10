@@ -19,16 +19,17 @@ function (s::PointRoots)(k)
     (; prob, alg, opts) = s
     region = prob.target
     diag = abs(region[2] - region[1])
-    gate0 = 0 in region ? _origin_gate(alg, diag) : 0.0
+    gate0 = 0 in window(region) ? _origin_gate(alg, diag) : 0.0
     f0 = DispersionFunction(prob, k, opts)
     # erase only on the ComplexF64 lattice (one probe eval); exotic eltypes pass through
     iscf = f0((region[1] + region[2]) / 2) isa ComplexF64
     f = iscf ? erase_cf(f0) : f0
     trust(z) = _trusted(prob.plasma, z, k)
     zs, n1, converged = discover(alg, f, region; keep = trust)
-    filter!(trust, zs)
+    keep(z) = isfinite(z) && abs(z) > gate0 && trust(z)
+    filter!(keep, zs)
     zs, n2 = polish!(f, zs, alg.refine)
-    filter!(z -> isfinite(z) && abs(z) > gate0 && trust(z), zs)
+    filter!(keep, zs)
     zs = consolidate(zs; atol = 1.0e-4 * diag)
     return (; omega = zs, resid = map(z -> residual(f0, z), zs), nevals = n1 + n2, converged)
 end
