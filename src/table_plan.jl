@@ -145,7 +145,7 @@ end
 
 Fixed-node per-`k` plan `ω ↦ χ` over a [`ParaTable`](@ref) with perp tensors `(P∂, PF)[n,c]`.
 `residue = (φ, P∂, PF)` gives the columns contracted at near/crossed poles, `φ(j, ζ) -> (g_j, h_j)(ζ)`;
-by default the table's own. `exact = false` marks a surrogate f₀ (see [`isexact`](@ref)).
+by default the table's own.
 """
 struct TablePlan{PT, F, T}
     para::PT
@@ -155,14 +155,13 @@ struct TablePlan{PT, F, T}
     M∂::Matrix{S6{T}}; MF::Matrix{S6{T}}   # [p,n]: Σ_c P[n,c]·mom[p,c]
     ns::UnitRange{Int}
     Ω::T; kz::T; pref::T                   # pref = Π̃²/n
-    exact::Bool
 end
 
-function TablePlan(t::ParaTable, P∂, PF, ns, Ω, kz, pref; exact = true, residue = (t.φ, P∂, PF))
+function TablePlan(t::ParaTable, P∂, PF, ns, Ω, kz, pref; residue = (t.φ, P∂, PF))
     Gg = first.(t.G); Gh = last.(t.G)
     Q∂ = permutedims(_contract(P∂, Gg)); QF = permutedims(_contract(PF, Gh))
     M∂ = permutedims(_contract(P∂, first.(t.mom))); MF = permutedims(_contract(PF, last.(t.mom)))
-    return TablePlan(t, residue..., Q∂, QF, M∂, MF, ns, promote(Ω, kz, pref)..., exact)
+    return TablePlan(t, residue..., Q∂, QF, M∂, MF, ns, promote(Ω, kz, pref)...)
 end
 
 # out[n,l] = Σ_c P[n,c]·X[l,c]
@@ -170,8 +169,6 @@ function _contract(P::Matrix{S6{T}}, X) where {T}
     Pm = reshape(reinterpret(T, P), 6 * size(P, 1), size(P, 2))
     return copy(reinterpret(S6{T}, Pm * transpose(X)))
 end
-
-isexact(p::TablePlan) = p.exact
 
 # A pole within a panel width of the nodes is under-resolved by the node sum and is peeled.
 @inline function _near(upan, p, ζ, lo, hi)

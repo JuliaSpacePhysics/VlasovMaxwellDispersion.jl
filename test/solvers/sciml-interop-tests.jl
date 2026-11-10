@@ -7,5 +7,5 @@
     prob = DispersionProblem(p, 0.6, Wavevector(0.01, 0.5))
     sd = solve(prob, SNS.SimpleHalley())
     @test sd.retcode == ReturnCode.Success
-    @test sd.omega ≈ solve(prob).omega rtol = 1e-6
+    @test sd.omega ≈ solve(prob, Muller()).omega rtol = 1e-6
 end

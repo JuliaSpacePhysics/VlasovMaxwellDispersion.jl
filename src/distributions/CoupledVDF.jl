@@ -50,7 +50,7 @@ function CoupledVDF(f0; para, perp, dgrad=nothing, coords=:momentum, regime=NonR
 end
 
 function contribution(d::CoupledVDF, s, ω, k; closure=HarmonicSum(), kw...)
-    return contribution(prepare(d, closure), s, ω, k; closure, kw...)
+    return contribution(prepare(d; backend = AdaptiveEval(; closure)), s, ω, k; closure, kw...)
 end
 
 density(d::CoupledVDF; rtol=1.0e-9) = 2π * QuadGK.quadgk(
@@ -63,8 +63,8 @@ pperp2_mean(d::CoupledVDF, n=density(d); rtol=1.0e-3) = 2π * QuadGK.quadgk(
     d.perp...; rtol
 )[1] / n
 
-prepare(d::CoupledVDF, closure=HarmonicSum(); kw...) =
-    PreparedVDF(d, precompute(regime(d), closure, d; kw...))
+prepare(d::CoupledVDF; backend=FixedNodeEval(), kw...) =
+    PreparedVDF(d, precompute(regime(d), _closure(backend), d; backend, kw...))
 
 precompute(::NonRelativistic, ::Newberger, d; kw...) = (; n=density(d))
 function precompute(::NonRelativistic, ::HarmonicSum, d; backend=FixedNodeEval(), kw...)

@@ -41,7 +41,7 @@ kdp = range(3.0, 7.0, length=100) ./ dp
 θ = deg2rad(89.5)
 region = (1.8 - 0.8im, 4.2 + 0.2im)
 geom = AngleSweep(k=kdp, theta=θ)
-sol = solve(DispersionProblem(plasma, region, geom))
+sol = link(solve(DispersionProblem(plasma, region, geom), AAA()))
 
 # The instability lives entirely on the propagating branch, filtered by `γ` above
 # a small cutoff that rejects the marginal roots sitting on the flat bands.
@@ -60,8 +60,8 @@ fig
 # ## Clean propagating branch via seeded continuation
 
 kseed = 5.2 / dp
-seed = Seed(3.5 + 0.03im, Wavevector(kseed .* sincos(θ)...))
-solc = solve(DispersionProblem(plasma, seed, geom))
+seed = Seed(3.5 + 0.03im, Wavevector(; k = kseed, theta = θ))
+solc = solve(DispersionProblem(plasma, seed, geom), Continuation())
 
 fig2 = Figure(size=(900, 400))
 axr2 = Axis(fig2[1, 1]; xlabel="k d_p", ylabel="ωr / ωcp")

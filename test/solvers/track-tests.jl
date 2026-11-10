@@ -3,7 +3,7 @@
     plasma = NormalizedPopulation(0.0, 0.0, Cold())
     kzs = range(0.5, 1.0; length=12)
     ks = Wavevector.(0.0, kzs)
-    sol = solve(DispersionProblem(plasma, 0.5 + 0im, ks)) # default to Continuation with order=3
+    sol = solve(DispersionProblem(plasma, 0.5 + 0im, ks), Continuation())
     @test sol.omega ≈ kzs rtol = 1.0e-5
     @testset "track predictor order: degree 1 (secant) through 3 all hold the branch" begin
         for order in 1:3
@@ -14,15 +14,15 @@
     end
 
     ks = (Wavevector(0.0, kz) for kz in (0.5, 0.6, 0.7))
-    roots = solve(DispersionProblem(plasma, 0.5 + 0im, ks)).omega
+    roots = solve(DispersionProblem(plasma, 0.5 + 0im, ks), Continuation()).omega
     @test all(isfinite, roots)
 
     @testset "track accepts a swept geometry as the k path" begin
-        sol = solve(DispersionProblem(plasma, 0.5 + 0im, CartesianSweep(k_para=range(0.5, 1.0; length=61))))
+        sol = solve(DispersionProblem(plasma, 0.5 + 0im, CartesianSweep(k_para=range(0.5, 1.0; length=61))), Continuation())
         @test sol.retcode == ReturnCode.Success
         @test sol.omega ≈ range(0.5, 1.0; length=61) atol = 1.0e-6
         @test_broken solve(
-            DispersionProblem(plasma, 0.5 + 0im, CartesianSweep(k_perp=range(0.0, 0.1; length=61), k_para=range(0.5, 1.0; length=61)))
+            DispersionProblem(plasma, 0.5 + 0im, CartesianSweep(k_perp=range(0.0, 0.1; length=61), k_para=range(0.5, 1.0; length=61))), Continuation()
         )
     end
 end
@@ -35,11 +35,11 @@ end
     ks = Wavevector.(0.0, kzs)
     j = findfirst(==(0.6), kzs)
 
-    fwd = solve(DispersionProblem(plasma, 0.6 + 0im, ks[j:end])).omega
-    bwd = solve(DispersionProblem(plasma, 0.6 + 0im, reverse(ks[1:j]))).omega
+    fwd = solve(DispersionProblem(plasma, 0.6 + 0im, ks[j:end]), Continuation()).omega
+    bwd = solve(DispersionProblem(plasma, 0.6 + 0im, reverse(ks[1:j])), Continuation()).omega
     manual = vcat(reverse(bwd), fwd[2:end])
 
-    sol = solve(DispersionProblem(plasma, Seed(0.6 + 0im, Wavevector(0.0, 0.6)), ks))
+    sol = solve(DispersionProblem(plasma, Seed(0.6 + 0im, Wavevector(0.0, 0.6)), ks), Continuation())
     @test sol.retcode == ReturnCode.Success
     @test length(sol.omega) == length(kzs)
     @test sol.omega ≈ kzs rtol = 1.0e-5
@@ -47,12 +47,12 @@ end
     @test all(isfinite, sol.resid)
 
     # anchor need not sit exactly on a node — nearest point wins
-    @test solve(DispersionProblem(plasma, Seed(0.6 + 0im, Wavevector(0.0, 0.58)), ks)).omega == manual
+    @test solve(DispersionProblem(plasma, Seed(0.6 + 0im, Wavevector(0.0, 0.58)), ks), Continuation()).omega == manual
     # anchor at the first point ⇒ plain forward track
-    @test solve(DispersionProblem(plasma, Seed(0.3 + 0im, Wavevector(0.0, 0.3)), ks)).omega ≈ kzs rtol = 1.0e-5
+    @test solve(DispersionProblem(plasma, Seed(0.3 + 0im, Wavevector(0.0, 0.3)), ks), Continuation()).omega ≈ kzs rtol = 1.0e-5
     # works over a swept geometry too
     @test solve(DispersionProblem(plasma, Seed(0.6 + 0im, Wavevector(0.0, 0.6)),
-                                  CartesianSweep(k_para=range(0.3, 1.0; length=61)))).retcode == ReturnCode.Success
+                                  CartesianSweep(k_para=range(0.3, 1.0; length=61))), Continuation()).retcode == ReturnCode.Success
 end
 
 

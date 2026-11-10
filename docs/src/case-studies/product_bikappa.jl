@@ -32,7 +32,7 @@ plasma = Plasma(
 di = scales(plasma).populations[1].d
 region = (-0.1 - 0.25im, 0.5 + 0.12im)
 geom = AngleSweep(k=range(0.01, 0.5; length=61) ./ di, theta=deg2rad(45))
-sol = solve(DispersionProblem(NormalizedPlasma(plasma), region, geom))
+sol = link(solve(DispersionProblem(NormalizedPlasma(plasma), region, geom), AAA()))
 
 # ## Verification against PlasmaBO
 #
@@ -48,7 +48,7 @@ for r in eachrow(ref)
     r[3] > 0.005 || continue
     γ = maximum(
         maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - r[1]) < 0.004); init=(-Inf))
-        for b in sol.roots
+        for b in sol.branches
     )
     global Δmax = max(Δmax, abs(γ - r[3]))
     @printf("k·di=%.2f  γ_ref=%.4f  γ_vmd=%.4f  Δ=%.1e\n", r[1], r[3], γ, abs(γ - r[3]))
@@ -114,7 +114,7 @@ de = scales(first(plasmas); ref = e).populations[2].d
 region = (-0.2 - 0.5im, 1.0 + 1.5im)
 geom = CartesianSweep(k_para=vcat(0.01:0.005:0.3, 0.32:0.02:2.8) ./ de)
 
-sols = map(pl -> solve(DispersionProblem(NormalizedPlasma(pl; ref = e), region, geom)), plasmas)
+sols = map(pl -> link(solve(DispersionProblem(NormalizedPlasma(pl; ref = e), region, geom), AAA())), plasmas)
 
 # ## Verification against PlasmaBO
 #
@@ -135,7 +135,7 @@ for (κ, sol) in zip(κs, sols)
         ω_ref = complex(r[2], r[3])
         d = minimum(
             minimum((abs(ω - ω_ref) for (x, ω) in zip(kde(b), b.omega) if isfinite(ω) && abs(x - r[1]) < 0.005); init=Inf)
-            for b in sol.roots
+            for b in sol.branches
         )
         Δmax = max(Δmax, d)
     end

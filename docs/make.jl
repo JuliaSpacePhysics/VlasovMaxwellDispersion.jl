@@ -54,7 +54,7 @@ const PAGES = vcat(
 )
 
 makedocs(;
-    modules = [VlasovMaxwellDispersion, VlasovMaxwellDispersion.ReturnCode, VlasovMaxwellDispersion.PlasmaPopulations],
+    modules = [VlasovMaxwellDispersion],
     authors = "Beforerr <zzj956959688@gmail.com> and contributors",
     sitename = "VlasovMaxwellDispersion.jl",
     format = Documenter.HTML(;

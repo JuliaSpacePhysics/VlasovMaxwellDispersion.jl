@@ -68,8 +68,8 @@ end
 # Precompute the (ω,k)-independent normalization `n` (∫f=1) and, for AnalyticFactor pairs,
 # ⟨v⊥²⟩ setting the Bessel harmonic cap plus the fixed-node tables of a one-column `TablePlan`.
 # Ring/table factors are self-normalized (n=1) with a closed-form cap from their perp context.
-prepare(d::Separable, args...) = PreparedVDF(d, (; n=1))
-function prepare(d::Separable{<:AnalyticFactor,<:AnalyticFactor}, args...; rtol=1.0e-10, backend=FixedNodeEval())
+prepare(d::Separable; kw...) = PreparedVDF(d, (; n=1))
+function prepare(d::Separable{<:AnalyticFactor,<:AnalyticFactor}; rtol=1.0e-10, backend=FixedNodeEval())
     p, q = d.fpara, d.fperp
     npara = QuadGK.quadgk(p, p.lo, p.hi; rtol)[1]
     I1, I3 = QuadGK.quadgk(q.lo, q.hi; rtol) do v

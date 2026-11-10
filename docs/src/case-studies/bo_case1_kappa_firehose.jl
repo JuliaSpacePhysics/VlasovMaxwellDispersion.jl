@@ -41,7 +41,7 @@ di = scales(first(plasmas)).populations[1].d       # same for every κ
 ω_region = (-0.1 - 0.25im, 0.5 + 0.12im)
 geom = AngleSweep(k=collect(0.03:0.015:0.45) ./ di, theta=deg2rad(45))
 
-sols = map(pl -> solve(DispersionProblem(NormalizedPlasma(pl), ω_region, geom)), plasmas)
+sols = map(pl -> link(solve(DispersionProblem(NormalizedPlasma(pl), ω_region, geom), AAA())), plasmas)
 
 # ## Verification against PlasmaBO
 #
@@ -56,7 +56,7 @@ kdi(b) = [sqrt(abs2(k)) * di for k in b.k]
 ## sample is ≤ 0.0075 away, so gate at half the survey spacing
 γmax(sol, x0) = maximum(
     maximum((imag(ω) for (x, ω) in zip(kdi(b), b.omega) if isfinite(ω) && abs(x - x0) < 0.008); init=(-Inf))
-    for b in sol.roots
+    for b in sol.branches
 )
 for (κ, sol) in zip(κs, sols)
     rows = ref[ref[:, 4] .== κ, :]
@@ -84,7 +84,7 @@ for (i, (κ, sol)) in enumerate(zip(κs, sols))
         fig[i, 1]; ylabel="γ / ωcp", title="κ = $(round(Int, κ))",
         xlabel=i == 3 ? "k dᵢ" : ""
     )
-    for (j, b) in enumerate(sol.roots)
+    for (j, b) in enumerate(sol.branches)
         x = kdi(b)
         p = sortperm(x)
         lines!(ax, x[p], imag.(b.omega)[p]; color=palette[mod1(j, length(palette))], linewidth=2)

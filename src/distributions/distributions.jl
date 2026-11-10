@@ -19,8 +19,8 @@ include("BiKappa.jl")
 `vdf` in this solver's representation. PlasmaPopulations models are rescaled by `vc`, the speed
 of light in their speed unit; a [`SolverVDF`](@ref) passes through.
 """
-solver_vdf(d, vc) = d
-solver_vdf(d::AbstractVDF, vc) = throw(ArgumentError("$(nameof(typeof(d))) has no representation in this solver"))
+solver_vdf(d::SolverVDF, vc) = d
+solver_vdf(d, vc) = throw(ArgumentError("$(nameof(typeof(d))) has no representation in this solver"))
 
 _inc(v, vc) = v / vc
 

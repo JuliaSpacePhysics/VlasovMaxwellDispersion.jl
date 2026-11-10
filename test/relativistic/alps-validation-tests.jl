@@ -11,7 +11,7 @@
     ks = [Wavevector(row[1] / vA, row[2] / vA) for row in eachrow(data)]
     reference = complex.(data[:, 3], data[:, 4])
 
-    roots = solve(DispersionProblem(plasma, reference[1], ks)).omega
+    roots = solve(DispersionProblem(plasma, reference[1], ks), Continuation()).omega
 
     @test all(isfinite, roots)
     @test maximum(abs.(real.(roots) .- real.(reference)) ./ abs.(real.(reference))) < 1.0e-2
@@ -52,7 +52,7 @@ end
     for row in eachrow(data)
         k = Wavevector(row[1], row[2])
         ωref = complex(row[3], row[4])
-        sol = solve(DispersionProblem(plasma, ωref, k))
+        sol = solve(DispersionProblem(plasma, ωref, k), Muller())
         @test sol.resid < 1.0e-6
         # Exact analytic Maxwell-Jüttner vs ALPS's coarse 60×30 gridded+order-30
         # Damping (Im ω̃) of this near-marginal mode is far more approximation-sensitive

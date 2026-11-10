@@ -8,12 +8,12 @@ and no test on the det can tell the two apart.
 trusted(vdf, s, ω, k) = true
 
 """
-    prepare(x, closure; kw...) -> x′
+    prepare(x; backend = FixedNodeEval(), kw...) -> x′
 
 One-time setup before repeated evaluations.
-Precompute (ω,k)-independent quantities held in [`PreparedVDF`](@ref).
+Precompute the (ω,k)-independent quantities `backend` ([`ChiBackend`](@ref)) needs, held in [`PreparedVDF`](@ref).
 """
-prepare(x, closure; kw...) = x
+prepare(x; kw...) = x
 
 """
     parallel_even(vdf)::Bool
@@ -55,12 +55,24 @@ Base.@kwdef struct FixedNodeEval <: ChiBackend
 end
 
 """
+    AdaptiveEval(; closure=HarmonicSum())
+
 Per-ω adaptive-quadrature backend. Slower, but re-refines against each ω's
 integrand — the fallback when fixed nodes chosen at plan time under-resolve
 joint or per-ω structure a marginal proxy can't see.
+
+`closure` evaluates the orbit integrals of `CoupledVDF` and `SplineVDF`.
 """
-struct AdaptiveEval <: ChiBackend end
+Base.@kwdef struct AdaptiveEval{C} <: ChiBackend
+    closure::C = HarmonicSum()
+end
+
+_closure(::ChiBackend) = HarmonicSum()
+_closure(b::AdaptiveEval) = b.closure
 
 
 # Contract: `discover(alg, f, region; keep) -> (zeros, nevals, converged)`
 function discover end
+
+# Contract of a seeded algorithm: `findroot(alg, D, ω0; kw...) -> (ω, nevals, retcode)`, `NaN` when the search fails.
+function findroot end

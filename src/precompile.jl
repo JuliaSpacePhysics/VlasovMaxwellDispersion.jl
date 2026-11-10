@@ -12,6 +12,6 @@ using PrecompileTools: @setup_workload, @compile_workload
     geom = AngleSweep(k = [30.0], theta = deg2rad(45))
     @compile_workload begin
         prob = DispersionProblem(plasma, region, geom)
-        solve(prob, AAA(n = (5, 4)))
+        link(solve(prob, AAA(n = (5, 4))))
     end
 end

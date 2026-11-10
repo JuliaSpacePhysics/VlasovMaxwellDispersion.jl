@@ -1,18 +1,23 @@
 """
-    AAA(; n=(20, 16), tol=1e-13, max_degree=150, stagnation=5)
+    AAA(; n=(20, 16), tol=1e-13, max_degree=150, stagnation=5, refine=Muller())
 
 Derivative-free rational-fit global solver: `aaa`-fit `1/det(ω̃²𝒟)` on an
-`n = (nRe, nIm)` grid over the ω window; the fit's poles are the det's zeros.
+`n = (nRe, nIm)` grid over the ω box; the fit's poles are the det's zeros, kept in the
+survey's linking window just past the box.
 Fitting the deflated det ([`wave_dispersion_tensor`](@ref)) rather than raw
 `det 𝒟` matters: the raw det's `ω=0` pole is a formulation artifact that
 screens nearby roots from the fit's far field — exactly the low-frequency
 (Alfvén/EMIC) roots a wide ω box must keep.
+
+`refine` polishes each fitted root and drops candidates with no nearby zero;
+`nothing` keeps the raw poles.
 """
-Base.@kwdef struct AAA
+Base.@kwdef struct AAA{R}
     n::Tuple{Int, Int} = (20, 16)
     tol::Float64 = 1.0e-13
     max_degree::Int = 150
     stagnation::Int = 5
+    refine::R = Muller()
 end
 
 # `keep` drops samples an approximate VDF cannot reliably resolve
@@ -46,7 +51,7 @@ function discover(alg::AAA, f, region; keep = Returns(true))
         Z, F = z, y
     end
     (nodes, weights), converged = _aaa(F, Z; alg.tol, alg.max_degree, alg.stagnation)
-    zs = filter!(z -> _in_box(region, z), _aaa_poles(nodes, weights))
+    zs = filter!(z -> z in window(region), _aaa_poles(nodes, weights))
     return zs, nev, converged
 end
 

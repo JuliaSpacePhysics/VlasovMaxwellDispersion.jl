@@ -42,7 +42,7 @@ _valid_at(::Union{Ordinary,Extraordinary}, k) = _negligible(k.k_para, k.k_perp)
 
 _valid_plasma(::TensorReduction, plasma) = true
 _valid_plasma(::Union{Ordinary,Extraordinary}, plasma) =
-    all(s -> parallel_even(s.vdf), NormalizedPlasma(plasma).populations)
+    all(s -> parallel_even(_solver_population(s).vdf), NormalizedPlasma(plasma).populations)
 
 _domain(::TensorReduction) = "a restricted k domain"
 _domain(::Circular) = "exactly parallel k (k⊥ = 0)"
