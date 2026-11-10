@@ -1,0 +1,6 @@
+relativistic-continuation-contour:
+    #!/usr/bin/env bash
+    printf '%s\n' \
+      '#set page(width: auto, height: auto, margin: 2pt, fill: none)' \
+      '#include "assets/relativistic-continuation-contour.typ"' |
+    typst compile --root . - assets/relativistic-continuation-contour.svg
