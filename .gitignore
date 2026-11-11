@@ -9,7 +9,6 @@ docs/build/
 docs/src/case-studies/*.md
 docs/src/relativistic.md
 docs/src/lopez-anomalous-zone.md
-docs/build-timings.tsv
 .claude/
 external/
 *.bib

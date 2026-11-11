@@ -13,19 +13,7 @@ const CASE_STUDIES = joinpath(SRC, "case-studies")
 const REPRESENTATIONS = joinpath(SRC, "representations")
 const LITERATE_SOURCES = sort(filter(f -> endswith(f, ".jl"), readdir(CASE_STUDIES; join = true)))
 
-# Wrap each case-study page's @example execution in a hidden wall-clock timer.
-const TIMINGS_FILE = joinpath(@__DIR__, "build-timings.tsv")
-ENV["VMD_TIMINGS"] = TIMINGS_FILE
-rm(TIMINGS_FILE; force = true)
-
-timing_preprocess(name) = str ->
-    "_t0 = time(); nothing #hide\n" * str *
-    "\n#\nopen(ENV[\"VMD_TIMINGS\"], \"a\") do io; println(io, \"$name\\t\", round(time() - _t0; digits = 2)); end #hide\nnothing #hide\n"
-
-foreach(LITERATE_SOURCES) do source
-    name = first(splitext(basename(source)))
-    Literate.markdown(source, CASE_STUDIES; documenter = true, preprocess = timing_preprocess(name))
-end
+foreach(source -> Literate.markdown(source, CASE_STUDIES; documenter = true), LITERATE_SOURCES)
 
 const TYP_PAGES = [
     joinpath(SRC, "relativistic.typ") => joinpath(SRC, "relativistic.md"),
@@ -64,9 +52,6 @@ makedocs(;
     checkdocs = :none,                                 # site is benchmark-focused, not full API ref
     pages = PAGES,
 )
-
-# Per-page build timing → CI step summary (or stdout locally), slowest first.
-isfile(TIMINGS_FILE) && summary_timings(TIMINGS_FILE)
 
 deploydocs(;
     repo = "github.com/JuliaPlasma/VlasovMaxwellDispersion.jl",
