@@ -98,14 +98,13 @@ end
 # Thin specialization of the generic machinery (residue_cycles.jl): the MJ
 # energy-form gradient is (∂_γf, ∂_∥f) = (−μe^{−μγ}, 0), so 𝒰 = −μω e^{−μγ}.
 
-const _MJ_BOX_CACHE = Dict{Float64, Any}()
 const _MJ_CYCLE_QUAD = BoxQuad(GaussLegendre(40), GaussLegendre(48))
 
 # (q,u) box for the straight part: e^{−μ(γmax−1)} ≈ 1e-7 truncation (wider boxes
 # lose more to fixed-quadrature resolution than they gain in truncation)
-_mj_prepared_box(μ) = get!(_MJ_BOX_CACHE, μ) do
+function _mj_prepared_box(μ)
     P = sqrt((1 + 16 / μ)^2 - 1)
-    prepare(CoupledVDF((γ, u) -> exp(-μ * γ); para = P, perp = P,
+    return prepare(CoupledVDF((γ, u) -> exp(-μ * γ); para = P, perp = P,
         coords = :energy, regime = Relativistic()); quad = _MJ_CYCLE_QUAD)
 end
 
