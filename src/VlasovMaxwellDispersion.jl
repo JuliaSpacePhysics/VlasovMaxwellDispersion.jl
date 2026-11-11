@@ -38,8 +38,6 @@ include("dispersion_function.jl")
 include("CoupledPlan.jl")
 include("solve.jl")
 
-export Particle, Electron, Positron, Proton, Population, Plasma,
-    BiMaxwellian, GaussianRing, BiKappa, ProductBiKappa, Cold, MaxwellJuttner, GridVDF
 export NonRelativistic, Relativistic
 export SplineVDF, SeparableVDF, ReducedVDF, CoupledVDF, LowRankVDF
 export ⊗, Gaussian, GyroRing, Kappa
