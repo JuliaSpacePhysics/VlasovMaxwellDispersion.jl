@@ -58,7 +58,7 @@ makedocs(;
     authors = "Beforerr <zzj956959688@gmail.com> and contributors",
     sitename = "VlasovMaxwellDispersion.jl",
     format = Documenter.HTML(;
-        canonical = "https://JuliaSpacePhysics.github.io/VlasovMaxwellDispersion.jl",
+        canonical = "https://JuliaPlasma.github.io/VlasovMaxwellDispersion.jl",
         size_threshold_ignore = HIDDEN_PAGES,          # embedded Typst report carries base64 figures
     ),
     checkdocs = :none,                                 # site is benchmark-focused, not full API ref
@@ -69,6 +69,6 @@ makedocs(;
 isfile(TIMINGS_FILE) && summary_timings(TIMINGS_FILE)
 
 deploydocs(;
-    repo = "github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl",
+    repo = "github.com/JuliaPlasma/VlasovMaxwellDispersion.jl",
     push_preview = true,
 )

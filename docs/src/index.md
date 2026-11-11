@@ -1,6 +1,6 @@
 # VlasovMaxwellDispersion.jl
 
-- [README](https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl#readme):
+- [README](https://github.com/JuliaPlasma/VlasovMaxwellDispersion.jl#readme):
   installation and complete default workflow
 - [Advanced usage](usage.md): numerical controls, plotting, and diagnostics
 - [API reference](api.md): exported types and functions

@@ -7,7 +7,7 @@ fast paths; arbitrary distributions use numerical integration.
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/JuliaSpacePhysics/VlasovMaxwellDispersion.jl"); Pkg.add(["PlasmaPopulations", "Unitful"])
+Pkg.add(url = "https://github.com/JuliaPlasma/VlasovMaxwellDispersion.jl"); Pkg.add(["PlasmaPopulations", "Unitful"])
 ```
 
 ## Quick start

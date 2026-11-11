@@ -1,6 +1,6 @@
 # Development notes
 
-![Coverage](https://codecov.io/gh/JuliaSpacePhysics/VlasovMaxwellDispersion.jl/branch/main/graph/badge.svg)
+![Coverage](https://codecov.io/gh/JuliaPlasma/VlasovMaxwellDispersion.jl/branch/main/graph/badge.svg)
 
 ## Roadmap
 
