@@ -4,5 +4,5 @@
     infers(prob, alg) = isconcretetype(only(Base.return_types(solve, (typeof(prob), typeof(alg)))))
     @test infers(DispersionProblem(s, (0.2 - 0.4im, 1.5 + 0.1im), k), AAA())
     @test infers(DispersionProblem(s, 0.6, k), Muller())
-    @test infers(DispersionProblem(s, 0.6, [k]), Continuation())
+    @test infers(DispersionProblem(s, 0.6, [k]), Continuation(Muller()))
 end

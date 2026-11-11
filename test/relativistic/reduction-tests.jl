@@ -7,10 +7,10 @@
     # options are solve keywords: misspelled ones are errors on every path
     path = [Wavevector(0.0, kz) for kz in 0.3:0.1:0.5]
     box = (0.1 - 0.1im, 1.0 + 0.1im)
-    @test_throws ArgumentError solve(DispersionProblem(cold, 0.5 + 0im, path; mdoe=:L), Continuation())
+    @test_throws ArgumentError solve(DispersionProblem(cold, 0.5 + 0im, path; mdoe=:L), Continuation(Muller()))
     @test_throws ArgumentError solve(DispersionProblem(cold, box, Wavevector(0.0, 0.4)), AAA(); mdoe=:L)
     # a mode invalid anywhere on k fails the solve up front, not mid-path or inside the threaded survey
-    @test_throws ArgumentError solve(DispersionProblem(cold, 0.5 + 0im, [path; Wavevector(0.3, 0.6)]; mode=:L), Continuation())
+    @test_throws ArgumentError solve(DispersionProblem(cold, 0.5 + 0im, [path; Wavevector(0.3, 0.6)]; mode=:L), Continuation(Muller()))
     @test_throws ArgumentError solve(DispersionProblem(cold, box, AngleSweep(; k = 0.5, theta = [0.0, 0.3]); mode=:L), AAA())
     @test TensorReduction(:R) === Circular(+1)
     @test_throws ArgumentError DispersionFunction(cold, Wavevector(0.1, 0.5); mode=:L)
@@ -74,7 +74,7 @@ end
     # Continuation predictor gate must not.
     p10 = pair(MaxwellJuttner(; theta = 1 / 10.0))
     ks = [Wavevector(0.0, kz) for kz in 3.6:-0.1:3.0]
-    sc = solve(DispersionProblem(p10, complex(0.0, -2.767), ks; mode=:L), Continuation())
+    sc = solve(DispersionProblem(p10, complex(0.0, -2.767), ks; mode=:L), Continuation(Muller()))
     @test successful_retcode(sc)
     @test maximum(abs ∘ real, sc.omega) < 1.0e-8         # stays purely imaginary
     @test imag(sc.omega[end]) ≈ -4.334 atol = 5.0e-3     # deep-family value at k=3

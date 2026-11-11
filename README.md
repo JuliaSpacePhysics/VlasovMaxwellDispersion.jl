@@ -89,12 +89,12 @@ bounds, custom gradients, relativistic coordinates.
 | target and `k` | algorithm |
 |---|---|
 | `Seed` at one `Wavevector` | `Muller()`, or a `Roots.jl` / `NonlinearSolve.jl` method once loaded |
-| `Seed` along a path or a one-axis sweep | `Continuation(; base = Muller())`: predicts along `k`, `base` corrects at each `k` |
+| `Seed` along a path or a one-axis sweep | `Continuation(Muller())`: predicts along `k`, `base` corrects at each `k` |
 | box (`Region`), any `k` | `AAA()` or `GRPF()` at each `k`; `link` joins the roots into branches |
 
 ```julia
 # One branch, seeded at ks[10] and continued both directions.
-solve(DispersionProblem(plasma, Seed(ω0, ks[10]), ks), Continuation())
+solve(DispersionProblem(plasma, Seed(ω0, ks[10]), ks), Continuation(Muller()))
 
 # Every branch in box over a sweep.
 link(solve(DispersionProblem(plasma, (ω_lower_left, ω_upper_right), geometry), AAA()))

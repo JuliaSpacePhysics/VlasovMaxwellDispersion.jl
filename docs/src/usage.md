@@ -70,7 +70,7 @@ Surveys accept sweeps with two swept axes; `Continuation` accepts one.
 | algorithm | main controls |
 |---|---|
 | `Muller()` | `atol`, `maxiter` |
-| `Continuation()` | `base`, `order`, `reltol`, `abstol`, `maxsubdiv` |
+| `Continuation(base)` | `order`, `reltol`, `abstol`, `maxsubdiv` |
 | `AAA()`, `GRPF()` | `n = (nRe,nIm)`, `tol`, `max_degree`, `refine` |
 
 ```julia

@@ -110,7 +110,7 @@ let g = SUITE["branch_solve"]
     s = NormalizedPopulation(-1.0, 1.0, BiMaxwellian(; vth_perp = 1.2, vth_para = 0.9))
     ks = [Wavevector(0.01, kz) for kz in range(0.3, 0.8; length=64)]
     prob = DispersionProblem(s, 0.6, ks)
-    g["arc_length/64"] = CAV.@benchmarkable solve($prob, Continuation())
+    g["arc_length/64"] = CAV.@benchmarkable solve($prob, Continuation(Muller()))
 end
 
 let g = SUITE["global_solve"]

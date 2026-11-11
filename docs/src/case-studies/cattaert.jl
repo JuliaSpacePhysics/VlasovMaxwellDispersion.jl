@@ -37,7 +37,7 @@ i0 = argmin(abs.(kρs .- 0.1))          # seed from kρ ≈ 0.1
 ttrack = @elapsed ωs = map(1:4) do ib
     rows = ref[ref[:, 2] .== ib, :]
     seed = complex(rows[i0, 3], rows[i0, 4])
-    ω = solve(DispersionProblem(NormalizedPlasma(plasma), Seed(seed, ks[i0]), ks), Continuation()).omega  # fans out both ways from kρ≈0.1
+    ω = solve(DispersionProblem(NormalizedPlasma(plasma), Seed(seed, ks[i0]), ks), Continuation(Muller())).omega  # fans out both ways from kρ≈0.1
     ωref = complex.(rows[:, 3], rows[:, 4])
     dre = abs.(abs.(real.(ω)) .- abs.(real.(ωref)))
     dim = abs.(imag.(ω) .- imag.(ωref))

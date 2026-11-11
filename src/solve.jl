@@ -6,7 +6,6 @@ end
 
 include("solver/muller.jl")
 include("solver/GRPF.jl")
-include("solver/Continuation.jl")
 include("solver/AAA.jl")
 include("solver/survey.jl")
 

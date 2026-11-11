@@ -61,7 +61,7 @@ fig
 
 kseed = 5.2 / dp
 seed = Seed(3.5 + 0.03im, Wavevector(; k = kseed, theta = θ))
-solc = solve(DispersionProblem(plasma, seed, geom), Continuation())
+solc = solve(DispersionProblem(plasma, seed, geom), Continuation(Muller()))
 
 fig2 = Figure(size=(900, 400))
 axr2 = Axis(fig2[1, 1]; xlabel="k d_p", ylabel="ωr / ωcp")

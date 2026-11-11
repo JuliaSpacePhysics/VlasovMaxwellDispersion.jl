@@ -6,7 +6,7 @@ using Reexport: @reexport
 @reexport using PlasmaDispersionBase
 using PlasmaDispersionBase: ParameterGeometry, DispersionSolution, SurveySolution, BranchSolution, DispersionBranch, SolveStats,
     successful_retcode, wavevectors, remake, window, normalized, muller
-import PlasmaDispersionBase: __solve, pointsolver, seedsolver
+import PlasmaDispersionBase: pointsolver, seedsolver
 using LinearAlgebra
 using StaticArrays
 using Bumper: @no_escape, @alloc
@@ -44,7 +44,7 @@ export ⊗, Gaussian, GyroRing, Kappa
 export HarmonicSum, Newberger, prepare
 export FixedNodeEval, AdaptiveEval
 export contribution, dispersion_tensor, electrostatic_det, residual
-export Muller, GRPF, Continuation, AAA
+export Muller, GRPF, AAA
 export NonnegBSpline, BicubicHermite
 
 VERSION >= v"1.11.0-DEV.469" && eval(Meta.parse("""public Regime, SolverVDF, IntegralClosure, ChiBackend, Separable, TensorReduction,

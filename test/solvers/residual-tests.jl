@@ -36,7 +36,7 @@ end
     @test !isempty(groots)
     @test all(x -> 0 <= x.resid < 1.0e-2, groots)
 
-    bsol = solve(DispersionProblem(plasma, ωref, [k]), Continuation())
+    bsol = solve(DispersionProblem(plasma, ωref, [k]), Continuation(Muller()))
     @test bsol.retcode == ReturnCode.Success
     @test only(bsol.resid) < 1.0e-10
 end

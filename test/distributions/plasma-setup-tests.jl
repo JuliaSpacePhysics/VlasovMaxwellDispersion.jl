@@ -114,8 +114,8 @@ end
     @test VlasovMaxwellDispersion.residual(point.prob, point.omega) ≈ point.resid atol = 1.0e-10
 
     path̃ = [Wavevector(0.0, f * k̃.k_para) for f in (0.9, 1.0, 1.1)]
-    tracked = solve(DispersionProblem(plasma, Seed(ω̃ * Ω, SI(path̃[2])), SI.(path̃)), Continuation())
-    @test tracked.omega ≈ Ω .* solve(DispersionProblem(normalized, Seed(ω̃, path̃[2]), path̃), Continuation()).omega
+    tracked = solve(DispersionProblem(plasma, Seed(ω̃ * Ω, SI(path̃[2])), SI.(path̃)), Continuation(Muller()))
+    @test tracked.omega ≈ Ω .* solve(DispersionProblem(normalized, Seed(ω̃, path̃[2]), path̃), Continuation(Muller())).omega
 
     box̃ = (0.0 - 0.3im, 1.1 + 0.05im)
     sweep̃ = CartesianSweep(; k_para = [0.9, 1.0] .* k̃.k_para)

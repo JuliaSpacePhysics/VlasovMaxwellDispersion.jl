@@ -11,7 +11,7 @@
     ks = [Wavevector(row[1] / vA, row[2] / vA) for row in eachrow(data)]
     reference = complex.(data[:, 3], data[:, 4])
 
-    roots = solve(DispersionProblem(plasma, reference[1], ks), Continuation()).omega
+    roots = solve(DispersionProblem(plasma, reference[1], ks), Continuation(Muller())).omega
 
     @test all(isfinite, roots)
     @test maximum(abs.(real.(roots) .- real.(reference)) ./ abs.(real.(reference))) < 1.0e-2

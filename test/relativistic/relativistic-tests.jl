@@ -134,7 +134,7 @@ end
     # O-mode of the pair plasma: the transverse L(=R) branch above the band
     pair(vdf) = (NormalizedPopulation(1.0, 1.0, vdf), NormalizedPopulation(-1.0, 1.0, vdf))
     sol = solve(DispersionProblem(pair(mom), Seed(1.0933 + 0.0im, Wavevector(0.0, 0.02)),
-        Wavevector.(0.0, [0.02, 0.62, 1.22]); mode=:L), Continuation())
+        Wavevector.(0.0, [0.02, 0.62, 1.22]); mode=:L), Continuation(Muller()))
     @test all(<(1.0e-10), sol.resid)
     @test real.(sol.omega) ≈ [1.093268, 1.258110, 1.637947] rtol = 1.0e-5
     @test maximum(abs ∘ imag, sol.omega) < 1.0e-10
