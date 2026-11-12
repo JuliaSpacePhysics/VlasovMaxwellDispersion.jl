@@ -25,7 +25,6 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [weakdeps]
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
-SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 
 [sources]
 PlasmaDispersionBase = { url = "https://github.com/JuliaPlasma/PlasmaDispersionBase.jl" }
@@ -33,7 +32,6 @@ PlasmaPopulations = { url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl
 
 [extensions]
 VlasovMaxwellDispersionRootsExt = "Roots"
-VlasovMaxwellDispersionSciMLBaseExt = "SciMLBase"
 
 [compat]
 Bumper = "0.7"
@@ -50,7 +48,6 @@ QuadGK = "2"
 Reexport = "1"
 Roots = "3"
 RootsAndPoles = "2"
-SciMLBase = "2, 3"
 SpecialFunctions = "2"
 StaticArrays = "1"
 julia = "1.10"
