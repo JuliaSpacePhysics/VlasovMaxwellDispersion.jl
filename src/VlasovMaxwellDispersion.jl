@@ -4,8 +4,7 @@ using PlasmaPopulations
 using PlasmaPopulations: C_SI, kappa_widths
 using Reexport: @reexport
 @reexport using PlasmaDispersionBase
-using PlasmaDispersionBase: ParameterGeometry, DispersionSolution, SurveySolution, BranchSolution, DispersionBranch, SolveStats,
-    successful_retcode, wavevectors, remake, window, normalized, muller
+using PlasmaDispersionBase: successful_retcode, wavevectors, remake, window, normalized, muller
 import PlasmaDispersionBase: pointsolver, seedsolver
 using LinearAlgebra
 using StaticArrays
@@ -48,8 +47,7 @@ export Muller, GRPF, AAA
 export NonnegBSpline, BicubicHermite
 
 VERSION >= v"1.11.0-DEV.469" && eval(Meta.parse("""public Regime, SolverVDF, IntegralClosure, ChiBackend, Separable, TensorReduction,
-    𝒟, plan_contribution, fit_grid, DispersionFunction,
-    DispersionSolution, SurveySolution, BranchSolution, DispersionBranch, SolveStats, successful_retcode"""))
+    𝒟, plan_contribution, fit_grid, DispersionFunction"""))
 
 include("precompile.jl")
 
