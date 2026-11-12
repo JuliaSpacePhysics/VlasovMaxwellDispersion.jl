@@ -77,6 +77,15 @@ end
 (::Ordinary)(M) = M[3, 3]
 (::Extraordinary)(M) = M[1, 1] * M[2, 2] - M[1, 2] * M[2, 1]
 
+# Implicit determinant (Spence & Poulton 2005): meromorphic f = 1/(xᴴ𝒟⁻¹y) = det 𝒟 / (xᴴ adj(𝒟) y), 
+# with x, y the seed's least right, left singular vectors (𝒟x ≈ 0, yᴴ𝒟 ≈ 0), so |f| ≈ σ₃ there.
+# Another mode's resonance, a pole of det 𝒟, drops out of f.
+struct ImplicitDet{V} <: TensorReduction
+    x::V
+    y::V
+end
+(b::ImplicitDet)(M) = det(M) / dot(b.x, _adjugate(M) * b.y)
+
 # A factor scales like a product of tensor eigenvalues — 1 of 3 for the 1×1
 # factors, 2 of 3 for the Extraordinary 2×2 block; shrinks the det-based
 # residual scale accordingly.

@@ -6,15 +6,11 @@
 """
     DispersionFunction(plasma, k; deflate=true, scale=1.0, mode=:det, backend=FixedNodeEval())
 
-Callable fixed-`k` dispersion function `D(ω)` whose zeros are the dispersion relation's roots.
+Callable fixed-`k` dispersion function `D(ω) = mode(𝒟)/scale`, zero at the dispersion relation's roots.
 Construction plans every species ([`plan_contribution`](@ref)) once for this `k`.
 
-`deflate=true` evaluates the deflated `det(ω̃²𝒟), pole-free at
-`ω=0` (the survey form); `deflate=false` the raw `det𝒟` (the seeded-solver form).
-Both are divided by `scale` (the seeded path normalizes by the det magnitude
-at the seed).
-
-`mode` selects the [`TensorReduction`](@ref) to evaluate (`:det` default).
+- `deflate=true`: `𝒟` is the deflated `ω̃²𝒟`, pole-free at `ω = 0` (survey form); `false`: the raw `𝒟` (seeded form).
+- `mode`: the [`TensorReduction`](@ref).
 """
 struct DispersionFunction{L,P,K,M,S,R<:TensorReduction}
     plans::L
@@ -69,12 +65,27 @@ residual(D::DispersionFunction, ω) = isfinite(ω) ? _resid(_tensor(D, ω)) : Na
 
 _hadamard(D) = prod(norm(D[i, :]) for i in 1:3)
 
-# The seeded solvers' raw det of a prepared `plasma`, scaled by its magnitude at the seed `ω0`.
-function seeded_det(plasma, k, ω0, opts)
+# Seeded solvers' raw-tensor function; reduction and scale are fixed at the seed `ω0`.
+function seeded_function(plasma, k, ω0, opts)
     D = DispersionFunction(plasma, k; opts..., deflate=false)
-    s = _hadamard(_tensor(D, ω0))
-    scale = isfinite(s) && s > 0 ? s^_scalepow(D.mode) : one(s)
-    return DispersionFunction(D.plans, D.plasma, D.k, D.curl, scale, D.deflate, D.mode)
+    T = _tensor(D, ω0)
+    mode = _seeded_mode(D.mode, T)
+    s = _hadamard(T)
+    scale = isfinite(s) && s > 0 ? s^_scalepow(mode) : one(s)
+    return DispersionFunction(D.plans, D.plasma, D.k, D.curl, scale, D.deflate, mode)
+end
+
+# `ImplicitDet` only when the seed's least singular value singles out one mode (σ₃/σ₂ < 0.1).
+_seeded_mode(m::TensorReduction, T) = m
+function _seeded_mode(m::FullDet, T)
+    all(isfinite, T) || return m
+    # 𝒟 = Σᵢ σᵢuᵢvᵢᴴ ⇒ adj 𝒟 = det 𝒟 · Σᵢ vᵢuᵢᴴ/σᵢ ≈ σ₁σ₂ v₃u₃ᴴ (up to phase), and |det|·‖𝒟‖/‖adj‖² ≈ σ₃/σ₂.
+    Ts = T / maximum(abs, T)
+    A = _adjugate(Ts)
+    abs(det(Ts)) * norm(Ts) < 0.1 * norm(A)^2 || return m
+    x = A[:, argmax(j -> norm(A[:, j]), 1:3)]          # ∝ v₃, right null vector
+    y = conj(A[argmax(i -> norm(A[i, :]), 1:3), :])    # ∝ u₃, left null vector
+    return ImplicitDet(normalize(x), normalize(y))
 end
 
 # One root from a guess by `findroot(alg, …; kw...)`, the plasma prepared once for every wavevector.
@@ -87,7 +98,7 @@ end
 _seedsolver(prob, alg, opts, kw = (;)) = SeedSolver(_prepare(prob, opts).plasma, alg, opts, kw)
 
 function (s::SeedSolver)(k, ω0)
-    D = seeded_det(s.plasma, k, ω0, s.opts)
+    D = seeded_function(s.plasma, k, ω0, s.opts)
     ω, nevals, retcode = findroot(s.alg, D, ω0; s.kw...)
     return (; omega = ω, resid = residual(D, ω), nevals, retcode)
 end

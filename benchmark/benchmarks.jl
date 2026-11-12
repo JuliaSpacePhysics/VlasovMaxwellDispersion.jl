@@ -111,6 +111,16 @@ let g = SUITE["branch_solve"]
     ks = [Wavevector(0.01, kz) for kz in range(0.3, 0.8; length=64)]
     prob = DispersionProblem(s, 0.6, ks)
     g["arc_length/64"] = CAV.@benchmarkable solve($prob, Continuation(Muller()))
+
+    # The whistler crosses Ωp, where the other circular mode's resonance is a pole of det 𝒟.
+    mp_me = 1836.15
+    plasma = (
+        NormalizedPopulation(-1.0, 100.0, BiMaxwellian(; vth = 1.0e-3)),
+        NormalizedPopulation(1 / mp_me, 100.0 / mp_me, BiMaxwellian(; vth = 1.0e-3 / sqrt(mp_me))),
+    )
+    ks = [Wavevector(0.0, kz) for kz in range(0.157, 0.6; length=64)]
+    prob = DispersionProblem(plasma, 0.00050945 + 0im, ks)
+    g["across_resonance/64"] = CAV.@benchmarkable solve($prob, Continuation(Muller()))
 end
 
 let g = SUITE["global_solve"]
