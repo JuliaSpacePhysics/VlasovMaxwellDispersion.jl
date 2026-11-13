@@ -1,7 +1,5 @@
 # Advanced usage
 
-See [README](https://github.com/JuliaPlasma/VlasovMaxwellDispersion.jl#readme) for plasma construction, distribution selection and algorithms, and
-[PlasmaDispersionBase.jl](https://github.com/JuliaPlasma/PlasmaDispersionBase.jl#readme) for problems, wavevectors, units and result shapes.
 This page covers controls beyond that default workflow.
 
 ## Constructor details

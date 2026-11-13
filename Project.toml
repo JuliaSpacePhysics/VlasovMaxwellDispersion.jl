@@ -26,9 +26,6 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [weakdeps]
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 
-[sources]
-PlasmaDispersionBase = { url = "https://github.com/JuliaPlasma/PlasmaDispersionBase.jl" }
-
 [extensions]
 VlasovMaxwellDispersionRootsExt = "Roots"
 
