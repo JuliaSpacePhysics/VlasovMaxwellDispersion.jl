@@ -16,6 +16,3 @@ Documenter = "1"
 Literate = "2"
 Typst_jll = "0.15"
 Unitful = "1"
-
-[sources]
-PlasmaPopulations = { url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl" }

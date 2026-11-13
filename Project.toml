@@ -28,7 +28,6 @@ Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 
 [sources]
 PlasmaDispersionBase = { url = "https://github.com/JuliaPlasma/PlasmaDispersionBase.jl" }
-PlasmaPopulations = { url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl" }
 
 [extensions]
 VlasovMaxwellDispersionRootsExt = "Roots"

@@ -16,9 +16,6 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VlasovMaxwellDispersion = "cdafd680-06b3-5be4-9326-1ea31d308873"
 
-[sources]
-PlasmaPopulations = {rev = "main", url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl"}
-
 [compat]
 Aqua = "0.8"
 Chairmarks = "1"

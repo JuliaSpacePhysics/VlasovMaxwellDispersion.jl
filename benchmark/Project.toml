@@ -8,7 +8,6 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 VlasovMaxwellDispersion = "cdafd680-06b3-5be4-9326-1ea31d308873"
 
 [sources]
-PlasmaPopulations = { url = "https://github.com/JuliaPlasma/PlasmaPopulations.jl" }
 ChairmarksForAirspeedVelocity = { url = "https://github.com/LilithHafner/ChairmarksForAirspeedVelocity.jl", rev = "0affa3b2275e4dc1f7200436a615002cd126b81d" }
 
 [compat]
